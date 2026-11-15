@@ -1,23 +1,26 @@
 /* De Toren van de Tovenaar — proof of concept
- * Isometrische pixel-kamer, volledig procedureel getekend op een canvas (250x310 px).
+ * Isometrische pixel-kamer, volledig procedureel getekend op een canvas.
  * Coördinaten: (a, b, z)  a = naar rechtsonder, b = naar linksonder, z = omhoog.
  * Achterhoek van de kamer = (0,0,0). Zie P() voor de projectie.
  */
 (function () {
 'use strict';
 
-const W = 250, H = 310, CX = 125, CY = 162;
-const N = 40;     // vloer N x N
+const TILE_SIZE = 8;
+const ROOM_TILES = 8;
+const N = ROOM_TILES * TILE_SIZE;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
+const W = 4 * (N + T) + 10, CX = W / 2, CY = 162;
+const H = CY + 2 * N + F + 12;
 
 const cv = document.getElementById('scene');
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk(), frontC = mk();
-const sg = statC.getContext('2d'), fg = frontC.getContext('2d');
+const statC = mk();
+const sg = statC.getContext('2d');
 
 const P = (a, b, z) => [CX + 2 * (a - b), CY + a + b - z];
 
@@ -151,16 +154,16 @@ const brOutL = brickFn(scalePal(palOut, .88)), brOutR = brickFn(scalePal(palOut,
 const brOut = brickFn(palOut);
 
 const copingFn = (a, b) => {
-  const ea = ((a % 8) + 8) % 8, eb = ((b % 8) + 8) % 8;
+  const ea = ((a % TILE_SIZE) + TILE_SIZE) % TILE_SIZE, eb = ((b % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
   if (ea < .5 || eb < .5) return '#5f80ac';
   return hash(Math.floor(a / 8), Math.floor(b / 8)) > .5 ? '#86a8cf' : '#7c9ec6';
 };
 
 /* ---------- vloer ---------- */
 function floorFn(a, b) {
-  if (a >= 12 && a < 30 && b >= 4) {                 // tapijt
+  if (a >= 12 && a < 30 && b >= 4 && b < 40) {                 // tapijt
     const la = a - 12, lb = b - 4;
-    if (b >= N - 1.2) return (Math.floor(la * 1.5) & 1) ? '#e8d9a0' : '#bda86a';      // franje
+    if (b >= 38.8) return (Math.floor(la * 1.5) & 1) ? '#e8d9a0' : '#bda86a';      // franje
     if (la < 1.2 || la > 16.8) return '#5b1221';
     if (la < 2 || la > 16) return '#d6a83c';
     const d = Math.abs(((lb % 8) + 8) % 8 - 4) + Math.abs(la - 9);
@@ -169,9 +172,9 @@ function floorFn(a, b) {
     return hash(Math.floor(a * 2), Math.floor(b * 2)) > .9 ? '#a82838' : '#9c2030';
   }
   if (b >= N - .8 || a >= N - .8) return '#6a6aa0';  // voorrand
-  const ea = ((a % 8) + 8) % 8, eb = ((b % 8) + 8) % 8;
+  const ea = ((a % TILE_SIZE) + TILE_SIZE) % TILE_SIZE, eb = ((b % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
   if (ea < .5 || eb < .5) return '#2f2f50';
-  const ta = Math.floor(a / 8), tb = Math.floor(b / 8);
+  const ta = Math.floor(a / TILE_SIZE), tb = Math.floor(b / TILE_SIZE);
   if (hash(Math.floor(a * 2), Math.floor(b * 2)) > .93) return '#53537f';
   return ((ta + tb) & 1) ? '#4a4a76' : '#43436d';
 };
@@ -190,9 +193,9 @@ function facadeFn(br) {
   return (u, z) => {
     if (u >= 0 && z >= 0) return null;
     if (u >= 0) {
-      const r = arch(Math.abs(u - 40 + .5), z + .5);
+      const r = arch(Math.abs(u - N + .5), z + .5);
       if (r === 2) return z > -22 ? '#10132b' : '#171b38';
-      if (r === 1) return ((Math.floor(Math.abs(u - 40) / 3) + Math.floor((z + 60) / 3)) & 1) ? '#7a9cca' : '#6684b6';
+      if (r === 1) return ((Math.floor(Math.abs(u - N) / 3) + Math.floor((z + 60) / 3)) & 1) ? '#7a9cca' : '#6684b6';
     }
     return br(u, z);
   };
@@ -301,7 +304,8 @@ function buildStatic() {
   wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
 }
 
-/* ---------- meubels (laag vóór het vuur) ---------- */
+/* ---------- meubels ---------- */
+const furnishings = [];
 const flasks = [];
 function flask(g, x, y, liq, type) {
   if (type === 'tube') {
@@ -313,12 +317,22 @@ function flask(g, x, y, liq, type) {
   }
   flasks.push({ x, y, liq });
 }
-let cand = [];   // kaarsposities
-let KN = null;   // ridder-positie
-let TB = null;   // tafelpositie
+const cand = []; // kaarsposities
+let KN = null;  // ridderpositie
+const TABLE_A = 48, TABLE_B = 44;
+const CHEST_TILE = [6, 0];
+const CHEST_WOOD = woodC('#7a4a2a');
+let chestOpening = 0;
 
 function buildFront() {
-  const g = fg;
+  let canvas = mk(), g = canvas.getContext('2d');
+  // De diepte is a + b op de vloer, zodat meubels de tovenaar kunnen bedekken.
+  function store(depth, animate) {
+    outline(g, '#0f1226');
+    furnishings.push({ canvas, depth, animate });
+    canvas = mk();
+    g = canvas.getContext('2d');
+  }
   const wood = woodC('#7a4a2a'), woodD = woodC('#5a3320');
   const iron = flat('#4a4a5a', '#2e2e3c', '#222230');
 
@@ -333,25 +347,36 @@ function buildFront() {
   box(g, 10.6, 3.5, 7, 20.6, .8, .8, iron);
   box(g, 10.6, 0, 7, .8, 3.5, .8, iron); box(g, 31, 0, 7, .8, 3.5, .8, iron);
 
-  // stoel (kijkt naar het vuur, rugleuning naar ons toe)
-  const chairBase = '#7a4a2a';
-  for (const [a, b] of [[23, 8.5], [29.4, 8.5], [23, 14.9], [29.4, 14.9]]) box(g, a, b, 0, 1.6, 1.6, 10, woodD);
-  box(g, 23, 8.5, 10, 8, 8, 2, wood);
-  const slat = woodC(chairBase); slat.left = (u, z) => ((u % 5) === 0 ? sh(chairBase, .55) : (hash(u, z >> 2) > .85 ? sh(chairBase, 1) : sh(chairBase, .85)));
-  box(g, 23, 15.5, 12, 8, 1.5, 26, slat);
-  box(g, 23, 15.5, 38, 1.8, 1.5, 3, wood); box(g, 29.2, 15.5, 38, 1.8, 1.5, 3, wood);
+  store(26);
+
+  // Stoel op één vloertegel, met de zitting naar de haard.
+  for (const a of [24.5, 30]) {
+    for (const b of [8.5, 14]) box(g, a, b, 0, 1.5, 1.5, 8, woodD);
+    box(g, a, 14, 9, 1.5, 1.5, 16, woodD);
+  }
+  box(g, 24.5, 8.5, 7.5, 7, 7, 2, wood);
+  box(g, 24.5, 14, 14, 7, 1.25, 2, wood);
+  box(g, 24.5, 14, 20, 7, 1.5, 4, wood);
+  store(40);
 
   // planken: rechter plank + drankjes
   box(g, 33, 0, 44, 7, 5.5, 2, wood); box(g, 34, 0, 40, 1.2, 3, 4, woodD); box(g, 38, 0, 40, 1.2, 3, 4, woodD);
   let [x, y] = P(35.5, 2.6, 46); flask(g, x, y, '#46d6e8');
   [x, y] = P(38.2, 2.6, 46); flask(g, x, y, '#f0509a');
   // linker plank + drankjes
-  box(g, 0, 33, 44, 5.5, 7, 2, wood); box(g, 0, 34, 40, 3, 1.2, 4, woodD); box(g, 0, 38, 40, 3, 1.2, 4, woodD);
+  box(g, 0, 33, 44, 5.5, 16, 2, wood); box(g, 0, 34, 40, 3, 1.2, 4, woodD); box(g, 0, 38, 40, 3, 1.2, 4, woodD);
   [x, y] = P(2.6, 35.5, 46); flask(g, x, y, '#5be05b');
   [x, y] = P(2.6, 38.4, 46); flask(g, x, y, '#ff6fa8', 'tube');
 
-  // vensterbank (de kat zit hier op)
+  // Vensterbank en tussenplank voor de kat.
   box(g, 0, 10, 92, 3.5, 25, 3, wood);
+  box(g, 0, 35, 68, 5.5, 12, 2, wood);
+  box(g, 0, 43, 64, 3, 1.5, 4, woodD);
+
+  store(0, t => {
+    drawFlaskGlints(t);
+    drawCat(t);
+  });
 
   // kandelaar
   { const [bx, by] = P(7, 33, 0);
@@ -364,6 +389,10 @@ function buildFront() {
       rect(g, bx + dx - 1, ty - 6, 3, 6, '#e9a4b8'); dot(g, bx + dx - 1, ty - 6, '#fbd0dc'); dot(g, bx + dx + 1, ty - 3, '#c9708a');
       cand.push([bx + dx, ty - 7]);
     } }
+
+  store(40, t => {
+    for (const [x, y] of cand) flame(x, y, t, x);
+  });
 
   // ridder
   { const [bx, by] = P(36.5, 5, 0); KN = [bx, by];
@@ -380,22 +409,48 @@ function buildFront() {
     rect(g, bx - 3, by - 33, 6, 1, '#1a1d2a');
     rect(g, bx - 1, by - 40, 2, 3, '#b8232f'); }
 
+  store(41.5, t => {
+    if ((t % 7) > 6.4) rect(ctx, KN[0] - 3, KN[1] - 33, 6, 1, '#ff3a3a');
+  });
+
   // groen boek op de grond
   box(g, 11, 33, 0, 6, 5, 3, flat('#2f7a3a', '#e8dcb0', '#17481f'));
 
+  store(47);
+
+  // Voorraadkist langs de rechterwand
+  box(g, 48, 1, 0, 8, 6, 8, woodD);
+  box(g, 51, 6.5, 4, 2, 1, 4, flat('#dfbc68', '#a78040', '#c4974d'));
+  store(56, drawChest);
+
+  // Kristal op een sokkel langs de linkerwand
+  box(g, 1, 49, 0, 6, 6, 3, flat('#777aa1', '#515579', '#616587'));
+  box(g, 2, 50, 3, 4, 4, 11, flat('#9194ae', '#535776', '#686d91'));
+  box(g, 1, 49, 14, 6, 6, 2, flat('#9194ae', '#535776', '#686d91'));
+  const [crystalX, crystalY] = P(4, 52, 16);
+  for (let row = 0; row < 11; row++) {
+    const half = Math.floor(Math.min(row, (11 - row) * .75));
+    rect(g, crystalX - half, crystalY - 11 + row, 2 * half + 1, 1, '#3c9c9d');
+    dot(g, crystalX - half, crystalY - 11 + row, '#acffd6');
+  }
+  store(56);
+
   // tafel
-  { const [tx, ty] = P(24, 29, 0); TB = [tx, ty];
+  { const [tx, ty] = P(TABLE_A, TABLE_B, 0);
     ell(g, tx, ty - 1, 9, 4, '#3e2414'); ell(g, tx, ty - 2, 8, 3, '#5a3320');
     rect(g, tx - 1, ty - 18, 3, 16, '#5a3320'); rect(g, tx - 1, ty - 18, 1, 16, '#7a4a2a');
     ell(g, tx, ty - 17, 15, 7, '#4a2a16');
     ell(g, tx, ty - 19, 15, 7, '#b0723e'); ell(g, tx, ty - 19, 13, 6, '#94582e');
     // paars boek
-    box(g, 20.5, 26.5, 19, 5, 4, 2.5, flat('#7a46ac', '#5a2e88', '#3f1f66'));
+    box(g, TABLE_A - 3.5, TABLE_B - 2.5, 19, 5, 4, 2.5, flat('#7a46ac', '#5a2e88', '#3f1f66'));
     // inktpot + veer
-    box(g, 26, 30.5, 19, 2.5, 2.5, 3, flat('#3a4aa8', '#26307a', '#1a2258'));
-    const [qx, qy] = P(27.2, 31.7, 22);
+    box(g, TABLE_A + 2, TABLE_B + 1.5, 19, 2.5, 2.5, 3, flat('#3a4aa8', '#26307a', '#1a2258'));
+    const [qx, qy] = P(TABLE_A + 3.2, TABLE_B + 2.7, 22);
     for (let i = 0; i < 12; i++) { dot(g, qx - i * .5, qy - i, '#f4f0e6'); if (i > 2 && i < 11) dot(g, qx - i * .5 - 1, qy - i, '#d6d1c4'); }
     dot(g, qx + 1, qy + 1, '#222'); }
+  store(TABLE_A + TABLE_B, (t, dt) => { drawSlime(t); drawSparkles(t, dt); });
+  furnishings.sort((a, b) => a.depth - b.depth);
+
 }
 
 /* ---------- outline-pass ---------- */
@@ -413,7 +468,7 @@ function outline(g, hex) {
 }
 
 buildStatic(); outline(sg, '#14183a');
-buildFront(); outline(fg, '#0f1226');
+buildFront();
 
 /* ---------- animaties ---------- */
 // hemel in het raam
@@ -508,29 +563,133 @@ function flame(x, y, t, seed) {
   dot(ctx, x, y, '#fff0a0'); dot(ctx, x, y - 1, '#ffe27a');
   dot(ctx, x + sw, y - 2, '#ffb030'); if (tall) dot(ctx, x + sw, y - 3, '#ff7a20');
 }
+const CAT_PERCHES = [[2.6, 25.5, 95], [3.5, 39, 70], [3.5, 45, 46], [3.5, 39, 70]];
+const CAT_REST = 7, CAT_JUMP = .8;
+const CAT_FUR = '#14141f', CAT_LIGHT = '#363655', CAT_PAW = '#28283b';
+
+function drawJumpingCat(x, y, direction, progress) {
+  const tuck = Math.sin(Math.PI * progress);
+  const reach = Math.round(3 * progress);
+  const legY = y - 2 - Math.round(2 * tuck);
+  const frontX = x + direction * (5 + reach);
+  const rearX = x - direction * (7 - Math.round(3 * tuck));
+  const headX = x + 7 * direction;
+
+  // Achterste poten verdwijnen gedeeltelijk achter de romp.
+  ell(ctx, frontX - 2 * direction, legY - 1, 2, 1, CAT_PAW);
+  ell(ctx, rearX + 2 * direction, legY - 1, 2, 1, CAT_PAW);
+  for (let i = 0; i < 8; i++) {
+    ell(ctx, x - (6 + i) * direction, y - 5 - Math.round(i * .55), 1, 1, CAT_FUR);
+  }
+  ell(ctx, x, y - 5, 8, 4, CAT_FUR);
+  ell(ctx, x - direction, y - 7, 5, 1, CAT_LIGHT);
+
+  // De voorpoten strekken uit bij de landing, de achterpoten trekken in.
+  ell(ctx, frontX - direction, legY - 1, 2, 2, CAT_FUR);
+  ell(ctx, rearX + direction, legY - 1, 2, 2, CAT_FUR);
+  ell(ctx, frontX, legY, 2, 1, CAT_PAW);
+  ell(ctx, rearX, legY, 2, 1, CAT_PAW);
+  dot(ctx, frontX + direction, legY, CAT_LIGHT);
+  dot(ctx, rearX + direction, legY, CAT_LIGHT);
+
+  ell(ctx, headX, y - 9, 4, 3, CAT_FUR);
+  rect(ctx, headX - 2, y - 14, 2, 4, CAT_FUR);
+  rect(ctx, headX + 1, y - 13, 2, 3, CAT_FUR);
+  dot(ctx, headX - 1, y - 13, '#a65b73');
+  dot(ctx, headX + direction, y - 10, '#ffd23a');
+}
+
+
 function drawCat(t) {
-  const [bx, by] = P(1.7, 24, 95), k = '#14141f', k2 = '#25253a';
+  const interval = CAT_REST + CAT_JUMP;
+  const index = Math.floor(t / interval) % CAT_PERCHES.length;
+  const from = CAT_PERCHES[index], to = CAT_PERCHES[(index + 1) % CAT_PERCHES.length];
+  const progress = Math.max(0, (t % interval - CAT_REST) / CAT_JUMP);
+  const position = from.map((coordinate, axis) => coordinate + (to[axis] - coordinate) * progress);
+  position[2] += 15 * Math.sin(Math.PI * progress);
+  const [bx, by] = P(...position), k = CAT_FUR, k2 = CAT_LIGHT;
+  if (progress > 0) {
+    drawJumpingCat(bx, by, to[1] > from[1] ? -1 : 1, progress);
+    return;
+  }
   // staart
   for (let i = 0; i < 10; i++) { const x = bx + 5 + i * .8, y = by - 2 - Math.sin(i * .45 + t * 2.4) * (1 + i * .25); rect(ctx, x, y, 2, 2, k); }
-  rect(ctx, bx - 5, by - 9, 10, 9, k); dot(ctx, bx - 5, by - 9, 'rgba(0,0,0,0)');
-  rect(ctx, bx - 4, by - 10, 8, 1, k); rect(ctx, bx + 2, by - 8, 2, 7, k2);
+  ell(ctx, bx, by - 5, 5, 5, k);
+  ell(ctx, bx + 2, by - 6, 2, 3, k2);
+  for (const offset of [-2, 2]) {
+    ell(ctx, bx + offset, by - 2, 1, 2, CAT_PAW);
+    ell(ctx, bx + offset, by - 1, 2, 1, CAT_PAW);
+    dot(ctx, bx + offset, by - 1, k2);
+  }
   rect(ctx, bx - 4, by - 16, 8, 7, k);                      // kop
   rect(ctx, bx - 4, by - 18, 2, 2, k); rect(ctx, bx + 2, by - 18, 2, 2, k);
-  dot(ctx, bx - 3, by - 17, '#7a3a4a'); dot(ctx, bx + 3, by - 17, '#7a3a4a');
+  rect(ctx, bx - 4, by - 16, 8, 1, k2);
+  dot(ctx, bx - 3, by - 17, '#a65b73'); dot(ctx, bx + 3, by - 17, '#a65b73');
   const blink = (t % 4.6) > 4.45;
   if (blink) { rect(ctx, bx - 3, by - 13, 2, 1, '#3a3a50'); rect(ctx, bx + 1, by - 13, 2, 1, '#3a3a50'); }
   else { rect(ctx, bx - 3, by - 14, 2, 2, '#ffd23a'); rect(ctx, bx + 1, by - 14, 2, 2, '#ffd23a'); dot(ctx, bx - 2, by - 14, '#111'); dot(ctx, bx + 2, by - 14, '#111'); }
   dot(ctx, bx, by - 11, '#7a3a4a');
 }
+function drawChest(t, dt) {
+  const [a, b] = CHEST_TILE;
+  const nearby = Math.abs(wizard.a - a) + Math.abs(wizard.b - b) === 1;
+  chestOpening = Math.max(0, Math.min(1, chestOpening + (nearby ? dt : -dt) * 2.2));
+  if (!chestOpening) {
+    box(ctx, 47.5, .5, 8, 9, 7, 2, CHEST_WOOD);
+    return;
+  }
+
+  const opening = chestOpening * chestOpening * (3 - 2 * chestOpening);
+  const angle = opening * 1.7;
+  const [x, y] = P(52, 4, 8);
+  const glow = ctx.createRadialGradient(x, y - 6, 1, x, y - 6, 44);
+  glow.addColorStop(0, 'rgba(255, 235, 169, ' + .65 * opening + ')');
+  glow.addColorStop(.4, 'rgba(255, 192, 75, ' + .3 * opening + ')');
+  glow.addColorStop(1, 'rgba(255, 192, 75, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - 44, y - 50, 88, 88);
+
+  topFace(ctx, 8, 48, 56, 1, 7, (a, b) => {
+    if (a < 48.5 || a > 55.5 || b < 1.5 || b > 6.5) return '#e1a750';
+    return opening > .4 ? '#fff4bd' : '#d8983f';
+  });
+
+  // Het deksel draait om het scharnier langs de achterzijde van de kist.
+  const hinge = .5, lidB = hinge + 7 * Math.cos(angle), lidZ = 8 + 7 * Math.sin(angle);
+  const corners = [P(47.5, hinge, 8), P(56.5, hinge, 8), P(56.5, lidB, lidZ), P(47.5, lidB, lidZ)];
+  ctx.beginPath();
+  ctx.moveTo(...corners[0]);
+  for (const corner of corners.slice(1)) ctx.lineTo(...corner);
+  ctx.closePath();
+  ctx.fillStyle = sh('#a36532', .8 + opening * .6);
+  ctx.fill();
+  for (let i = 0; i < corners.length; i++) {
+    line(ctx, ...corners[i], ...corners[(i + 1) % corners.length], i === 2 ? '#f3bf72' : '#563221');
+  }
+
+  for (let i = 0; i < 40; i++) {
+    const age = (t * (.46 + hash(i, 9) * .3) + hash(i, 3)) % 1;
+    const dx = (hash(i, 1) - .5) * (15 + 36 * age) + 2 * Math.sin(t * 2.5 + i);
+    const dy = 3 + age * (27 + hash(i, 2) * 24);
+    ctx.globalAlpha = opening * (1 - age * .85) * (.65 + .35 * Math.sin(t * 6 + i) ** 2);
+    dot(ctx, x + dx, y - dy, i % 3 ? '#ffdc7a' : '#fffbdc');
+    if (i % 9 === 0) {
+      dot(ctx, x + dx - 1, y - dy, '#ffe49a');
+      dot(ctx, x + dx, y - dy + 1, '#ffe49a');
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawSlime(t) {
-  const [sx, sy] = P(27.2, 25, 19), s = Math.sin(t * 3), rx = Math.round(5.5 - s * .9), ry = Math.round(4 + s * .9);
+  const [sx, sy] = P(TABLE_A + 3.2, TABLE_B - 4, 19), s = Math.sin(t * 3), rx = Math.round(5.5 - s * .9), ry = Math.round(4 + s * .9);
   ell(ctx, sx, sy - ry + 1, rx, ry, '#e0559a'); ell(ctx, sx, sy - ry, rx - 1, ry - 1, '#ff7fbf');
   dot(ctx, sx - 2, sy - ry - 1, '#ffd0ea'); dot(ctx, sx - 1, sy - ry - 2, '#ffd0ea');
   dot(ctx, sx - 2, sy - ry + 1, '#3a1030'); dot(ctx, sx + 1, sy - ry + 1, '#3a1030');
 }
 const sparkles = [];
 function drawSparkles(t, dt) {
-  const [ox, oy] = P(22.5, 28.5, 21.5);
+  const [ox, oy] = P(TABLE_A - 1.5, TABLE_B - .5, 21.5);
   if (Math.random() < dt * 6) sparkles.push({ x: ox + (Math.random() - .5) * 8, y: oy, vx: (Math.random() - .5) * 4, vy: -(6 + Math.random() * 6), l: 1.4 + Math.random(), m: 0, c: ['#9ff', '#f9f', '#fff', '#fd6'][Math.floor(Math.random() * 4)] });
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const s = sparkles[i]; s.l -= dt; s.m += dt;
@@ -548,25 +707,177 @@ function glow(x, y, rx, ry, rgb, a) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-let last = 0;
-function frame(ms) {
-  const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
-  ctx.clearRect(0, 0, W, H);
-  drawSky(t);
-  ctx.drawImage(statC, 0, 0);
-  banner(t, 7, 12, 0); banner(t, 65, 12, 1.7);
-  drawPortrait(t);
-  drawFire(t, dt);
-  ctx.drawImage(frontC, 0, 0);
-  for (const [x, y] of cand) flame(x, y, t, x);
+function drawFlaskGlints(t) {
   for (let i = 0; i < flasks.length; i++) {
     const f = flasks[i];
     ctx.globalAlpha = .85;
     for (let k = 0; k < 2; k++) dot(ctx, f.x + (k ? 1 : -1), f.y - 2 - ((t * 4 + i * 1.7 + k * 2.3) % 5), '#f4fff8');
     ctx.globalAlpha = 1;
   }
-  if (KN && (t % 7) > 6.4) rect(ctx, KN[0] - 3, KN[1] - 33, 6, 1, '#ff3a3a');
-  drawSlime(t); drawCat(t); drawSparkles(t, dt);
+}
+
+/* ---------- speelbare tovenaar ---------- */
+const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
+// Rijen lopen over b, kolommen over a. X staat voor een meubel of de haard.
+const FLOOR = [
+  '.XXXX.X.',
+  '...X....',
+  '........',
+  '........',
+  'XX......',
+  '.....XX.',
+  'X.......',
+  '........'
+];
+const wizard = { a: 4, b: 4, direction: 'se', step: null };
+const moves = new Map([
+  ['arrowup', [0, -1, 'ne']], ['arrowright', [1, 0, 'se']],
+  ['arrowdown', [0, 1, 'sw']], ['arrowleft', [-1, 0, 'nw']]
+]);
+const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
+const heldKeys = new Set();
+let route = [];
+let destination = null;
+const isWalkable = (a, b) => FLOOR[b]?.[a] === '.';
+
+function clearRoute() {
+  route = [];
+  destination = null;
+}
+
+addEventListener('keydown', event => {
+  const key = event.key.toLowerCase();
+  if (!moves.has(aliases[key] || key) || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+      event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  event.preventDefault();
+  clearRoute();
+  heldKeys.add(key);
+});
+addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
+addEventListener('blur', () => heldKeys.clear());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) heldKeys.clear();
+});
+
+let hoveredTile = null;
+function tileAtPointer(event) {
+  const bounds = cv.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) * W / bounds.width - CX;
+  const y = (event.clientY - bounds.top) * H / bounds.height - CY;
+  // Keer P(a, b, 0) om om te bepalen boven welke vloertegel de muis staat.
+  const a = Math.floor((y + x / 2) / (2 * TILE_SIZE));
+  const b = Math.floor((y - x / 2) / (2 * TILE_SIZE));
+  return FLOOR[b]?.[a] ? [a, b] : null;
+}
+
+cv.addEventListener('pointermove', event => {
+  if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
+});
+cv.addEventListener('click', event => {
+  const tile = tileAtPointer(event);
+  if (!tile || !isWalkable(...tile)) return;
+  const start = wizard.step ?? wizard;
+  const nextRoute = findRoute(start, ...tile);
+  if (!nextRoute) return;
+  heldKeys.clear();
+  route = nextRoute;
+  destination = route.length ? tile : null;
+});
+
+// Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
+function findRoute(start, targetA, targetB) {
+  const queue = [{ a: start.a, b: start.b, previous: null }];
+  const tileId = (a, b) => b * ROOM_TILES + a;
+  const visited = new Set([tileId(start.a, start.b)]);
+  for (let index = 0; index < queue.length; index++) {
+    const tile = queue[index];
+    if (tile.a === targetA && tile.b === targetB) {
+      const path = [];
+      for (let step = tile; step.previous; step = step.previous) path.push(step.move);
+      return path;
+    }
+    for (const move of moves.values()) {
+      const [da, db] = move;
+      const a = tile.a + da, b = tile.b + db;
+      const id = tileId(a, b);
+      if (!isWalkable(a, b) || visited.has(id)) continue;
+      visited.add(id);
+      queue.push({ a, b, previous: tile, move });
+    }
+  }
+  return null;
+}
+function clearHover() { hoveredTile = null; }
+cv.addEventListener('pointerleave', clearHover);
+cv.addEventListener('pointercancel', clearHover);
+
+function drawTileBorder(tile, color) {
+  if (!tile) return;
+  const [a, b] = tile.map(tile => tile * TILE_SIZE);
+  const corners = [
+    P(a, b, 0), P(a + TILE_SIZE, b, 0),
+    P(a + TILE_SIZE, b + TILE_SIZE, 0), P(a, b + TILE_SIZE, 0)
+  ];
+  for (let index = 0; index < corners.length; index++) {
+    const [x0, y0] = corners[index];
+    const [x1, y1] = corners[(index + 1) % corners.length];
+    line(ctx, x0, y0, x1, y1, color);
+  }
+}
+
+function updateWizard(dt) {
+  if (!wizard.step) {
+    const key = Array.from(heldKeys).pop();
+    const move = key ? moves.get(aliases[key] || key) : route.pop();
+    if (!move) return;
+    const [da, db, direction] = move;
+    const a = wizard.a + da, b = wizard.b + db;
+    wizard.direction = direction;
+    if (isWalkable(a, b)) wizard.step = { a, b, elapsed: 0 };
+  }
+  if (wizard.step) {
+    wizard.step.elapsed += dt;
+    if (wizard.step.elapsed >= STEP_TIME) {
+      wizard.a = wizard.step.a;
+      wizard.b = wizard.step.b;
+      wizard.step = null;
+      if (!route.length) destination = null;
+    }
+  }
+}
+
+function drawRoomOccupants(t, dt) {
+  updateWizard(dt);
+  const step = wizard.step;
+  const progress = step ? step.elapsed / STEP_TIME : 0;
+  const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
+  const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
+  const [x, y] = P(a, b, 0);
+  let index = 0;
+  for (; index < furnishings.length && furnishings[index].depth <= a + b; index++) {
+    drawFurnishing(furnishings[index], t, dt);
+  }
+  WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  for (; index < furnishings.length; index++) drawFurnishing(furnishings[index], t, dt);
+}
+
+function drawFurnishing({ canvas, animate }, t, dt) {
+  ctx.drawImage(canvas, 0, 0);
+  if (animate) animate(t, dt);
+}
+
+let last = 0;
+function frame(ms) {
+  const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
+  ctx.clearRect(0, 0, W, H);
+  drawSky(t);
+  ctx.drawImage(statC, 0, 0);
+  drawTileBorder(hoveredTile, '#ffe083');
+  drawTileBorder(destination, '#9dffdb');
+  banner(t, 7, 12, 0); banner(t, 65, 12, 1.7); banner(t, 105, 14, 3);
+  drawPortrait(t);
+  drawFire(t, dt);
+  drawRoomOccupants(t, dt);
   const n = (Math.sin(t * 9) + Math.sin(t * 13.7) + Math.sin(t * 5.3)) / 3;
   const [gx, gy] = P(21, 6, 14);
   glow(gx, gy, 80, 56, '255,150,50', .045 + .015 * n);
@@ -575,12 +886,38 @@ function frame(ms) {
 }
 requestAnimationFrame(frame);
 
-/* ---------- schaal ---------- */
+/* ---------- zoom ---------- */
+const sceneView = document.getElementById('scene-view');
+const zoomOut = document.getElementById('zoom-out');
+const zoomIn = document.getElementById('zoom-in');
+const zoomReset = document.getElementById('zoom-reset');
+const MIN_ZOOM = 75, MAX_ZOOM = 200, ZOOM_STEP = 25;
+let zoom = 100;
+
 function fit() {
-  const s = Math.max(1, Math.floor(Math.min((innerWidth - 24) / W, (innerHeight - 170) / H)));
-  const f = Math.min(s, (innerWidth - 24) / W);
-  cv.style.width = Math.round(W * f) + 'px'; cv.style.height = Math.round(H * f) + 'px';
+  clearHover();
+  const center = (offset, total, visible) => visible < total ? (offset + visible / 2) / total : .5;
+  const x = center(sceneView.scrollLeft, sceneView.scrollWidth, sceneView.clientWidth);
+  const y = center(sceneView.scrollTop, sceneView.scrollHeight, sceneView.clientHeight);
+  const availableHeight = Math.min(innerHeight * .7, Math.max(140, innerHeight - 230));
+  const scale = Math.min(sceneView.offsetWidth / W, availableHeight / H) * zoom / 100;
+  cv.style.width = W * scale + 'px';
+  cv.style.height = H * scale + 'px';
+  sceneView.scrollLeft = sceneView.scrollWidth * x - sceneView.clientWidth / 2;
+  sceneView.scrollTop = sceneView.scrollHeight * y - sceneView.clientHeight / 2;
+  zoomOut.disabled = zoom === MIN_ZOOM;
+  zoomIn.disabled = zoom === MAX_ZOOM;
+  zoomReset.textContent = zoom + '%';
+  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' procent. Zet terug naar 100 procent.');
 }
+function setZoom(value) {
+  zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+  fit();
+}
+zoomOut.addEventListener('click', () => setZoom(zoom - ZOOM_STEP));
+zoomIn.addEventListener('click', () => setZoom(zoom + ZOOM_STEP));
+zoomReset.addEventListener('click', () => setZoom(100));
+sceneView.addEventListener('scroll', clearHover, { passive: true });
 addEventListener('resize', fit); fit();
 
 })();

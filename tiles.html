@@ -33,10 +33,13 @@
   <h2>Vloeren</h2><div class="grid" id="vloer"></div>
   <h2>Blokken</h2><div class="grid" id="blok"></div>
   <h2>Tapijt — 16 varianten (masker = welke randen een kant van het tapijt zijn)</h2><div class="grid carpet" id="tapijt"></div>
+  <h2>Tovenaar — rust en lopen, 4 richtingen</h2><div class="grid" id="tovenaar"></div>
   <h2>Testkamer — laat zien dat alles naadloos aansluit</h2>
   <canvas id="room"></canvas>
+  <p>Loop met de tovenaar: pijltjestoetsen of WASD. ↑ = rechtsboven, → = rechtsonder, ↓ = linksonder, ← = linksboven. Hij kan alleen op loopbare tiles.</p>
 </main>
 <script src="tiles.js"></script>
+<script src="wizard.js"></script>
 <script>
 (function () {
 'use strict';
@@ -57,6 +60,17 @@ for (const d of T.tiles) {
   const g = cv.getContext('2d');
   g.drawImage(d.cache[0], 0, 0);
   if (d.frames > 1) anim.push({ d, g });
+}
+
+/* ---- tovenaar-overzicht ---- */
+const wanim = [];
+for (const st of ['idle', 'walk']) for (const dir of WIZARD.DIRS) {
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas'); cv.width = WIZARD.CW; cv.height = WIZARD.CH;
+  const cap = document.createElement('figcaption');
+  cap.innerHTML = dir + '<small>' + (st === 'idle' ? 'rust · 2 frames' : 'lopen · 4 frames') + '</small>';
+  fig.append(cv); fig.append(cap); document.getElementById('tovenaar').append(fig);
+  wanim.push({ dir, st, g: cv.getContext('2d') });
 }
 
 /* ---- testkamer ---- */
@@ -115,12 +129,32 @@ function fit() {
 }
 addEventListener('resize', fit); fit();
 
+const STEP = .4;                                   // seconden per tile = 4 walk-frames op 10 fps
+const Wz = { x: 3, y: 2, to: null, p: 0, dir: 'se', wt: 0 };
+const KD = { ArrowUp: [0, -1, 'ne'], ArrowRight: [1, 0, 'se'], ArrowDown: [0, 1, 'sw'], ArrowLeft: [-1, 0, 'nw'], w: [0, -1, 'ne'], d: [1, 0, 'se'], s: [0, 1, 'sw'], a: [-1, 0, 'nw'] };
+const keys = [];
+addEventListener('keydown', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; if (!KD[k]) return; e.preventDefault(); const i = keys.indexOf(k); if (i >= 0) keys.splice(i, 1); keys.push(k); });
+addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; const i = keys.indexOf(k); if (i >= 0) keys.splice(i, 1); });
+const walkable = (x, y) => x >= 0 && y >= 0 && x < N && y < N && tileAt(x, y).every(id => T.info(id).walkable);
+let last = 0;
+
 function frame(ms) {
-  const t = ms / 1000, f = Math.floor(t * T.FPS);
+  const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016), f = Math.floor(t * T.FPS); last = t;
+  if (!Wz.to && keys.length) {
+    const [dx, dy, dir] = KD[keys[keys.length - 1]]; Wz.dir = dir;
+    if (walkable(Wz.x + dx, Wz.y + dy)) { Wz.to = [Wz.x + dx, Wz.y + dy]; Wz.p = 0; }
+  }
+  if (Wz.to) { Wz.p += dt / STEP; Wz.wt += dt; if (Wz.p >= 1) { Wz.x = Wz.to[0]; Wz.y = Wz.to[1]; Wz.to = null; Wz.p = 0; } }
+  else if (!keys.length) Wz.wt = 0;
+  const px = Wz.x + (Wz.to ? (Wz.to[0] - Wz.x) * Wz.p : 0), py = Wz.y + (Wz.to ? (Wz.to[1] - Wz.y) * Wz.p : 0);
+  const sw = Math.ceil(px + py - 1e-6), moving = !!Wz.to;
+  for (const a of wanim) { a.g.clearRect(0, 0, WIZARD.CW, WIZARD.CH); a.g.drawImage(WIZARD.canvas(a.dir, a.st, t), 0, 0); }
   for (const a of anim) { a.g.clearRect(0, 0, T.CW, T.CH); a.g.drawImage(a.d.cache[f % a.d.frames], 0, 0); }
   rg.clearRect(0, 0, rc.width, rc.height);
-  for (let s = 0; s <= 2 * (N - 1); s++)
+  for (let s = 0; s <= 2 * (N - 1); s++) {
     for (let x = 0; x < N; x++) { const y = s - x; if (y < 0 || y >= N) continue; for (const id of tileAt(x, y)) T.draw(rg, id, x, y, OX, OY, t); }
+    if (s === sw) { const [wx, wy] = T.center(px, py, OX, OY); WIZARD.draw(rg, Wz.dir, moving ? 'walk' : 'idle', moving ? Wz.wt : t, wx, wy); }
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
