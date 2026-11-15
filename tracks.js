@@ -6,4 +6,8 @@
  */
 window.TRACKS = [
   // { title: 'Voorbeeld', artist: 'Ik', src: 'music/voorbeeld.mp3' },
+     { title: 'Ways Of The Wizard', artist: 'geoffharvey', src: 'music/Ways_of_Wizard.mp3' },
+     { title: 'Kings And Dragons', artist: 'Kim Lightyear', src: 'music/Light_Year.mp3' },
+
+
 ];
