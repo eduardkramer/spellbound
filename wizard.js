@@ -35,6 +35,32 @@ function outline(g, hex) {                         // zelfde omlijning als in sc
   for (let i = 0; i < pts.length; i += 2) g.fillRect(pts[i], pts[i + 1], 1, 1);
 }
 
+function drawCape(g, cx, shoulder, drift, back) {
+  const shade = '#292438', fabric = '#524965', light = '#80728f';
+  for (let row = 0; row <= 22; row++) {
+    const sway = Math.round(drift * row / 9);
+    const flare = Math.floor(row / 7);
+    const left = cx - Math.min(7, 4 + row) - flare + sway;
+    const right = cx + Math.min(7, 4 + row) + flare + sway;
+    const y = shoulder + row;
+    rect(g, left, y, right - left + 1, 1, shade);
+    rect(g, left + 1, y, right - left - 1, 1, fabric);
+    dot(g, left + 2 + Math.floor(row / 10), y, light);
+    dot(g, right - 2 - Math.floor(row / 12), y, '#635775');
+    if (back) {
+      const fold = cx + sway + Math.floor(row / 10);
+      rect(g, fold, y, 2, 1, shade);
+      dot(g, fold - 1, y, '#70617f');
+    }
+    if (row === 22) rect(g, left + 2, y, right - left - 3, 1, '#72617f');
+  }
+  if (back) {
+    dot(g, cx, shoulder + 8, '#e6c67b');
+    rect(g, cx - 1, shoulder + 9, 3, 1, '#b38d53');
+    dot(g, cx, shoulder + 10, '#e6c67b');
+  }
+}
+
 /* tekent de tovenaar naar rechts-onder (voorkant) of rechts-boven (achterkant); links = gespiegeld */
 function figure(g, back, f, walking) {
   const cx = FX, fy = FY;
@@ -45,6 +71,10 @@ function figure(g, back, f, walking) {
   const pulse = walking ? f >> 1 : f;
   const pal = back ? { m: '#52449f', d: '#43388f', l: '#6256bd' } : { m: '#5b4bb8', d: '#4b3fa8', l: '#7466d6' };
   const skin = '#d6ab84', gold = '#d9a53a', goldL = '#ffd45a';
+
+  const shoulder = fy - 24 + bob;
+  const capeSwing = walking ? [0, -1, 0, 1][f] : 0;
+  if (!back) drawCape(g, cx, shoulder, capeSwing, false);
 
   // staf met lichtgevende bol
   rect(g, cx + 7, fy - 36 + bob, 1, 36, '#a06a3a'); rect(g, cx + 8, fy - 36 + bob, 1, 36, '#6a3c22');
@@ -73,6 +103,21 @@ function figure(g, back, f, walking) {
   rect(g, cx - 7, fy - 21 + bob + arm, 2, 8, pal.m); rect(g, cx - 7, fy - 21 + bob + arm, 1, 8, pal.d);
   rect(g, cx + 5, fy - 21 + bob - arm, 2, 8, pal.m); rect(g, cx + 6, fy - 21 + bob - arm, 1, 8, pal.l);
   rect(g, cx - 7, fy - 13 + bob + arm, 2, 2, skin); rect(g, cx + 6, fy - 14 + bob - arm, 2, 2, skin);
+
+  if (back) {
+    drawCape(g, cx, shoulder, capeSwing, true);
+    // De bol en het uiteinde van de staf blijven zichtbaar langs de cape.
+    rect(g, cx + 8, fy - 24 + bob, 1, 16, '#8b5935');
+  } else {
+    // Open kraag met twee gouden sluitingen onder de baard.
+    rect(g, cx - 7, shoulder + 2, 4, 5, '#625575');
+    rect(g, cx + 4, shoulder + 2, 3, 5, '#625575');
+    rect(g, cx - 6, shoulder + 3, 2, 4, '#8b799b');
+    dot(g, cx - 3, shoulder + 6, '#d9a85e');
+    dot(g, cx + 3, shoulder + 6, '#e7c686');
+    rect(g, cx - 3, shoulder + 9, 7, 1, '#ab7c49');
+    rect(g, cx - 1, shoulder + 9, 3, 1, '#f3d28a');
+  }
 
   // hoofd (ademt mee)
   const y0 = fy + hd + bob;
