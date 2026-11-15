@@ -328,6 +328,11 @@ function buildFront() {
   box(g, 9, 0, 52, 24, 4, 4, woodD);
   box(g, 10.5, 0, 48, 1.6, 2.5, 4, woodD); box(g, 29.5, 0, 48, 1.6, 2.5, 4, woodD);
 
+  // ijzeren haardscherm
+  for (let a = 11; a <= 30; a += 2) { box(g, a, 3.5, 2, .8, .8, 9, iron); dot(g, CX + 2 * (a - 3.1), CY + a + 3.5 - 12, '#6a6a7e'); }
+  box(g, 10.6, 3.5, 7, 20.6, .8, .8, iron);
+  box(g, 10.6, 0, 7, .8, 3.5, .8, iron); box(g, 31, 0, 7, .8, 3.5, .8, iron);
+
   // stoel (kijkt naar het vuur, rugleuning naar ons toe)
   const chairBase = '#7a4a2a';
   for (const [a, b] of [[23, 8.5], [29.4, 8.5], [23, 14.9], [29.4, 14.9]]) box(g, a, b, 0, 1.6, 1.6, 10, woodD);
@@ -335,11 +340,6 @@ function buildFront() {
   const slat = woodC(chairBase); slat.left = (u, z) => ((u % 5) === 0 ? sh(chairBase, .55) : (hash(u, z >> 2) > .85 ? sh(chairBase, 1) : sh(chairBase, .85)));
   box(g, 23, 15.5, 12, 8, 1.5, 26, slat);
   box(g, 23, 15.5, 38, 1.8, 1.5, 3, wood); box(g, 29.2, 15.5, 38, 1.8, 1.5, 3, wood);
-
-  // ijzeren haardscherm
-  for (let a = 11; a <= 30; a += 2) { box(g, a, 3.5, 2, .8, .8, 9, iron); dot(g, CX + 2 * (a - 3.1), CY + a + 3.5 - 12, '#6a6a7e'); }
-  box(g, 10.6, 3.5, 7, 20.6, .8, .8, iron);
-  box(g, 10.6, 0, 7, .8, 3.5, .8, iron); box(g, 31, 0, 7, .8, 3.5, .8, iron);
 
   // planken: rechter plank + drankjes
   box(g, 33, 0, 44, 7, 5.5, 2, wood); box(g, 34, 0, 40, 1.2, 3, 4, woodD); box(g, 38, 0, 40, 1.2, 3, 4, woodD);

@@ -1,0 +1,317 @@
+{
+ "stone_a": {
+  "x": 0,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "stone_b": {
+  "x": 32,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "stone_cracked": {
+  "x": 64,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "stone_moss": {
+  "x": 96,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "wood": {
+  "x": 128,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet": {
+  "x": 160,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_1": {
+  "x": 192,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_2": {
+  "x": 224,
+  "y": 0,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_3": {
+  "x": 0,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_4": {
+  "x": 32,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_5": {
+  "x": 64,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_6": {
+  "x": 96,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_7": {
+  "x": 128,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_8": {
+  "x": 160,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_9": {
+  "x": 192,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_10": {
+  "x": 224,
+  "y": 48,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_11": {
+  "x": 0,
+  "y": 96,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_12": {
+  "x": 32,
+  "y": 96,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_13": {
+  "x": 64,
+  "y": 96,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_14": {
+  "x": 96,
+  "y": 96,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "carpet_15": {
+  "x": 128,
+  "y": 96,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 0
+ },
+ "rune": {
+  "x": 160,
+  "y": 96,
+  "w": 32,
+  "h": 48,
+  "frames": 4,
+  "walkable": true,
+  "height": 0
+ },
+ "plate": {
+  "x": 32,
+  "y": 144,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": true,
+  "height": 2
+ },
+ "water": {
+  "x": 64,
+  "y": 144,
+  "w": 32,
+  "h": 48,
+  "frames": 4,
+  "walkable": false,
+  "height": 0
+ },
+ "pit": {
+  "x": 192,
+  "y": 144,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 0
+ },
+ "wall": {
+  "x": 224,
+  "y": 144,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 32
+ },
+ "wall_low": {
+  "x": 0,
+  "y": 192,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 12
+ },
+ "bookshelf": {
+  "x": 32,
+  "y": 192,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 32
+ },
+ "chest": {
+  "x": 64,
+  "y": 192,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 10
+ },
+ "pillar": {
+  "x": 96,
+  "y": 192,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 32
+ },
+ "brazier": {
+  "x": 128,
+  "y": 192,
+  "w": 32,
+  "h": 48,
+  "frames": 4,
+  "walkable": false,
+  "height": 30
+ },
+ "table": {
+  "x": 0,
+  "y": 240,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 21
+ },
+ "cauldron": {
+  "x": 32,
+  "y": 240,
+  "w": 32,
+  "h": 48,
+  "frames": 4,
+  "walkable": false,
+  "height": 16
+ },
+ "door_l": {
+  "x": 160,
+  "y": 240,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 32
+ },
+ "door_r": {
+  "x": 192,
+  "y": 240,
+  "w": 32,
+  "h": 48,
+  "frames": 1,
+  "walkable": false,
+  "height": 32
+ }
+}
