@@ -1218,6 +1218,13 @@ function drawOwl(t) {
   for (const [dx, dy] of [[-3,-7],[-2,-5],[-4,-9],[0,-8],[1,-5]]) {
     dot(ctx, x + dx, feet + dy, '#8da6ba');
   }
+  // Oorpluimen lopen schuin naar buiten en bewegen mee met de kop.
+  for (const side of [-1, 1]) {
+    const tip = headX + 6 * side;
+    line(ctx, tip, headY - 8, headX + 3 * side, headY - 3, outline);
+    line(ctx, tip - side, headY - 7, headX + 2 * side, headY - 3, feather);
+    dot(ctx, tip - side, headY - 6, shade);
+  }
   ell(ctx, headX, headY, 6, 5, outline);
   ell(ctx, headX, headY, 5, 4, feather);
   const blink = t % 4.7 > 4.52;
