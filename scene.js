@@ -9,6 +9,8 @@
 const TILE_SIZE = 8;
 const ROOM_TILES = 8;
 const N = ROOM_TILES * TILE_SIZE;
+const EXIT_COLUMN = 4;
+const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
@@ -289,6 +291,24 @@ function rightFn(u, z) {
   return brR(u, z);
 }
 
+function drawPassage(g) {
+  const center = EXIT_CENTER * 2;
+  box(g, EXIT_CENTER - 7, N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  wallR(g, N, center - 17, center + 18, 0, 49, (u, z) => {
+    const dx = u - center;
+    const curve = Math.hypot(dx, Math.max(0, z - 31));
+    if (curve > 17) return null;
+    if (curve > 12) {
+      const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
+      return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
+    }
+    if (curve > 11) return '#242849';
+    if (z < 3) return '#d6af67';
+    if (z < 9) return '#4d4261';
+    return '#171933';
+  });
+}
+
 /* ---------- statische kamer ---------- */
 function buildStatic() {
   topFace(sg, 0, 0, N, 0, N, floorFn);
@@ -302,6 +322,7 @@ function buildStatic() {
   box(sg, N - 8, -T, WH, 8, T, 10, mer);
   wallR(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutL));
   wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
+  drawPassage(sg);
 }
 
 /* ---------- meubels ---------- */
@@ -924,6 +945,9 @@ function drawTileBorder(tile, color) {
   }
 }
 
+const movementHint = document.getElementById('movement-hint');
+const defaultHint = movementHint.textContent;
+
 function updateWizard(dt) {
   if (!wizard.step) {
     const key = Array.from(heldKeys).pop();
@@ -939,6 +963,9 @@ function updateWizard(dt) {
     if (wizard.step.elapsed >= STEP_TIME) {
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
+      movementHint.textContent = wizard.a === EXIT_COLUMN && wizard.b === ROOM_TILES - 1
+        ? 'Hier komt de doorgang naar de volgende kamer.'
+        : defaultHint;
       wizard.step = null;
       if (!route.length) destination = null;
     }
