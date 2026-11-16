@@ -446,13 +446,15 @@ function buildFront() {
   box(g, 1, 49, 0, 6, 6, 3, flat('#777aa1', '#515579', '#616587'));
   box(g, 2, 50, 3, 4, 4, 11, flat('#9194ae', '#535776', '#686d91'));
   box(g, 1, 49, 14, 6, 6, 2, flat('#9194ae', '#535776', '#686d91'));
-  const [crystalX, crystalY] = P(4, 52, 16);
-  for (let row = 0; row < 11; row++) {
-    const half = Math.floor(Math.min(row, (11 - row) * .75));
-    rect(g, crystalX - half, crystalY - 11 + row, 2 * half + 1, 1, '#3c9c9d');
-    dot(g, crystalX - half, crystalY - 11 + row, '#acffd6');
-  }
-  store(56);
+  // Messing plakkaat met een gegraveerd diamantje.
+  box(g, 6, 50.3, 6, .5, 3.4, 5, flat('#e2bf78', '#8b6339', (u, z) => {
+    const column = u - 100;
+    if (z === 10 || column === 0) return '#e2bf78';
+    if (z === 6 || column === 6) return '#91663b';
+    if (Math.abs(column - 3) + Math.abs(z - 8) <= 1) return '#6b4b36';
+    return '#bd9257';
+  }));
+  store(56, drawDiamond);
 
   // tafel
   { const [tx, ty] = P(TABLE_A, TABLE_B, 0);
@@ -649,6 +651,46 @@ function drawCat(t) {
   else { rect(ctx, bx - 3, by - 14, 2, 2, '#ffd23a'); rect(ctx, bx + 1, by - 14, 2, 2, '#ffd23a'); dot(ctx, bx - 2, by - 14, '#111'); dot(ctx, bx + 2, by - 14, '#111'); }
   dot(ctx, bx, by - 11, '#7a3a4a');
 }
+function drawDiamond(t) {
+  const [x, y] = P(4, 52, 16);
+  const facet = (color, points) => {
+    ctx.beginPath();
+    ctx.moveTo(x + points[0][0], y + points[0][1]);
+    for (const [dx, dy] of points.slice(1)) ctx.lineTo(x + dx, y + dy);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  facet('#102c46', [[-7,-8],[-4,-13],[4,-13],[7,-8],[0,1]]);
+  facet('#bbf5ff', [[-6,-8],[-4,-12],[4,-12],[6,-8]]);
+  facet('#6cc2e8', [[-6,-8],[-2,-8],[0,0]]);
+  facet('#3281b5', [[2,-8],[6,-8],[0,0]]);
+  facet('#9bdef6', [[-2,-8],[2,-8],[0,0]]);
+  line(ctx, x - 6, y - 8, x + 6, y - 8, '#e1faff');
+  const sparkles = [[-8, -5, .5], [7, -13, 1.1], [3, -17, 1.7], [-5, -16, 2.3]];
+  for (const [dx, dy, delay] of sparkles) {
+    const phase = (t + delay) % 3.2 / .65;
+    if (phase >= 1) continue;
+    ctx.globalAlpha = Math.sin(Math.PI * phase);
+    const sy = y + dy - Math.round(2 * phase);
+    dot(ctx, x + dx, sy, '#effdff');
+    if (phase > .3 && phase < .7) {
+      dot(ctx, x + dx + 1, sy, '#79c6ef');
+      dot(ctx, x + dx, sy - 1, '#79c6ef');
+    }
+  }
+  ctx.globalAlpha = 1;
+  const pulse = t % 3.2 / .42;
+  if (pulse < 1) {
+    const sx = x + (Math.floor(t / 3.2) % 2 ? 4 : -3);
+    ctx.globalAlpha = Math.sin(Math.PI * pulse);
+    line(ctx, sx - 3, y - 11, sx + 3, y - 11, '#a8e9ff');
+    line(ctx, sx, y - 14, sx, y - 8, '#a8e9ff');
+    dot(ctx, sx, y - 11, '#ffffff');
+    ctx.globalAlpha = 1;
+  }
+}
+
 function drawChest(t, dt) {
   const [a, b] = CHEST_TILE;
   const nearby = Math.abs(wizard.a - a) + Math.abs(wizard.b - b) === 1;
