@@ -290,10 +290,10 @@ function rightFn(u, z) {
   return brR(u, z);
 }
 
-function drawPassage(g) {
+function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
-  box(g, EXIT_CENTER - 7, N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
-  wallR(g, N, center - 17, center + 18, 0, 49, (u, z) => {
+  box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => {
     const dx = u - center;
     const curve = Math.hypot(dx, Math.max(0, z - 31));
     if (curve > 17) return null;
@@ -324,7 +324,7 @@ function buildStatic(sg, empty = false) {
   box(sg, N - 8, -T, WH, 8, T, 10, mer);
   wallR(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutL));
   wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
-  drawPassage(sg);
+  drawPassage(sg, empty);
 }
 
 /* ---------- meubels ---------- */
@@ -972,10 +972,10 @@ function updateWizard(dt) {
     if (wizard.step.elapsed >= STEP_TIME) {
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
-      if (wizard.a === EXIT_COLUMN && wizard.b === ROOM_TILES - 1) {
+      if (wizard.a === EXIT_COLUMN && wizard.b === (inSecondRoom ? 0 : ROOM_TILES - 1)) {
         inSecondRoom = !inSecondRoom;
-        wizard.b = ROOM_TILES - 2;
-        wizard.direction = 'ne';
+        wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
+        wizard.direction = inSecondRoom ? 'sw' : 'ne';
         clearRoute();
         clearHover();
         heldKeys.clear();
