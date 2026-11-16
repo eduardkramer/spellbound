@@ -1401,14 +1401,51 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
   }
 }
 
-const librarianRoute = [
-  [4, 20, 2.4, 'shelve'], [4, 20, 1, 'walk'],
-  [12, 20, 1, 'walk'], [12, 28, 4.5, 'read'],
-  [12, 28, 1, 'walk'], [12, 20, 1, 'walk']
+const librarianStops = [
+  { a: 0, b: 2, action: 'shelve', face: -1 },
+  { a: 0, b: 4, action: 'shelve', face: -1 },
+  { a: 0, b: 7, action: 'shelve', face: -1 },
+  { a: 2, b: 0, action: 'shelve', face: 1 },
+  { a: 6, b: 0, action: 'shelve', face: 1 },
+  { a: 1, b: 3, action: 'read', face: 1 },
+  { a: 4, b: 3, action: 'read', face: 1 },
+  { a: 3, b: 6, action: 'read', face: 1 }
 ];
-const librarianCycle = librarianRoute.reduce((total, point) => total + point[2], 0);
+const librarian = {
+  a: 0, b: 2, stop: librarianStops[0], route: [], step: null,
+  elapsed: 0, dwell: 2.4
+};
+
+function updateLibrarian(dt) {
+  librarian.elapsed += dt;
+  if (librarian.step) {
+    if (librarian.elapsed < 1) return;
+    librarian.a = librarian.step.a;
+    librarian.b = librarian.step.b;
+    librarian.step = null;
+    librarian.elapsed = 0;
+  }
+  if (!librarian.route.length && librarian.elapsed >= librarian.dwell) {
+    const stops = librarianStops.filter(stop => stop !== librarian.stop);
+    const stop = stops[Math.floor(Math.random() * stops.length)];
+    const route = findRoute(librarian, stop.a, stop.b);
+    if (!route?.length) {
+      librarian.elapsed = 0;
+      return;
+    }
+    librarian.stop = stop;
+    librarian.route = route;
+    librarian.dwell = (stop.action === 'read' ? 3 : 2) + Math.random() * 2.8;
+  }
+  const move = librarian.route.pop();
+  if (move) {
+    const [da, db] = move;
+    librarian.step = { a: librarian.a + da, b: librarian.b + db };
+    librarian.elapsed = 0;
+  }
+}
+
 const librarianDialogue = document.getElementById('librarian-dialogue');
-let librarianTime = 0;
 let librarianHit = null;
 librarianDialogue.hidden = true;
 document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
@@ -1419,24 +1456,21 @@ addEventListener('keydown', event => {
 });
 
 function librarianLayer() {
-  let elapsed = librarianTime % librarianCycle, index = 0;
-  while (index < librarianRoute.length - 1 && elapsed >= librarianRoute[index][2]) {
-    elapsed -= librarianRoute[index++][2];
-  }
-  const [a, b, duration, action] = librarianRoute[index];
-  const [nextA, nextB] = librarianRoute[(index + 1) % librarianRoute.length];
-  const progress = elapsed / duration;
-  const da = a + (nextA - a) * progress, db = b + (nextB - b) * progress;
+  const { a, b, step, stop, elapsed, dwell } = librarian;
+  const action = step ? 'walk' : stop.action;
+  const progress = step ? elapsed : Math.min(1, elapsed / dwell);
+  const da = (a + .5 + (step ? (step.a - a) * progress : 0)) * TILE_SIZE;
+  const db = (b + .5 + (step ? (step.b - b) * progress : 0)) * TILE_SIZE;
   const [x, y] = P(da, db, 0);
   const wa = (wizard.a + .5) * TILE_SIZE, wb = (wizard.b + .5) * TILE_SIZE;
   const watching = !librarianDialogue.hidden || Math.hypot(wa - da, wb - db) < 14;
   const face = watching ? Math.sign(wa - wb - da + db) || 1
-    : action === 'shelve' ? -1 : action === 'read' ? 1 : Math.sign(nextA - nextB - a + b) || 1;
+    : step ? Math.sign(step.a - a - step.b + b) || 1 : stop.face;
   librarianHit = [x, y];
-  return { depth: da + db, animate: () => drawLibrarian(x, y, face, action, progress, watching) };
+  return { depth: da + db, animate: () => drawLibrarian(x, y, face, action, progress, watching, stop.face) };
 }
 
-function drawLibrarian(x, y, face, action, progress, watching) {
+function drawLibrarian(x, y, face, action, progress, watching, shelfSide) {
   const stride = action === 'walk' ? Math.round(Math.sin(progress * Math.PI * 6)) : 0;
   const head = y - (action === 'read' && !watching ? 23 : 25);
   const ink = '#272334', robe = '#537460', trim = '#ac9868';
@@ -1500,13 +1534,23 @@ function drawLibrarian(x, y, face, action, progress, watching) {
   if (action === 'shelve' && !watching) {
     const raise = Math.min(1, progress * 1.8);
     const hand = y - 12 - Math.round(12 * raise);
-    line(ctx, x - 4, y - 16, x - 8, hand, robe);
-    if (progress < .76) rect(ctx, x - 10, hand - 4, 3, 5, '#aa6952');
-    dot(ctx, x - 8, hand, '#d8aa89');
+    line(ctx, x + shelfSide * 4, y - 16, x + shelfSide * 8, hand, robe);
+    if (progress < .76) drawLibrarianBook(x + shelfSide * 9, hand - 2, shelfSide);
+    dot(ctx, x + shelfSide * 8, hand, '#d8aa89');
   } else if (action === 'walk') {
-    rect(ctx, x + face * 4 - 1, y - 14 + stride, 3, 5, '#876353');
-    dot(ctx, x + face * 4, y - 14 + stride, '#dac292');
+    const handX = x + face * 4, handY = y - 13 + stride;
+    drawLibrarianBook(handX, handY - 1, face);
+    dot(ctx, handX, handY + 2, '#dac292');
   }
+}
+
+function drawLibrarianBook(x, y, face) {
+  rect(ctx, x - 3, y - 4, 7, 8, '#32202c');
+  rect(ctx, x - 2, y - 3, 5, 5, '#88514b');
+  rect(ctx, x - 2, y + 2, 5, 1, '#e3d0aa');
+  const spine = x - face * 2;
+  rect(ctx, spine, y - 3, 1, 5, '#b7755a');
+  dot(ctx, spine + face * 2, y - 2, '#d2a96b');
 }
 
 function drawRoomOccupants(t, dt) {
@@ -1586,7 +1630,7 @@ function frame(ms) {
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (inSecondRoom) {
-    if (librarianDialogue.hidden) librarianTime += dt;
+    if (librarianDialogue.hidden) updateLibrarian(dt);
     drawLibraryPortrait(t);
     drawLibraryLights(t);
     drawRoomOccupants(t, dt);
