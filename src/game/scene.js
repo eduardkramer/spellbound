@@ -1051,13 +1051,29 @@ function drawSeatedWizard(t) {
   const left = px - WIZARD.FX;
   const top = py - head - torso + 5;
   ctx.drawImage(frame, 0, 0, WIZARD.CW, head, left, top, WIZARD.CW, head);
-  ctx.drawImage(frame, 0, head, WIZARD.CW, WIZARD.CH - head,
-    left, top + head, WIZARD.CW, torso);
-  if (seatProgress > .75) {
-    rect(ctx, px + 4, py - 2, 5, 3, '#44346a');
-    rect(ctx, px + 7, py, 3, 4, '#242033');
-    rect(ctx, px + 8, py + 3, 4, 2, '#353047');
+  if (seatProgress < .75) {
+    ctx.drawImage(frame, 0, head, WIZARD.CW, WIZARD.CH - head,
+      left, top + head, WIZARD.CW, torso);
+    return;
   }
+
+  const collar = top + head;
+  // De cape volgt de schouders en vouwt over de gebogen benen.
+  const folds = [
+    [-5, 5], [-6, 6], [-6, 6], [-6, 6], [-5, 7], [-5, 8],
+    [-4, 9], [-3, 9], [-2, 8], [0, 7]
+  ];
+  for (const [row, [start, end]] of folds.entries()) {
+    const yy = collar + row;
+    rect(ctx, px + start, yy, end - start + 1, 1, '#30283e');
+    rect(ctx, px + start + 1, yy, end - start - 1, 1, '#554a66');
+    dot(ctx, px + start + 2, yy, '#80728f');
+    dot(ctx, px + Math.floor(row / 2), yy, '#3f354e');
+    if (row >= 6) dot(ctx, px + end - 1, yy, '#736381');
+  }
+  rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
+  dot(ctx, px + 8, collar + 9, '#49405c');
+  rect(ctx, px + 8, collar, 1, 9, '#a06a3a');
 }
 
 function drawFurnishing({ canvas, animate }, t, dt) {
