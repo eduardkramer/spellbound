@@ -528,21 +528,31 @@ function buildFront() {
   chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
   store(seatA + seatB + 7);
 
-  // Schrijfbureau op de tegel vóór de fauteuil.
-  const deskPart = (a, b, z, da, db, dz, material) =>
-    box(g, 48 - a - da, 56 - b - db, z, da, db, dz, material);
-  for (const a of [14.5, 24.5]) {
-    for (const b of [25, 30]) deskPart(a, b, 0, 1, 1, 13, woodD);
+  // Donker schrijfbureau met drie uitgesneden panelen.
+  const deskWood = woodC('#64412d');
+  const gilding = flat('#aa7f4c', '#7c5233', '#8e633d');
+  box(g, 22.5, 25, 0, 11, 6, 2, deskWood);
+  box(g, 22.5, 25, 2, 11, 6, 12, deskWood);
+  wallR(g, 31, 45, 67, 2, 14, (u, z) => {
+    const column = (u - 45) % 7;
+    if (column === 0 || u === 66 || z === 2 || z === 13) return '#987044';
+    const curve = Math.hypot(column - 3.5, Math.max(0, z - 8));
+    if (curve < 2.15 && z > 4) return '#3c2924';
+    if (curve < 3 && z > 3) return '#9c7147';
+    return '#65432e';
+  });
+  box(g, 22, 24.5, 13, 12, 7, 2.5, deskWood);
+  box(g, 22.25, 31, 14, 11.5, .4, 1, gilding);
+  const pages = flat('#dbc79d', '#8c6c4c', '#ad9064');
+  box(g, 26, 27, 15.5, 2.25, 2.5, .8, pages);
+  box(g, 28.35, 27, 15.5, 2.25, 2.5, .8, pages);
+  for (const [z, color] of [[15.5, '#723e42'], [16.3, '#486659'], [17.1, '#846041']]) {
+    box(g, 22.8, 26, z, 2.8, 2.2, .8, flat(color, '#5d3c2d', '#aa8e66'));
   }
-  deskPart(14.5, 25, 10, 11, 6, 3, woodD);
-  deskPart(14, 24.5, 13, 12, 7, 2, wood);
-  const brass = flat('#d8ad63', '#a17845', '#bd9255');
-  deskPart(18.8, 31, 11, 2.4, .5, 1, brass);
-  const paper = flat('#ead8ae', '#aa8962', '#c2a17a');
-  deskPart(17, 26, 15, 2.5, 3, 1, paper);
-  deskPart(19.6, 26, 15, 2.5, 3, 1, paper);
-  deskPart(23.1, 27, 15, 1.6, 1.5, 2, flat('#555279', '#2c2949', '#3e3a5b'));
-  store(56);
+  box(g, 25.6, 29.5, 15.5, 1.4, 1.4, 1.5, flat('#555279', '#2c2949', '#3e3a5b'));
+  box(g, 31.2, 26, 15.5, 1.6, 1.6, 3, gilding);
+  box(g, 30.9, 25.7, 18, 2.2, 2.2, 1, gilding);
+  store(56, drawDeskOrb);
 
   // Hoge zitstok voor de sneeuwuil.
   box(g, 51, 0, 55, 10, 4.5, 3, woodD);
@@ -1289,6 +1299,19 @@ function drawOwl(t) {
   dot(ctx, headX, headY + 2, '#53657a');
   rect(ctx, x - 4, feet - 1, 3, 1, '#b59256');
   rect(ctx, x + 1, feet - 1, 3, 1, '#b59256');
+}
+
+function drawDeskOrb(t) {
+  const [x, y] = P(32, 26.8, 22);
+  const radius = 11 + Math.sin(t * 2) * 1.5;
+  const halo = ctx.createRadialGradient(x, y, 1, x, y, radius);
+  halo.addColorStop(0, 'rgba(255, 244, 219, .58)');
+  halo.addColorStop(1, 'rgba(255, 244, 219, 0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  ell(ctx, x, y, 4, 4, '#8e8490');
+  ell(ctx, x, y - 1, 3, 3, '#fbf2df');
+  dot(ctx, x - 1, y - 2, '#ffffff');
 }
 
 function drawRoomOccupants(t, dt) {
