@@ -1,5 +1,5 @@
 /* Muziekspeler. Afspeellijst komt uit tracks.js (window.TRACKS); extra nummers kun je
- * Nummers toevoegen doe je zelf in de map music/ + tracks.js. */
+ * Nummers toevoegen doe je zelf in de map assets/music/ + tracks.js. */
 (function () {
 'use strict';
 const $ = id => document.getElementById(id);
@@ -23,7 +23,7 @@ const store = {
 
 function show() {
   const t = list[idx];
-  if (!t) { $('title').textContent = 'Nog geen muziek'; $('sub').textContent = 'zet .mp3 in music/ en vul tracks.js'; return; }
+  if (!t) { $('title').textContent = 'Nog geen muziek'; $('sub').textContent = 'zet .mp3 in assets/music/ en vul tracks.js'; return; }
   $('title').textContent = t.title || 'Naamloos';
   $('sub').textContent = (t.artist || '') + (list.length > 1 ? (t.artist ? '  ·  ' : '') + (idx + 1) + '/' + list.length : '');
 }
