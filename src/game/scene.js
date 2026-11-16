@@ -1,3 +1,6 @@
+Klikroute en zoom, kist opent bij naburige tegel, geeft goudlicht en sluit na vertrek.
+Heen en terug via de boog en vrij bewegen op de lege vloer gecontroleerd.
+Tovenaar loopt naar de fauteuil, blijft zitten en staat op bij een nieuwe bestemming.
 /* De Toren van de Tovenaar — proof of concept
  * Isometrische pixel-kamer, volledig procedureel getekend op een canvas.
  * Coördinaten: (a, b, z)  a = naar rechtsonder, b = naar linksonder, z = omhoog.
@@ -397,6 +400,7 @@ function buildFront() {
   chairPart(.65, 5, 8, 5.7, 2, 13, back);
   chairPart(1.05, 5.15, 21, 4.9, 1.7, 2, cushion);
 
+  store(seatA + seatB + 7, drawSeatedWizard);
   chairPart(5.3, .55, 8, 1.55, 5.7, 4, upholstery);
   chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
   store(seatA + seatB + 7);
@@ -1033,18 +1037,30 @@ function drawRoomOccupants(t, dt) {
   for (; index < furnishings.length && furnishings[index].depth <= a + b; index++) {
     drawFurnishing(furnishings[index], t, dt);
   }
-  if (seatProgress > 0) {
-    const ease = seatProgress ** 2 * (3 - 2 * seatProgress);
-    const [sx, sy] = P((chairTile[0] + .5) * TILE_SIZE, (chairTile[1] + .5) * TILE_SIZE, 8);
-    const frame = WIZARD.canvas('ne', 'idle', t);
-    const height = Math.round(WIZARD.CH - 12 * ease);
-    ctx.drawImage(frame, Math.round(x + (sx - x) * ease) - WIZARD.FX,
-      Math.round(y + (sy - y) * ease - WIZARD.FY * height / WIZARD.CH) + 2,
-      WIZARD.CW, height);
-  } else {
-    WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
-  }
+  if (!seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
   for (; index < furnishings.length; index++) drawFurnishing(furnishings[index], t, dt);
+}
+
+function drawSeatedWizard(t) {
+  if (!seatProgress) return;
+  const ease = seatProgress ** 2 * (3 - 2 * seatProgress);
+  const [x, y] = P((chairApproach[0] + .5) * TILE_SIZE, (chairApproach[1] + .5) * TILE_SIZE, 0);
+  const [sx, sy] = P((chairTile[0] + .5) * TILE_SIZE, (chairTile[1] + .5) * TILE_SIZE - 1, 7);
+  const px = Math.round(x + (sx - x) * ease);
+  const py = Math.round(y + (sy - y) * ease);
+  const frame = WIZARD.canvas('ne', 'idle', t);
+  const head = 23;
+  const torso = Math.round(WIZARD.CH - head - 11 * ease);
+  const left = px - WIZARD.FX;
+  const top = py - head - torso + 5;
+  ctx.drawImage(frame, 0, 0, WIZARD.CW, head, left, top, WIZARD.CW, head);
+  ctx.drawImage(frame, 0, head, WIZARD.CW, WIZARD.CH - head,
+    left, top + head, WIZARD.CW, torso);
+  if (seatProgress > .75) {
+    rect(ctx, px + 4, py - 2, 5, 3, '#44346a');
+    rect(ctx, px + 7, py, 3, 4, '#242033');
+    rect(ctx, px + 8, py + 3, 4, 2, '#353047');
+  }
 }
 
 function drawFurnishing({ canvas, animate }, t, dt) {
