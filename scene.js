@@ -689,8 +689,8 @@ function drawChest(t, dt) {
     face(color, [lid(left, start), lid(right, start), lid(right, end), lid(left, end)]);
 
   const rim = [0, 1, 2.25, 3.5, 4.75, 6, 7];
-  const arch = [1, 2.4, 3.4, 3.7, 3.4, 2.4, 1];
-  const boards = ['#744327', '#9d5d34', '#c3864c', '#b37441', '#995a32', '#804926'];
+  const arch = [1, 3.2, 4.6, 5.2, 4.6, 3.2, 1];
+  const boards = [.88, 1.03, 1.24, 1.16, 1.02, .87].map(light => sh('#5a3320', light));
   const brass = ['#8c653a', '#b7864a', '#e4be76', '#d6a65f', '#ad7941', '#8b6037'];
   const curvedStrip = (color, left, right, i) => face(color, [
     lid(left, rim[i], arch[i]), lid(right, rim[i], arch[i]),
@@ -718,9 +718,9 @@ function drawChest(t, dt) {
     line(ctx, ...lid(0, 7, 1.5), ...lid(9, 7, 1.5), '#e3ae68');
 
   }
-  face('#684529', [lid(9, 0), ...rim.map((length, i) => lid(9, length, arch[i])), lid(9, 7)]);
+  face('#5a3320', [lid(9, 0), ...rim.map((length, i) => lid(9, length, arch[i])), lid(9, 7)]);
   for (let i = 0; i < boards.length; i++) {
-    line(ctx, ...lid(9, rim[i], arch[i]), ...lid(9, rim[i + 1], arch[i + 1]), '#9e6a3d');
+    line(ctx, ...lid(9, rim[i], arch[i]), ...lid(9, rim[i + 1], arch[i + 1]), '#75472e');
   }
   if (!opening) return;
 
