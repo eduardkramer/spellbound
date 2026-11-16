@@ -161,6 +161,26 @@ const copingFn = (a, b) => {
 };
 
 /* ---------- vloer ---------- */
+// Middelpunt en beide stralen in vloercoördinaten.
+const towerShadows = [
+  [21.5, 4.5, 12, 4], [20.5, 21, 5.5, 5.5],
+  [49, 45.5, 6, 6], [53, 5, 5.5, 4.5],
+  [5, 53, 4.8, 4.8], [37, 6, 3.7, 3.5],
+  [7.7, 34, 3.8, 3.8], [14.5, 36, 3.8, 3.3]
+];
+
+function shadedTowerFloor(a, b) {
+  let distance = 1;
+  for (const [centerA, centerB, radiusA, radiusB] of towerShadows) {
+    distance = Math.min(distance, ((a - centerA) / radiusA) ** 2 + ((b - centerB) / radiusB) ** 2);
+  }
+  const color = floorFn(a, b);
+  if (distance < .37) return sh(color, .63);
+  if (distance < .68) return sh(color, .76);
+  if (distance < 1) return sh(color, .89);
+  return color;
+}
+
 function floorFn(a, b) {
   if (a >= 12 && a < 30 && b >= 4 && b < 40) {                 // tapijt
     const la = a - 12, lb = b - 4;
@@ -417,7 +437,7 @@ function drawLibraryShelves(g) {
 }
 
 function buildStatic(sg, library = false) {
-  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : floorFn);
+  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : shadedTowerFloor);
   wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
   wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
   topFace(sg, WH, -T, N, -T, 0, copingFn);
