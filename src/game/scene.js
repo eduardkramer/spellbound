@@ -165,10 +165,10 @@ const copingFn = (a, b) => {
 /* ---------- vloer ---------- */
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
-  [21.5, 4.5, 11.5, 3.4], [21, 21.5, 4.8, 4.8],
+  [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
   [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
   [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
-  [8, 34.5, 3.4, 3.4], [15, 37, 3.4, 3.2]
+  [8, 34.5, 3.4, 3.4]
 ];
 
 function contactShade(a, b, centerA, centerB, radiusA, radiusB) {
@@ -342,7 +342,7 @@ function drawPassage(g, rear) {
 
 /* ---------- bibliotheek ---------- */
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
-const armchairSeat = { tile: [2, 2], approach: [2, 1], direction: 'ne', height: 7, hit: [13, 25] };
+const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
 const librarySeats = [
   { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
@@ -497,12 +497,12 @@ function buildFront() {
 
   store(26);
 
-  // Fauteuil tegenover de haard, met een vrije tegel tussen stoel en haard.
-  const seatA = 16.5, seatB = 16.5;
+  // Fauteuil met de rug naar de haard en de zitting naar het bureau.
+  const seatA = 24.5, seatB = 16.5;
   const upholstery = flat('#75917f', '#3a5349', '#4b695b');
   const cushion = flat('#8fa995', '#526e60', '#638272');
   const chairPart = (a, b, z, da, db, dz, material) =>
-    box(g, seatA + a, seatB + b, z, da, db, dz, material);
+    box(g, seatA + a, seatB + 7 - b - db, z, da, db, dz, material);
   for (const a of [.5, 5.3]) {
     for (const b of [.5, 5.3]) chairPart(a, b, 0, 1.2, 1.2, 3, woodD);
   }
@@ -527,6 +527,33 @@ function buildFront() {
   chairPart(5.3, .55, 8, 1.55, 5.7, 4, upholstery);
   chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
   store(seatA + seatB + 7);
+
+  // Donker schrijfbureau met uitgesneden panelen.
+  const deskWood = woodC('#64412d');
+  const gilding = flat('#aa7f4c', '#7c5233', '#8e633d');
+  box(g, 16.5, 25, 0, 23, 6, 2, deskWood);
+  box(g, 16.5, 25, 2, 23, 6, 12, deskWood);
+  wallR(g, 31, 33, 79, 2, 14, (u, z) => {
+    const column = (u - 33) % 9;
+    if (column === 0 || u === 78 || z === 2 || z === 13) return '#987044';
+    const curve = Math.hypot(column - 4.5, Math.max(0, z - 8));
+    if (curve < 2.15 && z > 4) return '#3c2924';
+    if (curve < 3 && z > 3) return '#9c7147';
+    return '#65432e';
+  });
+  box(g, 16, 24.5, 13, 24, 7, 2.5, deskWood);
+  box(g, 16.25, 31, 14, 23.5, .4, 1, gilding);
+  const pages = flat('#dbc79d', '#8c6c4c', '#ad9064');
+  box(g, 26, 27, 15.5, 2.25, 2.5, .8, pages);
+  box(g, 28.35, 27, 15.5, 2.25, 2.5, .8, pages);
+  for (const [z, color] of [[15.5, '#723e42'], [16.3, '#486659'], [17.1, '#846041']]) {
+    box(g, 22.8, 26, z, 2.8, 2.2, .8, flat(color, '#5d3c2d', '#aa8e66'));
+  }
+  box(g, 25.6, 29.5, 15.5, 1.4, 1.4, 1.5, flat('#555279', '#2c2949', '#3e3a5b'));
+  box(g, 31.2, 26, 15.5, 1.6, 1.6, 3, gilding);
+  box(g, 30.9, 25.7, 18, 2.2, 2.2, 1, gilding);
+  box(g, 35.5, 27, 15.5, 4, 3, 1.5, flat('#2f7a3a', '#e8dcb0', '#17481f'));
+  store(56, drawDeskOrb);
 
   // Hoge zitstok voor de sneeuwuil.
   box(g, 51, 0, 55, 10, 4.5, 3, woodD);
@@ -586,11 +613,6 @@ function buildFront() {
   store(41.5, t => {
     if ((t % 7) > 6.4) rect(ctx, KN[0] - 3, KN[1] - 33, 6, 1, '#ff3a3a');
   });
-
-  // groen boek op de grond
-  box(g, 11, 33, 0, 6, 5, 3, flat('#2f7a3a', '#e8dcb0', '#17481f'));
-
-  store(47);
 
   // Voorraadkist langs de rechterwand
   box(g, 48, 1, 0, 8, 6, 8, woodD);
@@ -1065,9 +1087,9 @@ const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 const towerFloor = [
   '.XXXX.X.',
   '........',
-  '..X.....',
-  '........',
-  'XX......',
+  '...X....',
+  '..XXX...',
+  'X.......',
   '.....XX.',
   'X.......',
   '........'
@@ -1275,6 +1297,19 @@ function drawOwl(t) {
   rect(ctx, x + 1, feet - 1, 3, 1, '#b59256');
 }
 
+function drawDeskOrb(t) {
+  const [x, y] = P(32, 26.8, 22);
+  const radius = 11 + Math.sin(t * 2) * 1.5;
+  const halo = ctx.createRadialGradient(x, y, 1, x, y, radius);
+  halo.addColorStop(0, 'rgba(255, 244, 219, .58)');
+  halo.addColorStop(1, 'rgba(255, 244, 219, 0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  ell(ctx, x, y, 4, 4, '#8e8490');
+  ell(ctx, x, y - 1, 3, 3, '#fbf2df');
+  dot(ctx, x - 1, y - 2, '#ffffff');
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
@@ -1294,7 +1329,7 @@ function drawSeatedWizard(t, seat) {
   if (seat !== activeSeat || !seatProgress) return;
   const ease = seatProgress ** 2 * (3 - 2 * seatProgress);
   const [x, y] = P((seat.approach[0] + .5) * TILE_SIZE, (seat.approach[1] + .5) * TILE_SIZE, 0);
-  const [sx, sy] = P((seat.tile[0] + .5) * TILE_SIZE, (seat.tile[1] + .5) * TILE_SIZE - 1, seat.height);
+  const [sx, sy] = P((seat.tile[0] + .5) * TILE_SIZE, (seat.tile[1] + .5) * TILE_SIZE + (seat.offsetB ?? -1), seat.height);
   const px = Math.round(x + (sx - x) * ease);
   const py = Math.round(y + (sy - y) * ease);
   const frame = WIZARD.canvas(seat.direction, 'idle', t);
