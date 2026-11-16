@@ -1310,13 +1310,65 @@ function drawDeskOrb(t) {
   dot(ctx, x - 1, y - 2, '#ffffff');
 }
 
+// Elk punt beschrijft de positie en de tijd tot het volgende punt.
+const libraryCatRoute = [
+  [12, 20, 0, 2.4], [20, 20, 0, .7], [20, 30, 15, 4.2],
+  [20, 30, 15, .7], [28, 28, 0, 1.7], [28, 40, 0, 2.8],
+  [28, 40, 0, 2.1], [44, 40, 0, 1.2], [52, 40, 0, 1.6],
+  [52, 28, 0, .7], [44, 30, 15, 3.8], [44, 30, 15, .7],
+  [44, 20, 0, 1.4], [34, 20, 0, 3]
+];
+const libraryCatCycle = libraryCatRoute.reduce((total, point) => total + point[3], 0);
+
+function libraryCatLayer(t) {
+  let elapsed = t % libraryCatCycle;
+  let index = 0;
+  while (index < libraryCatRoute.length - 1 && elapsed >= libraryCatRoute[index][3]) {
+    elapsed -= libraryCatRoute[index][3];
+    index++;
+  }
+  const [a, b, z, duration] = libraryCatRoute[index];
+  const [nextA, nextB, nextZ] = libraryCatRoute[(index + 1) % libraryCatRoute.length];
+  const progress = elapsed / duration;
+  const jumping = z !== nextZ;
+  const walking = !jumping && (a !== nextA || b !== nextB);
+  const ca = a + (nextA - a) * progress, cb = b + (nextB - b) * progress;
+  const lift = z + (nextZ - z) * progress + (jumping ? 9 * Math.sin(Math.PI * progress) : 0);
+  const [x, y] = P(ca, cb, lift);
+  const face = nextA - a >= nextB - b ? 1 : -1;
+  return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking) };
+}
+
+function drawLibraryCat(t, x, y, face, jumping, walking) {
+  const fur = '#53445a', light = '#877387', dark = '#2e263a';
+  const stride = walking ? Math.round(Math.sin(t * 16)) : 0;
+  for (let i = 0; i < 7; i++) {
+    dot(ctx, x - face * (4 + i), y - 4 - Math.round(i * .55 + Math.sin(t * 2 + i * .4)), dark);
+  }
+  ell(ctx, x, y - 4, jumping ? 7 : 5, 3, fur);
+  ell(ctx, x - face, y - 5, 3, 1, light);
+  ell(ctx, x + face * (jumping ? 5 : 3), y - 1 + stride, 2, 1, dark);
+  ell(ctx, x - face * (jumping ? 5 : 3), y - 1 - stride, 2, 1, dark);
+  const head = x + face * 4;
+  ell(ctx, head, y - 7, 4, 3, fur);
+  rect(ctx, head - 3, y - 12, 2, 4, fur);
+  rect(ctx, head + 1, y - 12, 2, 4, fur);
+  dot(ctx, head - 2, y - 11, '#bb848a');
+  dot(ctx, head + 1, y - 11, '#bb848a');
+  const blink = t % 4.4 > 4.2;
+  for (const dx of [-2, 2]) dot(ctx, head + dx, y - 8, blink ? dark : '#79d8ff');
+  dot(ctx, head + face, y - 6, '#d3a2a2');
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
-  const roomFurnishings = inSecondRoom ? libraryFurnishings : furnishings;
+  const roomFurnishings = inSecondRoom
+    ? [...libraryFurnishings, libraryCatLayer(t)].sort((left, right) => left.depth - right.depth)
+    : furnishings;
   let index = 0;
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
     drawFurnishing(roomFurnishings[index], t, dt);
@@ -1371,7 +1423,7 @@ function drawSeatedWizard(t, seat) {
 }
 
 function drawFurnishing({ canvas, animate }, t, dt) {
-  ctx.drawImage(canvas, 0, 0);
+  if (canvas) ctx.drawImage(canvas, 0, 0);
   if (animate) animate(t, dt);
 }
 
