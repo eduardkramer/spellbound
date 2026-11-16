@@ -674,6 +674,25 @@ function drawLibraryPortrait(t) {
   });
 }
 
+function drawPortraitBubble() {
+  if (!portraitHovered) return;
+  const [x, y] = P(36, 0, 99);
+  const label = 'Maddam Aubert';
+  ctx.save();
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const width = Math.ceil(ctx.measureText(label).width) + 14;
+  rect(ctx, x - width / 2, y - 18, width, 17, '#342135');
+  rect(ctx, x - width / 2 + 1, y - 17, width - 2, 15, '#d5aa64');
+  rect(ctx, x - width / 2 + 2, y - 16, width - 4, 13, '#492e43');
+  rect(ctx, x - 3, y - 2, 7, 2, '#d5aa64');
+  rect(ctx, x - 1, y, 3, 2, '#d5aa64');
+  ctx.fillStyle = '#fff1cd';
+  ctx.fillText(label, x, y - 9);
+  ctx.restore();
+}
+
 function drawLibraryLights(t) {
   for (const [a, b] of [[10, 10], [46, 16], [14, 48]]) {
     const [x, y] = P(a, b, 72);
@@ -1057,6 +1076,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 let hoveredTile = null;
+let portraitHovered = false;
 function tileAtPointer(event) {
   const bounds = cv.getBoundingClientRect();
   const x = (event.clientX - bounds.left) * W / bounds.width - CX;
@@ -1068,7 +1088,14 @@ function tileAtPointer(event) {
 }
 
 cv.addEventListener('pointermove', event => {
-  if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
+  if (event.pointerType === 'touch') return;
+  const bounds = cv.getBoundingClientRect();
+  const x = Math.floor((event.clientX - bounds.left) * W / bounds.width);
+  const y = Math.floor((event.clientY - bounds.top) * H / bounds.height);
+  const u = x - CX;
+  const z = CY + (u >> 1) - 1 - y;
+  portraitHovered = inSecondRoom && u >= 56 && u < 88 && z >= 50 && z < 94;
+  hoveredTile = portraitHovered ? null : tileAtPointer(event);
 });
 cv.addEventListener('click', event => {
   const tile = tileAtPointer(event);
@@ -1104,7 +1131,10 @@ function findRoute(start, targetA, targetB) {
   }
   return null;
 }
-function clearHover() { hoveredTile = null; }
+function clearHover() {
+  hoveredTile = null;
+  portraitHovered = false;
+}
 cv.addEventListener('pointerleave', clearHover);
 cv.addEventListener('pointercancel', clearHover);
 
@@ -1190,6 +1220,7 @@ function frame(ms) {
     drawLibraryPortrait(t);
     drawLibraryLights(t);
     drawRoomOccupants(t, dt);
+    drawPortraitBubble();
     requestAnimationFrame(frame);
     return;
   }
