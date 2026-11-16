@@ -349,15 +349,27 @@ function buildFront() {
 
   store(26);
 
-  // Stoel op één vloertegel, met de zitting naar de haard.
-  for (const a of [24.5, 30]) {
-    for (const b of [8.5, 14]) box(g, a, b, 0, 1.5, 1.5, 8, woodD);
-    box(g, a, 14, 9, 1.5, 1.5, 16, woodD);
+  // Fauteuil tegenover de haard, met een vrije tegel tussen stoel en haard.
+  const seatA = 16.5, seatB = 16.5;
+  const velvet = flat('#627f6f', '#344b44', '#47645a');
+  const cushion = flat('#7c9986', '#587368', '#6a8778');
+  const piping = flat('#c0a16a', '#9a794e', '#ad8d59');
+  const chairPart = (a, b, z, da, db, dz, material) =>
+    box(g, seatA + a, seatB + b, z, da, db, dz, material);
+  for (const a of [.5, 5.3]) {
+    for (const b of [.5, 5.3]) chairPart(a, b, 0, 1.2, 1.2, 4, woodD);
   }
-  box(g, 24.5, 8.5, 7.5, 7, 7, 2, wood);
-  box(g, 24.5, 14, 14, 7, 1.25, 2, wood);
-  box(g, 24.5, 14, 20, 7, 1.5, 4, wood);
-  store(40);
+  chairPart(0, 0, 4, 7, 7, 2, wood);
+  chairPart(.8, .5, 6, 5.4, 5.2, 3, cushion);
+  chairPart(.7, 5.3, 7, 5.6, 1.7, 15, velvet);
+  chairPart(1.2, 5.4, 22, 4.6, 1.6, 2, cushion);
+  for (const a of [0, 5.6]) {
+    chairPart(a, .8, 6, 1.4, 5.2, 6, velvet);
+    chairPart(a, .5, 12, 1.4, 5.6, 1.5, cushion);
+  }
+  chairPart(1.3, 6.9, 18.5, 4.4, .1, 1, piping);
+  chairPart(3, 6.9, 17.5, 1, .1, 1, piping);
+  store(seatA + seatB + 7);
 
   // planken: rechter plank + drankjes
   box(g, 33, 0, 44, 7, 5.5, 2, wood); box(g, 34, 0, 40, 1.2, 3, 4, woodD); box(g, 38, 0, 40, 1.2, 3, 4, woodD);
@@ -721,8 +733,8 @@ const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 // Rijen lopen over b, kolommen over a. X staat voor een meubel of de haard.
 const FLOOR = [
   '.XXXX.X.',
-  '...X....',
   '........',
+  '..X.....',
   '........',
   'XX......',
   '.....XX.',
