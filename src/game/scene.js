@@ -33,13 +33,15 @@ function hash(x, y) {
   return (h >>> 0) / 4294967296;
 }
 const _sh = new Map();
-function sh(hex, f) {
-  const k = hex + '|' + f;
-  if (_sh.has(k)) return _sh.get(k);
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.min(255, ((n >> 16) & 255) * f), g = Math.min(255, ((n >> 8) & 255) * f), b = Math.min(255, (n & 255) * f);
-  const s = 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')';
-  _sh.set(k, s); return s;
+function sh(color, factor) {
+  const key = color + '|' + factor;
+  if (_sh.has(key)) return _sh.get(key);
+  const channels = color.startsWith('#')
+    ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
+    : color.slice(4, -1).split(',').map(Number);
+  const result = 'rgb(' + channels.map(channel => Math.min(255, Math.floor(channel * factor))).join(',') + ')';
+  _sh.set(key, result);
+  return result;
 }
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); }
 function dot(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
@@ -161,6 +163,26 @@ const copingFn = (a, b) => {
 };
 
 /* ---------- vloer ---------- */
+// Middelpunt en beide stralen in vloercoördinaten.
+const towerShadows = [
+  [21.5, 4.5, 11.5, 3.4], [21, 21.5, 4.8, 4.8],
+  [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
+  [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
+  [8, 34.5, 3.4, 3.4], [15, 37, 3.4, 3.2]
+];
+
+function contactShade(a, b, centerA, centerB, radiusA, radiusB) {
+  const distance = ((a - centerA) / radiusA) ** 2 + ((b - centerB) / radiusB) ** 2;
+  return distance < .55 ? .62 : distance < 1 ? .8 : 1;
+}
+
+function shadedTowerFloor(a, b) {
+  let shade = 1;
+  for (const shadow of towerShadows) shade = Math.min(shade, contactShade(a, b, ...shadow));
+  const color = floorFn(a, b);
+  return shade < 1 ? sh(color, 1 - (1 - shade) * .72) : color;
+}
+
 function floorFn(a, b) {
   if (a >= 12 && a < 30 && b >= 4 && b < 40) {                 // tapijt
     const la = a - 12, lb = b - 4;
@@ -343,10 +365,9 @@ function shadedLibraryFloor(a, b) {
   }
   for (const [column, row, type] of libraryLayout) {
     const radius = type === 'desk' ? 5 : 3.4;
-    const da = (a - (column + .5) * TILE_SIZE - 1) / radius;
-    const db = (b - (row + .5) * TILE_SIZE - 1.5) / radius;
-    const distance = da * da + db * db;
-    if (distance < 1) shade = Math.min(shade, distance < .55 ? .62 : .8);
+    const centerA = (column + .5) * TILE_SIZE + 1;
+    const centerB = (row + .5) * TILE_SIZE + 1.5;
+    shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
   }
   return shade === 1 ? color : sh(color, shade);
 }
@@ -417,7 +438,7 @@ function drawLibraryShelves(g) {
 }
 
 function buildStatic(sg, library = false) {
-  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : floorFn);
+  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : shadedTowerFloor);
   wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
   wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
   topFace(sg, WH, -T, N, -T, 0, copingFn);
