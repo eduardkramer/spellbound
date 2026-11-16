@@ -165,7 +165,7 @@ const copingFn = (a, b) => {
 /* ---------- vloer ---------- */
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
-  [21.5, 4.5, 11.5, 3.4], [21, 21.5, 4.8, 4.8], [21, 29, 6.5, 4.7],
+  [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 6.5, 4.7],
   [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
   [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
   [8, 34.5, 3.4, 3.4], [15, 37, 3.4, 3.2]
@@ -342,7 +342,7 @@ function drawPassage(g, rear) {
 
 /* ---------- bibliotheek ---------- */
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
-const armchairSeat = { tile: [2, 2], approach: [3, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
+const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
 const librarySeats = [
   { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
@@ -498,7 +498,7 @@ function buildFront() {
   store(26);
 
   // Fauteuil met de rug naar de haard en de zitting naar het bureau.
-  const seatA = 16.5, seatB = 16.5;
+  const seatA = 24.5, seatB = 16.5;
   const upholstery = flat('#75917f', '#3a5349', '#4b695b');
   const cushion = flat('#8fa995', '#526e60', '#638272');
   const chairPart = (a, b, z, da, db, dz, material) =>
@@ -529,18 +529,20 @@ function buildFront() {
   store(seatA + seatB + 7);
 
   // Schrijfbureau op de tegel vóór de fauteuil.
+  const deskPart = (a, b, z, da, db, dz, material) =>
+    box(g, 48 - a - da, 56 - b - db, z, da, db, dz, material);
   for (const a of [14.5, 24.5]) {
-    for (const b of [25, 30]) box(g, a, b, 0, 1, 1, 13, woodD);
+    for (const b of [25, 30]) deskPart(a, b, 0, 1, 1, 13, woodD);
   }
-  box(g, 14.5, 25, 10, 11, 6, 3, woodD);
-  box(g, 14, 24.5, 13, 12, 7, 2, wood);
+  deskPart(14.5, 25, 10, 11, 6, 3, woodD);
+  deskPart(14, 24.5, 13, 12, 7, 2, wood);
   const brass = flat('#d8ad63', '#a17845', '#bd9255');
-  box(g, 18.8, 31, 11, 2.4, .5, 1, brass);
+  deskPart(18.8, 31, 11, 2.4, .5, 1, brass);
   const paper = flat('#ead8ae', '#aa8962', '#c2a17a');
-  box(g, 17, 26, 15, 2.5, 3, 1, paper);
-  box(g, 19.6, 26, 15, 2.5, 3, 1, paper);
-  box(g, 23.1, 27, 15, 1.6, 1.5, 2, flat('#555279', '#2c2949', '#3e3a5b'));
-  store(48);
+  deskPart(17, 26, 15, 2.5, 3, 1, paper);
+  deskPart(19.6, 26, 15, 2.5, 3, 1, paper);
+  deskPart(23.1, 27, 15, 1.6, 1.5, 2, flat('#555279', '#2c2949', '#3e3a5b'));
+  store(56);
 
   // Hoge zitstok voor de sneeuwuil.
   box(g, 51, 0, 55, 10, 4.5, 3, woodD);
@@ -1079,8 +1081,8 @@ const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 const towerFloor = [
   '.XXXX.X.',
   '........',
-  '..X.....',
-  '..X.....',
+  '...X....',
+  '...X....',
   'XX......',
   '.....XX.',
   'X.......',
