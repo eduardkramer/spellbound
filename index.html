@@ -16,6 +16,10 @@
   #zoom{display:flex;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
+  #librarian-dialogue{margin:0 auto 12px;padding:12px 16px;max-width:440px;
+    border:2px solid #b79259;background:#30263a;color:#fff1d3;box-shadow:3px 3px #20192a}
+  #librarian-dialogue p{margin:6px 0 10px}
+  #close-librarian-dialogue{width:auto;padding:0 10px}
   #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
 
   /* ---- muziekspeler ---- */
@@ -67,6 +71,11 @@
   <div id="scene-view">
     <canvas id="scene" aria-label="De speelkamer van de tovenaar" aria-describedby="movement-hint"></canvas>
   </div>
+  <aside id="librarian-dialogue" aria-label="Gesprek met de bibliothecaris" aria-live="polite" hidden>
+    <strong>Bibliothecaris</strong>
+    <p>Ze zeggen dat Maddam Aubert haar ogen opent als iemand na middernacht een boek terugzet.</p>
+    <button type="button" id="close-librarian-dialogue">Sluiten</button>
+  </aside>
   <p id="movement-hint">Klik op een tegel om te lopen of op een stoel om te zitten. Lopen kan ook met de pijltjestoetsen of WASD.</p>
 
   <div id="player">

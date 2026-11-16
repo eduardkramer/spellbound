@@ -1157,6 +1157,17 @@ cv.addEventListener('pointermove', event => {
 });
 cv.addEventListener('click', event => {
   const [px, py] = pointerPosition(event);
+  if (inSecondRoom && librarianHit) {
+    const [x, y] = librarianHit;
+    if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 33 && py + CY <= y) {
+      librarianDialogue.hidden = !librarianDialogue.hidden;
+      clearRoute();
+      requestedSeat = null;
+      heldKeys.clear();
+      return;
+    }
+  }
+  librarianDialogue.hidden = true;
   const seats = inSecondRoom ? librarySeats : [armchairSeat];
   const seat = seats.find(({ tile, hit }) => {
     const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
@@ -1251,6 +1262,7 @@ function updateWizard(dt) {
       wizard.b = wizard.step.b;
       if (wizard.a === EXIT_COLUMN && wizard.b === (inSecondRoom ? 0 : ROOM_TILES - 1)) {
         inSecondRoom = !inSecondRoom;
+        librarianDialogue.hidden = true;
         wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
         wizard.direction = inSecondRoom ? 'sw' : 'ne';
         requestedSeat = null;
@@ -1389,6 +1401,76 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
   }
 }
 
+const librarianRoute = [
+  [4, 20, 2.4, 'shelve'], [4, 20, 1, 'walk'],
+  [12, 20, 1, 'walk'], [12, 28, 4.5, 'read'],
+  [12, 28, 1, 'walk'], [12, 20, 1, 'walk']
+];
+const librarianCycle = librarianRoute.reduce((total, point) => total + point[2], 0);
+const librarianDialogue = document.getElementById('librarian-dialogue');
+let librarianTime = 0;
+let librarianHit = null;
+librarianDialogue.hidden = true;
+document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
+  librarianDialogue.hidden = true;
+});
+addEventListener('keydown', event => {
+  if (event.key === 'Escape') librarianDialogue.hidden = true;
+});
+
+function librarianLayer() {
+  let elapsed = librarianTime % librarianCycle, index = 0;
+  while (index < librarianRoute.length - 1 && elapsed >= librarianRoute[index][2]) {
+    elapsed -= librarianRoute[index++][2];
+  }
+  const [a, b, duration, action] = librarianRoute[index];
+  const [nextA, nextB] = librarianRoute[(index + 1) % librarianRoute.length];
+  const progress = elapsed / duration;
+  const da = a + (nextA - a) * progress, db = b + (nextB - b) * progress;
+  const [x, y] = P(da, db, 0);
+  const wa = (wizard.a + .5) * TILE_SIZE, wb = (wizard.b + .5) * TILE_SIZE;
+  const watching = !librarianDialogue.hidden || Math.hypot(wa - da, wb - db) < 14;
+  const face = watching ? Math.sign(wa - wb - da + db) || 1
+    : action === 'shelve' ? -1 : action === 'read' ? 1 : Math.sign(nextA - nextB - a + b) || 1;
+  librarianHit = [x, y];
+  return { depth: da + db, animate: () => drawLibrarian(x, y, face, action, progress, watching) };
+}
+
+function drawLibrarian(x, y, face, action, progress, watching) {
+  const stride = action === 'walk' ? Math.round(Math.sin(progress * Math.PI * 6)) : 0;
+  const head = y - (action === 'read' && !watching ? 23 : 25);
+  const ink = '#272334', robe = '#537460', trim = '#ac9868';
+  ell(ctx, x, y, 6, 2, '#49392e');
+  rect(ctx, x - 4 + stride, y - 3, 3, 3, ink);
+  rect(ctx, x + 1 - stride, y - 3, 3, 3, ink);
+  for (let row = 0; row < 16; row++) {
+    const half = row > 10 ? 6 : 5;
+    rect(ctx, x - half, y - 19 + row, half * 2 + 1, 1, ink);
+    rect(ctx, x - half + 1, y - 19 + row, half * 2 - 1, 1, robe);
+    dot(ctx, x - 2, y - 19 + row, '#698875');
+  }
+  rect(ctx, x - 4, y - 10, 9, 1, trim);
+  ell(ctx, x, head, 6, 6, ink);
+  ell(ctx, x + face, head, 4, 5, '#d8aa89');
+  rect(ctx, x - 5, head - 7, 8, 4, '#a8a5a8');
+  dot(ctx, x - 4, head - 6, '#e7dfe2');
+  const eye = x + 2 * face;
+  rect(ctx, eye - 1, head - 1, 3, 2, '#654f54');
+  dot(ctx, eye, head, '#c5e7e4');
+  dot(ctx, x + 4 * face, head + 2, '#9d695e');
+
+  if (action === 'shelve' && !watching) {
+    const raise = Math.min(1, progress * 1.8);
+    const hand = y - 12 - Math.round(12 * raise);
+    line(ctx, x - 4, y - 16, x - 8, hand, robe);
+    if (progress < .76) rect(ctx, x - 10, hand - 4, 3, 5, '#aa6952');
+    dot(ctx, x - 8, hand, '#d8aa89');
+  } else if (action === 'walk') {
+    rect(ctx, x + face * 4 - 1, y - 14 + stride, 3, 5, '#876353');
+    dot(ctx, x + face * 4, y - 14 + stride, '#dac292');
+  }
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
@@ -1396,7 +1478,7 @@ function drawRoomOccupants(t, dt) {
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
   const roomFurnishings = inSecondRoom
-    ? [...libraryFurnishings, libraryCatLayer(t)].sort((left, right) => left.depth - right.depth)
+    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer()].sort((left, right) => left.depth - right.depth)
     : furnishings;
   let index = 0;
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
@@ -1466,6 +1548,7 @@ function frame(ms) {
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (inSecondRoom) {
+    if (librarianDialogue.hidden) librarianTime += dt;
     drawLibraryPortrait(t);
     drawLibraryLights(t);
     drawRoomOccupants(t, dt);
