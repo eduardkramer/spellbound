@@ -637,6 +637,43 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   return { canvas, depth: a + b };
 }).sort((a, b) => a.depth - b.depth);
 
+function drawLibraryPortrait(t) {
+  const blink = t % 5.1 > 4.94;
+  const glance = Math.floor(t / 2.8) % 3 - 1;
+  wallR(ctx, 0, 56, 88, 50, 94, (u, z) => {
+    const x = u - 56, y = 93 - z;
+    const edge = Math.min(x, 31 - x, y, 43 - y);
+    if (edge === 0) return '#382538';
+    if (edge === 1 || edge === 3) return x < 16 ? '#f1cf83' : '#a97542';
+    if (edge === 2) return '#8a5939';
+
+    if (y >= 15 && y <= 17 && x >= 6 && x <= 25) return y === 15 ? '#80618c' : '#342843';
+    // Schouders, blonde lokken en het gezicht onder de hoed.
+    if (y >= 32 && Math.abs(x - 16) < (y - 29) * 1.2) {
+      if (y === 35 && Math.abs(x - 16) <= 1) return '#86ddf2';
+      return x < 16 ? '#744d82' : '#503658';
+    }
+    if (y >= 15 && y <= 35 && Math.abs(x - 16) <= (y > 31 ? 7 : 9)) {
+      const faceWidth = y < 20 ? 4 : y > 28 ? 4 : 6;
+      if (y >= 17 && y <= 30 && Math.abs(x - 16) <= faceWidth) {
+        if (y === 23 && (Math.abs(x - 12) <= 1 || Math.abs(x - 20) <= 1)) {
+          if (blink) return '#845966';
+          return x === 12 + glance || x === 20 + glance ? '#347ec5' : '#e8f6ff';
+        }
+        if (y === 28 && x >= 15 && x <= 17) return '#a95668';
+        return x > 18 ? '#cf9984' : '#f4bd9b';
+      }
+      return (x + Math.floor(y / 4)) % 4 === 0 ? '#fff0a6' : x < 16 ? '#d6a553' : '#b98446';
+    }
+    if (y >= 6 && y <= 16 && Math.abs(x - 15) <= Math.floor((y - 4) * .67)) {
+      return y >= 13 ? '#9d638d' : x < 15 ? '#624977' : '#443452';
+    }
+
+    if (hash(x, y) > .98) return '#8b748b';
+    return '#322b48';
+  });
+}
+
 function drawLibraryLights(t) {
   for (const [a, b] of [[10, 10], [46, 16], [14, 48]]) {
     const [x, y] = P(a, b, 72);
@@ -1150,6 +1187,7 @@ function frame(ms) {
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (inSecondRoom) {
+    drawLibraryPortrait(t);
     drawLibraryLights(t);
     drawRoomOccupants(t, dt);
     requestAnimationFrame(frame);
