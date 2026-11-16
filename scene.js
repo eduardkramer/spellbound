@@ -659,6 +659,19 @@ function drawDiamond(t) {
   facet('#3281b5', [[2,-8],[6,-8],[0,0]]);
   facet('#9bdef6', [[-2,-8],[2,-8],[0,0]]);
   line(ctx, x - 6, y - 8, x + 6, y - 8, '#e1faff');
+  const sparkles = [[-8, -5, .5], [7, -13, 1.1], [3, -17, 1.7], [-5, -16, 2.3]];
+  for (const [dx, dy, delay] of sparkles) {
+    const phase = (t + delay) % 3.2 / .65;
+    if (phase >= 1) continue;
+    ctx.globalAlpha = Math.sin(Math.PI * phase);
+    const sy = y + dy - Math.round(2 * phase);
+    dot(ctx, x + dx, sy, '#effdff');
+    if (phase > .3 && phase < .7) {
+      dot(ctx, x + dx + 1, sy, '#79c6ef');
+      dot(ctx, x + dx, sy - 1, '#79c6ef');
+    }
+  }
+  ctx.globalAlpha = 1;
   const pulse = t % 3.2 / .42;
   if (pulse < 1) {
     const sx = x + (Math.floor(t / 3.2) % 2 ? 4 : -3);
