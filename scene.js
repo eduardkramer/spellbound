@@ -21,8 +21,7 @@ const cv = document.getElementById('scene');
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk();
-const sg = statC.getContext('2d');
+const statC = mk(), secondC = mk();
 
 const P = (a, b, z) => [CX + 2 * (a - b), CY + a + b - z];
 
@@ -310,10 +309,13 @@ function drawPassage(g) {
 }
 
 /* ---------- statische kamer ---------- */
-function buildStatic() {
-  topFace(sg, 0, 0, N, 0, N, floorFn);
-  wallL(sg, 0, 0, 2 * N, 0, WH, leftFn);
-  wallR(sg, 0, 0, 2 * N, 0, WH, rightFn);
+function buildStatic(sg, empty = false) {
+  topFace(sg, 0, 0, N, 0, N, empty ? (a, b) => {
+    if (a % TILE_SIZE < .5 || b % TILE_SIZE < .5) return '#303b50';
+    return (Math.floor(a / TILE_SIZE) + Math.floor(b / TILE_SIZE)) % 2 ? '#4e5d70' : '#455468';
+  } : floorFn);
+  wallL(sg, 0, 0, 2 * N, 0, WH, empty ? brL : leftFn);
+  wallR(sg, 0, 0, 2 * N, 0, WH, empty ? brR : rightFn);
   topFace(sg, WH, -T, N, -T, 0, copingFn);
   topFace(sg, WH, -T, 0, 0, N, copingFn);
   const mer = { top: copingFn, left: (u, z) => brOutL(u, z), right: (u, z) => brOutR(u, z) };
@@ -509,7 +511,11 @@ function outline(g, hex) {
   for (let i = 0; i < pts.length; i += 2) g.fillRect(pts[i], pts[i + 1], 1, 1);
 }
 
-buildStatic(); outline(sg, '#14183a');
+for (const [canvas, empty] of [[statC, false], [secondC, true]]) {
+  const background = canvas.getContext('2d');
+  buildStatic(background, empty);
+  outline(background, '#14183a');
+}
 buildFront();
 
 /* ---------- animaties ---------- */
@@ -839,7 +845,7 @@ function drawFlaskGlints(t) {
 /* ---------- speelbare tovenaar ---------- */
 const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 // Rijen lopen over b, kolommen over a. X staat voor een meubel of de haard.
-const FLOOR = [
+const towerFloor = [
   '.XXXX.X.',
   '........',
   '..X.....',
@@ -849,6 +855,9 @@ const FLOOR = [
   'X.......',
   '........'
 ];
+const emptyFloor = Array(ROOM_TILES).fill('.'.repeat(ROOM_TILES));
+let inSecondRoom = false;
+const currentFloor = () => inSecondRoom ? emptyFloor : towerFloor;
 const wizard = { a: 4, b: 4, direction: 'se', step: null };
 const moves = new Map([
   ['arrowup', [0, -1, 'ne']], ['arrowright', [1, 0, 'se']],
@@ -858,7 +867,7 @@ const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' 
 const heldKeys = new Set();
 let route = [];
 let destination = null;
-const isWalkable = (a, b) => FLOOR[b]?.[a] === '.';
+const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
 function clearRoute() {
   route = [];
@@ -887,7 +896,7 @@ function tileAtPointer(event) {
   // Keer P(a, b, 0) om om te bepalen boven welke vloertegel de muis staat.
   const a = Math.floor((y + x / 2) / (2 * TILE_SIZE));
   const b = Math.floor((y - x / 2) / (2 * TILE_SIZE));
-  return FLOOR[b]?.[a] ? [a, b] : null;
+  return currentFloor()[b]?.[a] ? [a, b] : null;
 }
 
 cv.addEventListener('pointermove', event => {
@@ -963,9 +972,17 @@ function updateWizard(dt) {
     if (wizard.step.elapsed >= STEP_TIME) {
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
-      movementHint.textContent = wizard.a === EXIT_COLUMN && wizard.b === ROOM_TILES - 1
-        ? 'Hier komt de doorgang naar de volgende kamer.'
-        : defaultHint;
+      if (wizard.a === EXIT_COLUMN && wizard.b === ROOM_TILES - 1) {
+        inSecondRoom = !inSecondRoom;
+        wizard.b = ROOM_TILES - 2;
+        wizard.direction = 'ne';
+        clearRoute();
+        clearHover();
+        heldKeys.clear();
+        movementHint.textContent = inSecondRoom
+          ? 'Tweede kamer · Loop naar de stenen boog om terug te gaan.'
+          : defaultHint;
+      }
       wizard.step = null;
       if (!route.length) destination = null;
     }
@@ -973,12 +990,15 @@ function updateWizard(dt) {
 }
 
 function drawRoomOccupants(t, dt) {
-  updateWizard(dt);
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
+  if (inSecondRoom) {
+    WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+    return;
+  }
   let index = 0;
   for (; index < furnishings.length && furnishings[index].depth <= a + b; index++) {
     drawFurnishing(furnishings[index], t, dt);
@@ -996,10 +1016,16 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   ctx.clearRect(0, 0, W, H);
-  drawSky(t);
-  ctx.drawImage(statC, 0, 0);
+  updateWizard(dt);
+  if (!inSecondRoom) drawSky(t);
+  ctx.drawImage(inSecondRoom ? secondC : statC, 0, 0);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
+  if (inSecondRoom) {
+    drawRoomOccupants(t, dt);
+    requestAnimationFrame(frame);
+    return;
+  }
   banner(t, 7, 12, 0); banner(t, 65, 12, 1.7); banner(t, 105, 14, 3);
   drawPortrait(t);
   drawFire(t, dt);
