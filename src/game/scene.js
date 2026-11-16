@@ -1057,7 +1057,6 @@ document.addEventListener('visibilitychange', () => {
 });
 
 let hoveredTile = null;
-const portraitBubble = document.getElementById('portrait-bubble');
 function tileAtPointer(event) {
   const bounds = cv.getBoundingClientRect();
   const x = (event.clientX - bounds.left) * W / bounds.width - CX;
@@ -1069,23 +1068,7 @@ function tileAtPointer(event) {
 }
 
 cv.addEventListener('pointermove', event => {
-  if (event.pointerType === 'touch') return;
-  const bounds = cv.getBoundingClientRect();
-  const x = Math.floor((event.clientX - bounds.left) * W / bounds.width);
-  const y = Math.floor((event.clientY - bounds.top) * H / bounds.height);
-  const u = x - CX;
-  const z = CY + (u >> 1) - 1 - y;
-  const portraitHovered = inSecondRoom && u >= 56 && u < 88 && z >= 50 && z < 94;
-  portraitBubble.hidden = !portraitHovered;
-  if (portraitHovered) {
-    const [anchorX, anchorY] = P(36, 0, 98);
-    const inset = portraitBubble.offsetWidth / 2 + 8;
-    const left = bounds.left + anchorX * bounds.width / W;
-    const top = bounds.top + anchorY * bounds.height / H;
-    portraitBubble.style.left = Math.max(inset, Math.min(innerWidth - inset, left)) + 'px';
-    portraitBubble.style.top = Math.max(portraitBubble.offsetHeight + 8, top) + 'px';
-  }
-  hoveredTile = portraitHovered ? null : tileAtPointer(event);
+  if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
 });
 cv.addEventListener('click', event => {
   const tile = tileAtPointer(event);
@@ -1121,10 +1104,7 @@ function findRoute(start, targetA, targetB) {
   }
   return null;
 }
-function clearHover() {
-  hoveredTile = null;
-  portraitBubble.hidden = true;
-}
+function clearHover() { hoveredTile = null; }
 cv.addEventListener('pointerleave', clearHover);
 cv.addEventListener('pointercancel', clearHover);
 
