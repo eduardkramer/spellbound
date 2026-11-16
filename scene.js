@@ -349,15 +349,35 @@ function buildFront() {
 
   store(26);
 
-  // Stoel op één vloertegel, met de zitting naar de haard.
-  for (const a of [24.5, 30]) {
-    for (const b of [8.5, 14]) box(g, a, b, 0, 1.5, 1.5, 8, woodD);
-    box(g, a, 14, 9, 1.5, 1.5, 16, woodD);
+  // Fauteuil tegenover de haard, met een vrije tegel tussen stoel en haard.
+  const seatA = 16.5, seatB = 16.5;
+  const upholstery = flat('#75917f', '#3a5349', '#4b695b');
+  const cushion = flat('#8fa995', '#526e60', '#638272');
+  const chairPart = (a, b, z, da, db, dz, material) =>
+    box(g, seatA + a, seatB + b, z, da, db, dz, material);
+  for (const a of [.5, 5.3]) {
+    for (const b of [.5, 5.3]) chairPart(a, b, 0, 1.2, 1.2, 3, woodD);
   }
-  box(g, 24.5, 8.5, 7.5, 7, 7, 2, wood);
-  box(g, 24.5, 14, 14, 7, 1.25, 2, wood);
-  box(g, 24.5, 14, 20, 7, 1.5, 4, wood);
-  store(40);
+  chairPart(.15, .15, 3, 6.7, 6.7, 2, woodD);
+  chairPart(0, 0, 5, 7, 7, 3, upholstery);
+  chairPart(.15, .55, 8, 1.55, 5.7, 4, upholstery);
+  chairPart(.25, .7, 12, 1.35, 5.35, 1, cushion);
+  chairPart(1.45, .5, 8, 4.1, 4.8, 2.5, cushion);
+
+  // De bies en sierknopen liggen in het zichtbare vlak van de rugleuning.
+  const back = flat('#7c9886', (u, z) => {
+    const column = u - Math.floor((seatA + .65) * 2);
+    if (column <= 1 || column >= 10 || z === 20 || z === 10) return '#415a50';
+    if (z === 19 && column >= 3 && column <= 8) return '#a78e60';
+    if (z === 16 && (column === 4 || column === 7)) return '#30473f';
+    return column <= 3 ? '#577466' : '#4a6659';
+  }, '#5d7c6d');
+  chairPart(.65, 5, 8, 5.7, 2, 13, back);
+  chairPart(1.05, 5.15, 21, 4.9, 1.7, 2, cushion);
+
+  chairPart(5.3, .55, 8, 1.55, 5.7, 4, upholstery);
+  chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
+  store(seatA + seatB + 7);
 
   // planken: rechter plank + drankjes
   box(g, 33, 0, 44, 7, 5.5, 2, wood); box(g, 34, 0, 40, 1.2, 3, 4, woodD); box(g, 38, 0, 40, 1.2, 3, 4, woodD);
@@ -721,8 +741,8 @@ const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 // Rijen lopen over b, kolommen over a. X staat voor een meubel of de haard.
 const FLOOR = [
   '.XXXX.X.',
-  '...X....',
   '........',
+  '..X.....',
   '........',
   'XX......',
   '.....XX.',
