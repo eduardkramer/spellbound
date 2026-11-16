@@ -1341,38 +1341,52 @@ function libraryCatLayer(t) {
   const lift = z + (nextZ - z) * progress + (jumping ? 9 * Math.sin(Math.PI * progress) : 0);
   const [x, y] = P(ca, cb, lift);
   const face = nextA - a >= nextB - b ? 1 : -1;
-  return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking) };
+  return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking, progress) };
 }
 
-function drawLibraryCat(t, x, y, face, jumping, walking) {
+function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
   const eyes = '#79d8ff';
   if (!walking && !jumping) {
     drawRestingCat(t, x, y, eyes);
     return;
   }
   const fur = CAT_FUR, light = CAT_LIGHT, dark = CAT_PAW;
-  const stride = walking ? Math.round(Math.sin(t * 16)) : 0;
-  for (let i = 0; i < 9; i++) {
-    rect(ctx, x - face * (4 + i), y - 3 - Math.round(i * .65 + Math.sin(t * 2 + i * .4)), 2, 2, fur);
+  const gait = Math.round(2 * Math.sin(t * 16));
+  const reach = jumping ? Math.round(3 * progress) : gait;
+  const tuck = jumping ? Math.round(3 * Math.sin(Math.PI * progress)) : 0;
+  const tailLift = Math.round(Math.sin(t * 4));
+  const points = [[-4, -5], [-8, -5], [-11, -8], [-11, -11 + tailLift], [-9, -13 + tailLift]];
+  for (let i = 1; i < points.length; i++) {
+    const [ax, ay] = points[i - 1], [bx, by] = points[i];
+    line(ctx, x + face * ax, y + ay, x + face * bx, y + by, fur);
+    line(ctx, x + face * ax, y + ay + 1, x + face * bx, y + by + 1, fur);
   }
-  ell(ctx, x, y - 4, jumping ? 7 : 5, 3, fur);
-  ell(ctx, x - face, y - 5, 3, 1, light);
-  ell(ctx, x + face * (jumping ? 5 : 3), y - 1 + stride, 2, 1, dark);
-  ell(ctx, x - face * (jumping ? 5 : 3), y - 1 - stride, 2, 1, dark);
-  const head = x + face * 4;
-  ell(ctx, head, y - 7, 4, 3, fur);
-  rect(ctx, head - 4, y - 13, 2, 4, fur);
-  rect(ctx, head - 3, y - 11, 3, 3, fur);
-  rect(ctx, head + 2, y - 13, 2, 4, fur);
-  rect(ctx, head + 1, y - 11, 3, 3, fur);
-  dot(ctx, head - 2, y - 11, '#bb848a');
-  dot(ctx, head + 1, y - 11, '#bb848a');
-  const blink = t % 4.4 > 4.2;
-  for (const dx of [-2, 2]) {
-    rect(ctx, head + dx, y - 8, 2, blink ? 1 : 2, blink ? light : eyes);
-    if (!blink) dot(ctx, head + dx + 1, y - 8, '#d5f4ff');
+
+  for (const side of [-1, 1]) {
+    const hip = x + face * side * 4;
+    const far = x + face * (side * 4 - reach * side);
+    line(ctx, hip, y - 5, far, y - 2 - tuck, dark);
+    ell(ctx, far, y - 2 - tuck, 1, 1, dark);
   }
-  dot(ctx, head + face, y - 6, '#d3a2a2');
+  ell(ctx, x, y - 6, jumping ? 7 : 6, 3, fur);
+  ell(ctx, x - face * 2, y - 7, 3, 1, light);
+  for (const side of [-1, 1]) {
+    const hip = x + face * side * 4;
+    const paw = x + face * (side * 4 + reach * side);
+    line(ctx, hip, y - 5, paw, y - 1 - tuck, fur);
+    ell(ctx, paw, y - 1 - tuck, 1, 1, fur);
+    dot(ctx, paw + face, y - 1 - tuck, light);
+  }
+
+  const head = x + face * 5;
+  ell(ctx, head, y - 9, 4, 4, fur);
+  for (const side of [-1, 1]) {
+    rect(ctx, head + side * 3 - 1, y - 15, 2, 4, fur);
+    dot(ctx, head + side * 3, y - 14, '#a65b73');
+    rect(ctx, head + side * 2 - 1, y - 10, 2, t % 4.6 > 4.45 ? 1 : 2,
+      t % 4.6 > 4.45 ? light : eyes);
+  }
+  dot(ctx, head + face, y - 7, '#a65b73');
 }
 
 function drawRoomOccupants(t, dt) {
