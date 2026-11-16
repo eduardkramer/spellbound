@@ -323,33 +323,54 @@ function libraryFloor(a, b) {
 }
 
 function libraryShelf(start, end, ladderAt) {
-  return (u, z) => {
-    const bay = (u - start) % 34;
-    const row = Math.floor(z / 14), height = z % 14;
-    const ladder = u - ladderAt - Math.floor(z / 7);
-    if (z < 74 && ladder >= 0 && ladder <= 10) {
-      if (ladder <= 1 || ladder >= 9) return '#af7851';
-      if (z % 9 < 2) return '#96633e';
+  const width = end - start;
+  const dividers = width >= 56 ? [Math.floor(width / 2)] : [];
+  const isFrame = column => column < 3 || column >= width - 3 ||
+    dividers.some(divider => Math.abs(column - divider) <= 1);
+  const shelves = Array.from({ length: 6 }, (_, row) => {
+    const books = [];
+    for (let column = 3; column < width - 3;) {
+      if (isFrame(column)) { column++; continue; }
+      const seed = hash(start + column, row);
+      const size = 2 + Math.floor(seed * 4);
+      const height = 6 + Math.floor(hash(start + column, row + 13) * 6);
+      const color = bookCols[Math.floor(seed * bookCols.length)];
+      for (let spine = 0; spine < size && !isFrame(column); spine++, column++) {
+        books[column] = { color, height, spine, gilt: seed > .54 };
+      }
+      if (seed > .35) column++;
     }
-    if (u >= end - 3 || bay < 4 || z >= 84) return '#9b6849';
-    if (height < 2) return height === 1 ? '#ad7751' : '#603c2c';
-    const volume = Math.floor((bay - 4) / 4);
-    const seed = hash(u - (bay - 4) % 4, row);
-    if (height > 9 + Math.floor(seed * 4)) return '#37272b';
-    return sh(bookCols[(Math.floor(seed * 27) + volume) % bookCols.length], (bay - 4) % 4 === 0 ? 1.25 : .92);
+    return books;
+  });
+  return (u, z) => {
+    const column = u - start;
+    if (isFrame(column) || z >= 86 || z < 4) return (z === 86 || column === 1) ? '#865a40' : '#603e31';
+    const row = Math.floor((z - 4) / 14), height = (z - 4) % 14;
+    const ladder = ladderAt === null ? -1 : u - ladderAt - Math.floor(z / 7);
+    if (z < 74 && ladder >= 0 && ladder <= 10) {
+      if (ladder <= 1 || ladder >= 9) return '#966643';
+      if (z % 9 < 2) return '#825536';
+    }
+    if (height < 2) return height === 1 ? '#80553d' : '#4c3128';
+    const book = shelves[row]?.[column];
+    const page = height - 2;
+    if (!book || page >= book.height) return '#292025';
+    if (page === book.height - 1) return '#ad9671';
+    if (book.gilt && book.spine > 0 && (page === 1 || page === book.height - 3)) return '#b19a67';
+    return sh(book.color, book.spine === 0 ? 1.02 : .75);
   };
 }
 
 function drawLibraryShelves(g) {
-  const depth = 3.5, height = 87;
-  const timber = flat('#bb855d', '#825339', '#6b4434');
+  const depth = 3, height = 87;
+  const timber = flat('#916447', '#603d30', '#51332b');
   for (const [start, end] of [[4, 64], [66, 124]]) {
     box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
     wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
   }
   for (const [start, end] of [[8, 54], [90, 126]]) {
     box(g, start / 2, 0, 0, (end - start) / 2, depth, height, timber);
-    wallR(g, depth, start, end, 0, height, libraryShelf(start, end, 95));
+    wallR(g, depth, start, end, 0, height, libraryShelf(start, end, null));
   }
 }
 
