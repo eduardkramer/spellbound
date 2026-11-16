@@ -865,6 +865,9 @@ const moves = new Map([
 ]);
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
+const chairTile = [2, 2], chairApproach = [2, 1];
+let wantsSeat = false;
+let seatProgress = 0;
 let route = [];
 let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
@@ -880,6 +883,7 @@ addEventListener('keydown', event => {
       event.target.closest?.('input, textarea, select, [contenteditable]')) return;
   event.preventDefault();
   clearRoute();
+  wantsSeat = false;
   heldKeys.add(key);
 });
 addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
@@ -889,10 +893,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 let hoveredTile = null;
-function tileAtPointer(event) {
+function pointerPosition(event) {
   const bounds = cv.getBoundingClientRect();
   const x = (event.clientX - bounds.left) * W / bounds.width - CX;
   const y = (event.clientY - bounds.top) * H / bounds.height - CY;
+  return [x, y];
+}
+
+function tileAtPointer(event) {
+  const [x, y] = pointerPosition(event);
   // Keer P(a, b, 0) om om te bepalen boven welke vloertegel de muis staat.
   const a = Math.floor((y + x / 2) / (2 * TILE_SIZE));
   const b = Math.floor((y - x / 2) / (2 * TILE_SIZE));
@@ -903,12 +912,22 @@ cv.addEventListener('pointermove', event => {
   if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
 });
 cv.addEventListener('click', event => {
-  const tile = tileAtPointer(event);
+  const [px, py] = pointerPosition(event);
+  const [chairX, chairY] = P(20, 20, 0);
+  const chairHit = !inSecondRoom && Math.abs(px + CX - chairX) <= 13 &&
+    py + CY >= chairY - 25 && py + CY <= chairY + 3;
+  if (chairHit && wantsSeat) {
+    wantsSeat = false;
+    clearRoute();
+    return;
+  }
+  const tile = chairHit ? chairApproach : tileAtPointer(event);
   if (!tile || !isWalkable(...tile)) return;
   const start = wizard.step ?? wizard;
   const nextRoute = findRoute(start, ...tile);
   if (!nextRoute) return;
   heldKeys.clear();
+  wantsSeat = chairHit;
   route = nextRoute;
   destination = route.length ? tile : null;
 });
@@ -958,6 +977,16 @@ const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint.textContent;
 
 function updateWizard(dt) {
+  const atChair = !inSecondRoom && !wizard.step &&
+    wizard.a === chairApproach[0] && wizard.b === chairApproach[1];
+  if (atChair && wantsSeat) {
+    seatProgress = Math.min(1, seatProgress + dt / .4);
+    return;
+  }
+  if (seatProgress > 0) {
+    seatProgress = Math.max(0, seatProgress - dt / .3);
+    return;
+  }
   if (!wizard.step) {
     const key = Array.from(heldKeys).pop();
     const move = key ? moves.get(aliases[key] || key) : route.pop();
@@ -976,6 +1005,7 @@ function updateWizard(dt) {
         inSecondRoom = !inSecondRoom;
         wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
         wizard.direction = inSecondRoom ? 'sw' : 'ne';
+        wantsSeat = false;
         clearRoute();
         clearHover();
         heldKeys.clear();
@@ -1003,7 +1033,17 @@ function drawRoomOccupants(t, dt) {
   for (; index < furnishings.length && furnishings[index].depth <= a + b; index++) {
     drawFurnishing(furnishings[index], t, dt);
   }
-  WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  if (seatProgress > 0) {
+    const ease = seatProgress ** 2 * (3 - 2 * seatProgress);
+    const [sx, sy] = P((chairTile[0] + .5) * TILE_SIZE, (chairTile[1] + .5) * TILE_SIZE, 8);
+    const frame = WIZARD.canvas('ne', 'idle', t);
+    const height = Math.round(WIZARD.CH - 12 * ease);
+    ctx.drawImage(frame, Math.round(x + (sx - x) * ease) - WIZARD.FX,
+      Math.round(y + (sy - y) * ease - WIZARD.FY * height / WIZARD.CH) + 2,
+      WIZARD.CW, height);
+  } else {
+    WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  }
   for (; index < furnishings.length; index++) drawFurnishing(furnishings[index], t, dt);
 }
 
