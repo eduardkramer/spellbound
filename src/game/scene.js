@@ -1344,56 +1344,49 @@ function libraryCatLayer(t) {
   return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking, progress) };
 }
 
+const movingCatPixels = [
+  '..........o....o.',
+  '.........ofo..ofo',
+  '.........offooffo',
+  '........offfffffo',
+  '........offllllfo',
+  '........oflelelo',
+  '.o......oflelelo',
+  '.of.....offllnlo.',
+  '.of....offllllo..',
+  '.off..offffffo...',
+  '..offofffffffo...',
+  '...oofflllllfo...',
+  '.....offffffo....',
+  '......oooooo.....'
+];
+const movingCatColors = { o: '#161322', f: '#40354b', l: '#655570', e: '#79d8ff', n: '#be8490' };
+
 function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
-  const eyes = '#79d8ff';
   if (!walking && !jumping) {
-    drawRestingCat(t, x, y, eyes);
+    drawRestingCat(t, x, y, movingCatColors.e);
     return;
   }
-  const fur = CAT_FUR, light = CAT_LIGHT, dark = CAT_PAW;
-  const phase = t * 14;
-  const stretch = jumping ? Math.sin(Math.PI * progress) : 0;
-  const bob = walking && Math.cos(phase * 2) > .7 ? 1 : 0;
-  const bodyY = y - 5 - bob;
-  const tailLift = Math.round(Math.sin(t * 4));
-  const tail = [[-4, -1], [-7, -2], [-9, -5], [-9, -8 + tailLift], [-7, -9 + tailLift]];
-  for (let i = 1; i < tail.length; i++) {
-    const [ax, ay] = tail[i - 1], [bx, by] = tail[i];
-    line(ctx, x + face * ax, bodyY + ay, x + face * bx, bodyY + by, fur);
-    line(ctx, x + face * ax, bodyY + ay + 1, x + face * bx, bodyY + by + 1, fur);
+  const stride = Math.floor(t * 9) % 4;
+  const bob = walking ? stride % 2 : 0;
+  const tuck = jumping ? Math.round(2 * Math.sin(Math.PI * progress)) : 0;
+  const pixelAt = (column, row, color) => dot(ctx, x + face * (column - 8), y + row, color);
+  for (const [base, phase, near] of [[7, 2, false], [12, 0, false], [7, 0, true], [12, 2, true]]) {
+    const step = (stride + phase) % 4;
+    const offset = jumping ? (base < 10 ? -1 : 1) : [-1, 0, 1, 0][step];
+    const bottom = -tuck - (near ? 0 : 1) - (walking && step === 3 ? 1 : 0);
+    pixelAt(base, -3 - bob, movingCatColors.o);
+    pixelAt(base + offset, bottom - 1, movingCatColors.o);
+    pixelAt(base + offset, bottom, near ? movingCatColors.l : movingCatColors.o);
+    pixelAt(base + offset + 1, bottom, movingCatColors.o);
   }
-
-  function leg(side, near) {
-    const cycle = phase + (side === 1 ? Math.PI : 0) + (near ? 0 : Math.PI);
-    const hip = x + face * side * 4;
-    const reach = jumping ? Math.round(side * (2 - 3 * stretch)) : Math.round(Math.cos(cycle) * 2);
-    const lift = jumping ? Math.round(3 * stretch) : Math.round(Math.max(0, Math.sin(cycle)) * 2);
-    const paw = hip + face * reach;
-    const ankle = y - 1 - lift - (near ? 0 : 1);
-    const color = near ? fur : dark;
-    const knee = hip + face * (side < 0 ? 1 : 0);
-    line(ctx, hip, bodyY, knee, ankle - 2, color);
-    line(ctx, knee, ankle - 2, paw, ankle, color);
-    rect(ctx, paw + (face === 1 ? 0 : -1), ankle, 2, 1, near ? light : dark);
+  const blink = t % 4.6 > 4.45;
+  for (const [row, pixels] of movingCatPixels.entries()) {
+    for (const [column, pixel] of [...pixels].entries()) {
+      if (pixel === '.') continue;
+      pixelAt(column, row - 15 - bob, movingCatColors[blink && pixel === 'e' ? 'f' : pixel]);
+    }
   }
-  for (const side of [-1, 1]) leg(side, false);
-  ell(ctx, x - face, bodyY, jumping ? 7 : 6, 3, fur);
-  ell(ctx, x - face * 2, bodyY - 2, 3, 1, light);
-  for (const side of [-1, 1]) leg(side, true);
-
-  const head = x + face * 5, headY = bodyY - 3;
-  ell(ctx, head - face, headY + 2, 3, 3, fur);
-  ell(ctx, head, headY, 4, 3, fur);
-  // Losse oorpunten en een vooruitstekend snuitje houden het profiel herkenbaar.
-  for (const ear of [-2, 2]) {
-    dot(ctx, head + face * ear, headY - 6, fur);
-    rect(ctx, head + face * ear - 1, headY - 5, 3, 3, fur);
-    dot(ctx, head + face * ear, headY - 4, '#a65b73');
-  }
-  dot(ctx, head - face, headY, t % 4.6 > 4.45 ? light : '#4586ae');
-  rect(ctx, head + face * 2 - 1, headY - 1, 2, 2, t % 4.6 > 4.45 ? light : eyes);
-  rect(ctx, head + face * 4 - (face < 0 ? 1 : 0), headY + 1, 2, 1, light);
-  dot(ctx, head + face * 5, headY + 1, '#a65b73');
 }
 
 function drawRoomOccupants(t, dt) {
