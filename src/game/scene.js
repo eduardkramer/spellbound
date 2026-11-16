@@ -308,14 +308,100 @@ function drawPassage(g, rear) {
   });
 }
 
-/* ---------- statische kamer ---------- */
-function buildStatic(sg, empty = false) {
-  topFace(sg, 0, 0, N, 0, N, empty ? (a, b) => {
-    if (a % TILE_SIZE < .5 || b % TILE_SIZE < .5) return '#303b50';
-    return (Math.floor(a / TILE_SIZE) + Math.floor(b / TILE_SIZE)) % 2 ? '#4e5d70' : '#455468';
-  } : floorFn);
-  wallL(sg, 0, 0, 2 * N, 0, WH, empty ? brL : leftFn);
-  wallR(sg, 0, 0, 2 * N, 0, WH, empty ? brR : rightFn);
+/* ---------- bibliotheek ---------- */
+const libraryLayout = [
+  [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
+  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant']
+];
+const leftShelfRanges = [[4, 64], [66, 124]];
+const rightShelfRanges = [[8, 48], [98, 126]];
+
+function shadedLibraryFloor(a, b) {
+  const color = libraryFloor(a, b);
+  let shade = 1;
+  if ((a < 8 && leftShelfRanges.some(([start, end]) => b * 2 >= start && b * 2 < end)) ||
+      (b < 8 && rightShelfRanges.some(([start, end]) => a * 2 >= start && a * 2 < end))) {
+    shade = Math.min(shade, Math.min(a, b) < 5 ? .65 : .85);
+  }
+  for (const [column, row, type] of libraryLayout) {
+    const radius = type === 'desk' ? 5 : 3.4;
+    const da = (a - (column + .5) * TILE_SIZE - 1) / radius;
+    const db = (b - (row + .5) * TILE_SIZE - 1.5) / radius;
+    const distance = da * da + db * db;
+    if (distance < 1) shade = Math.min(shade, distance < .55 ? .62 : .8);
+  }
+  return shade === 1 ? color : sh(color, shade);
+}
+
+function libraryFloor(a, b) {
+  if (a >= 9 && a < 58 && b >= 15 && b < 58) {
+    const edge = Math.min(a - 9, 58 - a, b - 15, 58 - b);
+    if (edge < .8 || (edge > 1.8 && edge < 2.7)) return '#bea875';
+    if (edge < 4) return '#485b48';
+    const pattern = Math.abs(a - 33.5) + Math.abs(b - 36.5);
+    return Math.abs(pattern - 13) < .85 ? '#899474' : '#607451';
+  }
+  const plank = Math.floor(a / 5);
+  if (a % 5 < .5 || (b + plank * 6) % 16 < .5) return '#4c342b';
+  return hash(plank, Math.floor((b + plank * 6) / 16)) > .5 ? '#80583f' : '#744e39';
+}
+
+function libraryShelf(start, end, ladderAt) {
+  const width = end - start;
+  const dividers = width >= 56 ? [Math.floor(width / 2)] : [];
+  const isFrame = column => column < 3 || column >= width - 3 ||
+    dividers.some(divider => Math.abs(column - divider) <= 1);
+  const shelves = Array.from({ length: 6 }, (_, row) => {
+    const books = [];
+    for (let column = 3; column < width - 3;) {
+      if (isFrame(column)) { column++; continue; }
+      const seed = hash(start + column, row);
+      const size = 2 + Math.floor(seed * 4);
+      const height = 6 + Math.floor(hash(start + column, row + 13) * 6);
+      const color = bookCols[Math.floor(seed * bookCols.length)];
+      for (let spine = 0; spine < size && !isFrame(column); spine++, column++) {
+        books[column] = { color, height, spine, gilt: seed > .54 };
+      }
+      if (seed > .35) column++;
+    }
+    return books;
+  });
+  return (u, z) => {
+    const column = u - start;
+    if (isFrame(column) || z >= 86 || z < 4) return (z === 86 || column === 1) ? '#865a40' : '#603e31';
+    const row = Math.floor((z - 4) / 14), height = (z - 4) % 14;
+    const ladder = ladderAt === null ? -1 : u - ladderAt - Math.floor(z / 7);
+    if (z < 74 && ladder >= 0 && ladder <= 10) {
+      if (ladder <= 1 || ladder >= 9) return '#966643';
+      if (z % 9 < 2) return '#825536';
+    }
+    if (height < 2) return height === 1 ? '#80553d' : '#4c3128';
+    const book = shelves[row]?.[column];
+    const page = height - 2;
+    if (!book || page >= book.height) return '#292025';
+    if (page === book.height - 1) return '#ad9671';
+    if (book.gilt && book.spine > 0 && (page === 1 || page === book.height - 3)) return '#b19a67';
+    return sh(book.color, book.spine === 0 ? 1.02 : .75);
+  };
+}
+
+function drawLibraryShelves(g) {
+  const depth = 3, height = 87;
+  const timber = flat('#916447', '#603d30', '#51332b');
+  for (const [start, end] of leftShelfRanges) {
+    box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
+    wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
+  }
+  for (const [start, end] of rightShelfRanges) {
+    box(g, start / 2, 0, 0, (end - start) / 2, depth, height, timber);
+    wallR(g, depth, start, end, 0, height, libraryShelf(start, end, null));
+  }
+}
+
+function buildStatic(sg, library = false) {
+  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : floorFn);
+  wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
+  wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
   topFace(sg, WH, -T, N, -T, 0, copingFn);
   topFace(sg, WH, -T, 0, 0, N, copingFn);
   const mer = { top: copingFn, left: (u, z) => brOutL(u, z), right: (u, z) => brOutR(u, z) };
@@ -324,7 +410,8 @@ function buildStatic(sg, empty = false) {
   box(sg, N - 8, -T, WH, 8, T, 10, mer);
   wallR(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutL));
   wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
-  drawPassage(sg, empty);
+  if (library) drawLibraryShelves(sg);
+  drawPassage(sg, library);
 }
 
 /* ---------- meubels ---------- */
@@ -517,6 +604,86 @@ for (const [canvas, empty] of [[statC, false], [secondC, true]]) {
   outline(background, '#14183a');
 }
 buildFront();
+
+const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
+  const canvas = mk(), g = canvas.getContext('2d');
+  const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
+  const wood = woodC('#9b6345'), darkWood = woodC('#673f2c');
+  if (type === 'desk') {
+    for (const da of [-2.7, 2]) for (const db of [-2.7, 2]) {
+      box(g, a + da, b + db, 0, .8, .8, 13, darkWood);
+    }
+    box(g, a - 3.5, b - 3.5, 13, 7, 7, 2, wood);
+    const pages = flat('#f0ddb1', '#a78057', '#c2a67c');
+    box(g, a - 2.4, b - 1.5, 15, 2, 3.4, 1, pages);
+    box(g, a - .25, b - 1.5, 15, 2, 3.4, 1, pages);
+    const [x, y] = P(a + 2, b - 2, 15);
+    rect(g, x - 2, y - 4, 4, 4, '#608d88');
+    ell(g, x, y - 4, 2, 1, '#352930');
+  } else if (type === 'chair') {
+    for (const da of [-2, 1.4]) for (const db of [-2, 1.4]) {
+      box(g, a + da, b + db, 0, .65, .65, 6, darkWood);
+    }
+    box(g, a - 2.2, b - 2.2, 6, 4.4, 4.4, 1.4, wood);
+    box(g, a - 2.2, b + 1.5, 7, 4.4, .65, 8, wood);
+  } else {
+    box(g, a - 2, b - 2, 0, 4, 4, 5, flat('#986644', '#653f36', '#75473a'));
+    const [x, y] = P(a, b, 5);
+    ell(g, x, y - 6, 5, 6, '#2c493b');
+    ell(g, x - 3, y - 8, 3, 4, '#608353');
+    ell(g, x + 2, y - 5, 3, 4, '#446a49');
+  }
+  outline(g, '#241d27');
+  return { canvas, depth: a + b };
+}).sort((a, b) => a.depth - b.depth);
+
+function drawLibraryPortrait(t) {
+  const blink = t % 5.1 > 4.94;
+  const glance = Math.floor(t / 2.8) % 3 - 1;
+  wallR(ctx, 0, 56, 88, 50, 94, (u, z) => {
+    const x = u - 56, y = 93 - z;
+    const edge = Math.min(x, 31 - x, y, 43 - y);
+    if (edge === 0) return '#382538';
+    if (edge === 1 || edge === 3) return x < 16 ? '#f1cf83' : '#a97542';
+    if (edge === 2) return '#8a5939';
+
+    if (y >= 15 && y <= 17 && x >= 6 && x <= 25) return y === 15 ? '#80618c' : '#342843';
+    // Schouders, blonde lokken en het gezicht onder de hoed.
+    if (y >= 32 && Math.abs(x - 16) < (y - 29) * 1.2) {
+      if (y === 35 && Math.abs(x - 16) <= 1) return '#86ddf2';
+      return x < 16 ? '#744d82' : '#503658';
+    }
+    if (y >= 15 && y <= 35 && Math.abs(x - 16) <= (y > 31 ? 7 : 9)) {
+      const faceWidth = y < 20 ? 4 : y > 28 ? 4 : 6;
+      if (y >= 17 && y <= 30 && Math.abs(x - 16) <= faceWidth) {
+        if (y === 23 && (Math.abs(x - 12) <= 1 || Math.abs(x - 20) <= 1)) {
+          if (blink) return '#845966';
+          return x === 12 + glance || x === 20 + glance ? '#347ec5' : '#e8f6ff';
+        }
+        if (y === 28 && x >= 15 && x <= 17) return '#a95668';
+        return x > 18 ? '#cf9984' : '#f4bd9b';
+      }
+      return (x + Math.floor(y / 4)) % 4 === 0 ? '#fff0a6' : x < 16 ? '#d6a553' : '#b98446';
+    }
+    if (y >= 6 && y <= 16 && Math.abs(x - 15) <= Math.floor((y - 4) * .67)) {
+      return y >= 13 ? '#9d638d' : x < 15 ? '#624977' : '#443452';
+    }
+
+    if (hash(x, y) > .98) return '#8b748b';
+    return '#322b48';
+  });
+}
+
+function drawLibraryLights(t) {
+  for (const [a, b] of [[10, 10], [46, 16], [14, 48]]) {
+    const [x, y] = P(a, b, 72);
+    line(ctx, x, y - 37, x, y - 6, '#443139');
+    glow(x, y, 20, 19, '255,200,109', .1 + .015 * Math.sin(t * 1.4 + a));
+    ell(ctx, x, y, 6, 6, '#d7a866');
+    ell(ctx, x, y - 1, 4, 4, '#fff0bc');
+    rect(ctx, x - 2, y - 8, 4, 3, '#966540');
+  }
+}
 
 /* ---------- animaties ---------- */
 // hemel in het raam
@@ -855,9 +1022,10 @@ const towerFloor = [
   'X.......',
   '........'
 ];
-const emptyFloor = Array(ROOM_TILES).fill('.'.repeat(ROOM_TILES));
+const libraryFloorMap = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILES).fill('.'));
+for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
 let inSecondRoom = false;
-const currentFloor = () => inSecondRoom ? emptyFloor : towerFloor;
+const currentFloor = () => inSecondRoom ? libraryFloorMap : towerFloor;
 const wizard = { a: 4, b: 4, direction: 'se', step: null };
 const moves = new Map([
   ['arrowup', [0, -1, 'ne']], ['arrowright', [1, 0, 'se']],
@@ -980,7 +1148,7 @@ function updateWizard(dt) {
         clearHover();
         heldKeys.clear();
         movementHint.textContent = inSecondRoom
-          ? 'Tweede kamer · Loop naar de stenen boog om terug te gaan.'
+          ? 'Bibliotheek · Loop naar de stenen boog om terug te gaan.'
           : defaultHint;
       }
       wizard.step = null;
@@ -995,16 +1163,13 @@ function drawRoomOccupants(t, dt) {
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
-  if (inSecondRoom) {
-    WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
-    return;
-  }
+  const roomFurnishings = inSecondRoom ? libraryFurnishings : furnishings;
   let index = 0;
-  for (; index < furnishings.length && furnishings[index].depth <= a + b; index++) {
-    drawFurnishing(furnishings[index], t, dt);
+  for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
+    drawFurnishing(roomFurnishings[index], t, dt);
   }
   WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
-  for (; index < furnishings.length; index++) drawFurnishing(furnishings[index], t, dt);
+  for (; index < roomFurnishings.length; index++) drawFurnishing(roomFurnishings[index], t, dt);
 }
 
 function drawFurnishing({ canvas, animate }, t, dt) {
@@ -1022,6 +1187,8 @@ function frame(ms) {
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (inSecondRoom) {
+    drawLibraryPortrait(t);
+    drawLibraryLights(t);
     drawRoomOccupants(t, dt);
     requestAnimationFrame(frame);
     return;
