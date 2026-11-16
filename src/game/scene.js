@@ -180,14 +180,14 @@ function floorFn(a, b) {
   const offset = phase % length;
   const cross = (acrossA ? b : a) % width;
   const along = offset * width + (acrossA ? a : b) % width;
-  if (cross < .38 || along < .38) return '#503729';
+  if (cross < .38 || along < .38) return '#59402f';
 
   // Elke plank is vier vakjes lang. De twee richtingen grijpen trapsgewijs in elkaar.
   const startA = column - (acrossA ? offset : 0);
   const startB = row - (acrossA ? 0 : offset);
   const tone = .95 + hash(startA, startB) * .1;
   const edge = cross > width - .4 ? 1.035 : 1;
-  return sh('#614332', tone * edge);
+  return sh('#6c4d3a', tone * edge);
 };
 
 /* ---------- onderbouw met bogen ---------- */
