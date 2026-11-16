@@ -1560,9 +1560,9 @@ const dittoPixels = [
   '..oo.ohpppppppppo...',
   '.ohhoopppppppppppo..',
   '.ohppppppppppppppooo',
-  '.oppppppppppppppphpo',
-  '..oppppppppppppppppo',
-  '...oppppppppppppppo.',
+  '.opppppppppppppphpho',
+  '..opppppppppppppphpo',
+  '...opppppppppppppoo.',
   '...opppppppppppppo..',
   '..opppppppppppppso..',
   '..osppppppppppppsso.',
@@ -1592,9 +1592,9 @@ function drawLibraryDitto(t) {
   const faceX = x + Math.round(wobble * 9 / 14);
   dot(ctx, faceX - 3, top + 6, dittoColors.o);
   dot(ctx, faceX + 3, top + 6, dittoColors.o);
-  dot(ctx, faceX - 2, top + 8, dittoColors.o);
+  dot(ctx, faceX - 2, top + 9, '#79527e');
   rect(ctx, faceX - 1, top + 9, 3, 1, dittoColors.o);
-  dot(ctx, faceX + 2, top + 8, dittoColors.o);
+  dot(ctx, faceX + 2, top + 8, '#79527e');
 }
 
 function drawRoomOccupants(t, dt) {
