@@ -446,6 +446,14 @@ function buildFront() {
   box(g, 1, 49, 0, 6, 6, 3, flat('#777aa1', '#515579', '#616587'));
   box(g, 2, 50, 3, 4, 4, 11, flat('#9194ae', '#535776', '#686d91'));
   box(g, 1, 49, 14, 6, 6, 2, flat('#9194ae', '#535776', '#686d91'));
+  // Messing plakkaat met een gegraveerd diamantje.
+  box(g, 6, 50.3, 6, .5, 3.4, 5, flat('#e2bf78', '#8b6339', (u, z) => {
+    const column = u - 100;
+    if (z === 10 || column === 0) return '#e2bf78';
+    if (z === 6 || column === 6) return '#91663b';
+    if (Math.abs(column - 3) + Math.abs(z - 8) <= 1) return '#6b4b36';
+    return '#bd9257';
+  }));
   store(56, drawDiamond);
 
   // tafel
