@@ -322,18 +322,16 @@ function libraryFloor(a, b) {
   return hash(plank, Math.floor((b + plank * 6) / 16)) > .5 ? '#80583f' : '#744e39';
 }
 
-function libraryWall(masonry, ranges, ladderAt) {
+function libraryShelf(start, end, ladderAt) {
   return (u, z) => {
-    const range = ranges.find(([start, end]) => u >= start && u < end);
-    if (!range || z >= 87) return masonry(u, z);
-    const bay = (u - range[0]) % 34;
+    const bay = (u - start) % 34;
     const row = Math.floor(z / 14), height = z % 14;
     const ladder = u - ladderAt - Math.floor(z / 7);
     if (z < 74 && ladder >= 0 && ladder <= 10) {
       if (ladder <= 1 || ladder >= 9) return '#af7851';
       if (z % 9 < 2) return '#96633e';
     }
-    if (u >= range[1] - 3 || bay < 4 || z >= 84) return '#9b6849';
+    if (u >= end - 3 || bay < 4 || z >= 84) return '#9b6849';
     if (height < 2) return height === 1 ? '#ad7751' : '#603c2c';
     const volume = Math.floor((bay - 4) / 4);
     const seed = hash(u - (bay - 4) % 4, row);
@@ -342,10 +340,23 @@ function libraryWall(masonry, ranges, ladderAt) {
   };
 }
 
+function drawLibraryShelves(g) {
+  const depth = 3.5, height = 87;
+  const timber = flat('#bb855d', '#825339', '#6b4434');
+  for (const [start, end] of [[4, 64], [66, 124]]) {
+    box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
+    wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
+  }
+  for (const [start, end] of [[8, 54], [90, 126]]) {
+    box(g, start / 2, 0, 0, (end - start) / 2, depth, height, timber);
+    wallR(g, depth, start, end, 0, height, libraryShelf(start, end, 95));
+  }
+}
+
 function buildStatic(sg, library = false) {
   topFace(sg, 0, 0, N, 0, N, library ? libraryFloor : floorFn);
-  wallL(sg, 0, 0, 2 * N, 0, WH, library ? libraryWall(brL, [[2, 124]], 37) : leftFn);
-  wallR(sg, 0, 0, 2 * N, 0, WH, library ? libraryWall(brR, [[2, 54], [90, 126]], 95) : rightFn);
+  wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
+  wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
   topFace(sg, WH, -T, N, -T, 0, copingFn);
   topFace(sg, WH, -T, 0, 0, N, copingFn);
   const mer = { top: copingFn, left: (u, z) => brOutL(u, z), right: (u, z) => brOutR(u, z) };
@@ -354,6 +365,7 @@ function buildStatic(sg, library = false) {
   box(sg, N - 8, -T, WH, 8, T, 10, mer);
   wallR(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutL));
   wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
+  if (library) drawLibraryShelves(sg);
   drawPassage(sg, library);
 }
 
