@@ -1159,7 +1159,7 @@ cv.addEventListener('click', event => {
   const [px, py] = pointerPosition(event);
   if (inSecondRoom && librarianHit) {
     const [x, y] = librarianHit;
-    if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 33 && py + CY <= y) {
+    if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
       librarianDialogue.hidden = !librarianDialogue.hidden;
       clearRoute();
       requestedSeat = null;
@@ -1449,15 +1449,43 @@ function drawLibrarian(x, y, face, action, progress, watching) {
     rect(ctx, x - half + 1, y - 19 + row, half * 2 - 1, 1, robe);
     dot(ctx, x - 2, y - 19 + row, '#698875');
   }
-  rect(ctx, x - 4, y - 10, 9, 1, trim);
+  // Schoudermantel met donkere plooien en geborduurde randen.
+  for (let row = 0; row < 11; row++) {
+    const half = row < 3 ? 5 + row : 7;
+    const yy = y - 21 + row;
+    rect(ctx, x - half, yy, half * 2 + 1, 1, ink);
+    rect(ctx, x - half + 1, yy, half * 2 - 1, 1, '#39564d');
+    dot(ctx, x - half + 1, yy, trim);
+    dot(ctx, x + half - 1, yy, '#7d7155');
+    dot(ctx, x - 3 + Math.floor(row / 4), yy, '#60816d');
+  }
+  rect(ctx, x - 4, y - 8, 9, 1, '#334840');
+  rect(ctx, x - 2, y - 17, 5, 1, trim);
+  dot(ctx, x, y - 16, '#d2b878');
+  rect(ctx, x - 4, y - 5, 9, 1, '#998656');
+
   ell(ctx, x, head, 6, 6, ink);
   ell(ctx, x + face, head, 4, 5, '#d8aa89');
-  rect(ctx, x - 5, head - 7, 8, 4, '#a8a5a8');
-  dot(ctx, x - 4, head - 6, '#e7dfe2');
+  rect(ctx, x - 4 * face - 1, head - 3, 2, 7, '#b6adb6');
+  dot(ctx, x - 4 * face, head + 2, '#e7dfe2');
   const eye = x + 2 * face;
-  rect(ctx, eye - 1, head - 1, 3, 2, '#654f54');
-  dot(ctx, eye, head, '#c5e7e4');
-  dot(ctx, x + 4 * face, head + 2, '#9d695e');
+  rect(ctx, eye - 2, head - 1, 4, 3, '#66544b');
+  rect(ctx, eye - 1, head, 2, 1, '#c5e7e4');
+  dot(ctx, x + 5 * face, head + 1, '#d8aa89');
+  dot(ctx, x + 3 * face, head + 3, '#9d695e');
+
+  // Puntmuts met een omgeslagen punt en een koperen gesp.
+  for (let row = 0; row < 10; row++) {
+    const half = Math.floor(row / 2) + 1;
+    const tip = x - face * Math.max(0, 3 - Math.floor(row / 2));
+    rect(ctx, tip - half, head - 17 + row, half * 2 + 1, 1, ink);
+    if (row > 0) rect(ctx, tip - half + 1, head - 17 + row, half * 2 - 1, 1, '#466657');
+    if (row > 2) dot(ctx, tip - half + 1, head - 17 + row, '#71917a');
+  }
+  rect(ctx, x - 5, head - 8, 11, 2, '#867351');
+  dot(ctx, x + face * 3, head - 7, '#e3c581');
+  rect(ctx, x - 7, head - 6, 15, 2, ink);
+  rect(ctx, x - 6, head - 6, 13, 1, '#6b8a76');
 
   if (action === 'shelve' && !watching) {
     const raise = Math.min(1, progress * 1.8);
