@@ -890,11 +890,16 @@ function drawCat(t) {
   const progress = Math.max(0, (t % interval - CAT_REST) / CAT_JUMP);
   const position = from.map((coordinate, axis) => coordinate + (to[axis] - coordinate) * progress);
   position[2] += 15 * Math.sin(Math.PI * progress);
-  const [bx, by] = P(...position), k = CAT_FUR, k2 = CAT_LIGHT;
+  const [bx, by] = P(...position);
   if (progress > 0) {
     drawJumpingCat(bx, by, to[1] > from[1] ? -1 : 1, progress);
     return;
   }
+  drawRestingCat(t, bx, by, '#ffd23a');
+}
+
+function drawRestingCat(t, bx, by, eyes) {
+  const k = CAT_FUR, k2 = CAT_LIGHT;
   // staart
   for (let i = 0; i < 10; i++) { const x = bx + 5 + i * .8, y = by - 2 - Math.sin(i * .45 + t * 2.4) * (1 + i * .25); rect(ctx, x, y, 2, 2, k); }
   ell(ctx, bx, by - 5, 5, 5, k);
@@ -910,7 +915,7 @@ function drawCat(t) {
   dot(ctx, bx - 3, by - 17, '#a65b73'); dot(ctx, bx + 3, by - 17, '#a65b73');
   const blink = (t % 4.6) > 4.45;
   if (blink) { rect(ctx, bx - 3, by - 13, 2, 1, '#3a3a50'); rect(ctx, bx + 1, by - 13, 2, 1, '#3a3a50'); }
-  else { rect(ctx, bx - 3, by - 14, 2, 2, '#ffd23a'); rect(ctx, bx + 1, by - 14, 2, 2, '#ffd23a'); dot(ctx, bx - 2, by - 14, '#111'); dot(ctx, bx + 2, by - 14, '#111'); }
+  else { rect(ctx, bx - 3, by - 14, 2, 2, eyes); rect(ctx, bx + 1, by - 14, 2, 2, eyes); dot(ctx, bx - 2, by - 14, '#111'); dot(ctx, bx + 2, by - 14, '#111'); }
   dot(ctx, bx, by - 11, '#7a3a4a');
 }
 function drawDiamond(t) {
@@ -1310,13 +1315,89 @@ function drawDeskOrb(t) {
   dot(ctx, x - 1, y - 2, '#ffffff');
 }
 
+// Elk punt beschrijft de positie en de tijd tot het volgende punt.
+const libraryCatRoute = [
+  [12, 20, 0, 2.4], [20, 20, 0, .7], [20, 30, 15, 4.2],
+  [20, 30, 15, .7], [28, 28, 0, 1.7], [28, 40, 0, 2.8],
+  [28, 40, 0, 2.1], [44, 40, 0, 1.2], [52, 40, 0, 1.6],
+  [52, 28, 0, .7], [44, 30, 15, 3.8], [44, 30, 15, .7],
+  [44, 20, 0, 1.4], [34, 20, 0, 3]
+];
+const libraryCatCycle = libraryCatRoute.reduce((total, point) => total + point[3], 0);
+
+function libraryCatLayer(t) {
+  let elapsed = t % libraryCatCycle;
+  let index = 0;
+  while (index < libraryCatRoute.length - 1 && elapsed >= libraryCatRoute[index][3]) {
+    elapsed -= libraryCatRoute[index][3];
+    index++;
+  }
+  const [a, b, z, duration] = libraryCatRoute[index];
+  const [nextA, nextB, nextZ] = libraryCatRoute[(index + 1) % libraryCatRoute.length];
+  const progress = elapsed / duration;
+  const jumping = z !== nextZ;
+  const walking = !jumping && (a !== nextA || b !== nextB);
+  const ca = a + (nextA - a) * progress, cb = b + (nextB - b) * progress;
+  const lift = z + (nextZ - z) * progress + (jumping ? 9 * Math.sin(Math.PI * progress) : 0);
+  const [x, y] = P(ca, cb, lift);
+  const face = nextA - a >= nextB - b ? 1 : -1;
+  return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking, progress) };
+}
+
+const movingCatPixels = [
+  '..........o....o.',
+  '.........ofo..ofo',
+  '.........offooffo',
+  '........offfffffo',
+  '........offllllfo',
+  '........oflelelo',
+  '.o......oflelelo',
+  '.of.....offllnlo.',
+  '.of....offllllo..',
+  '.off..offffffo...',
+  '..offofffffffo...',
+  '...oofflllllfo...',
+  '.....offffffo....',
+  '......oooooo.....'
+];
+const movingCatColors = { o: '#161322', f: '#40354b', l: '#655570', e: '#79d8ff', n: '#be8490' };
+
+function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
+  if (!walking && !jumping) {
+    drawRestingCat(t, x, y, movingCatColors.e);
+    return;
+  }
+  const stride = Math.floor(t * 9) % 4;
+  const bob = walking ? stride % 2 : 0;
+  const tuck = jumping ? Math.round(2 * Math.sin(Math.PI * progress)) : 0;
+  const pixelAt = (column, row, color) => dot(ctx, x + face * (column - 8), y + row, color);
+  for (const [base, phase, near] of [[7, 2, false], [12, 0, false], [7, 0, true], [12, 2, true]]) {
+    const step = (stride + phase) % 4;
+    const offset = jumping ? (base < 10 ? -1 : 1) : [-1, 0, 1, 0][step];
+    const bottom = -tuck - (near ? 0 : 1) - (walking && step === 3 ? 1 : 0);
+    pixelAt(base, -3 - bob, movingCatColors.o);
+    pixelAt(base + offset, bottom - 1, movingCatColors.o);
+    pixelAt(base + offset, bottom, near ? movingCatColors.l : movingCatColors.o);
+    pixelAt(base + offset + 1, bottom, movingCatColors.o);
+  }
+  const blink = t % 4.6 > 4.45;
+  for (const [row, pixels] of movingCatPixels.entries()) {
+    for (const [column, pixel] of [...pixels].entries()) {
+      if (pixel === '.') continue;
+      pixelAt(column, row - 15 - bob, movingCatColors[blink && pixel === 'e' ? 'f' : pixel]);
+    }
+  }
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
-  const roomFurnishings = inSecondRoom ? libraryFurnishings : furnishings;
+  const roomFurnishings = inSecondRoom
+    ? [...libraryFurnishings, libraryCatLayer(t)].sort((left, right) => left.depth - right.depth)
+    : furnishings;
   let index = 0;
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
     drawFurnishing(roomFurnishings[index], t, dt);
@@ -1371,7 +1452,7 @@ function drawSeatedWizard(t, seat) {
 }
 
 function drawFurnishing({ canvas, animate }, t, dt) {
-  ctx.drawImage(canvas, 0, 0);
+  if (canvas) ctx.drawImage(canvas, 0, 0);
   if (animate) animate(t, dt);
 }
 
