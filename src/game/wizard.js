@@ -167,23 +167,7 @@ window.WIZARD = {
   canvas: (dir, st, t) => cache[dir][st][frameOf(st, t)],
   frame: (dir, st, f) => cache[dir][st][f],
   /* x, y = midden van de tile-ruit (TILESET.center) */
-  draw(ctx, dir, st, t, x, y) {
-    const frame = frameOf(st, t);
-    const left = Math.round(x) - FX, top = Math.round(y) - FY + 2;
-    const orbX = left + (dir[1] === 'w' ? CW - 1 - FX - 8 : FX + 8);
-    const orbY = top + FY - 39 - (st === 'walk' ? frame % 2 : 0);
-    const pulse = .5 + .5 * Math.sin(t * 4);
-    const radius = 8 + pulse * 2;
-    const light = ctx.createRadialGradient(orbX, orbY, 1, orbX, orbY, radius);
-    light.addColorStop(0, 'rgba(122, 255, 230, .6)');
-    light.addColorStop(.42, 'rgba(67, 220, 222, ' + (.2 + .14 * pulse) + ')');
-    light.addColorStop(1, 'rgba(67, 220, 222, 0)');
-    ctx.save();
-    ctx.fillStyle = light;
-    ctx.fillRect(orbX - radius, orbY - radius, radius * 2, radius * 2);
-    ctx.restore();
-    ctx.drawImage(cache[dir][st][frame], left, top);
-  },
+  draw(ctx, dir, st, t, x, y) { ctx.drawImage(cache[dir][st][frameOf(st, t)], Math.round(x) - FX, Math.round(y) - FY + 2); },
   /* spritesheet: per richting een rij: 2 idle-frames + 4 walk-frames */
   sheet() {
     const c = document.createElement('canvas'); c.width = 6 * CW; c.height = DIRS.length * CH;

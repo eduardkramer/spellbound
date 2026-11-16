@@ -309,6 +309,14 @@ function drawPassage(g, rear) {
 }
 
 /* ---------- bibliotheek ---------- */
+// Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
+const armchairSeat = { tile: [2, 2], approach: [2, 1], direction: 'ne', height: 7, hit: [13, 25] };
+const librarySeats = [
+  { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
+  { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
+  { tile: [4, 7], approach: [3, 7], direction: 'ne', height: 7, hit: [9, 16] }
+];
+
 const libraryLayout = [
   [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
   [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant']
@@ -484,6 +492,7 @@ function buildFront() {
   chairPart(.65, 5, 8, 5.7, 2, 13, back);
   chairPart(1.05, 5.15, 21, 4.9, 1.7, 2, cushion);
 
+  store(seatA + seatB + 7, t => drawSeatedWizard(t, armchairSeat));
   chairPart(5.3, .55, 8, 1.55, 5.7, 4, upholstery);
   chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
   store(seatA + seatB + 7);
@@ -634,7 +643,8 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
     ell(g, x + 2, y - 5, 3, 4, '#446a49');
   }
   outline(g, '#241d27');
-  return { canvas, depth: a + b };
+  const seat = librarySeats.find(({ tile }) => tile[0] === column && tile[1] === row);
+  return { canvas, depth: a + b, animate: seat ? t => drawSeatedWizard(t, seat) : null };
 }).sort((a, b) => a.depth - b.depth);
 
 function drawLibraryPortrait(t) {
@@ -1033,6 +1043,8 @@ const moves = new Map([
 ]);
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
+let requestedSeat = null, activeSeat = null;
+let seatProgress = 0;
 let route = [];
 let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
@@ -1048,6 +1060,7 @@ addEventListener('keydown', event => {
       event.target.closest?.('input, textarea, select, [contenteditable]')) return;
   event.preventDefault();
   clearRoute();
+  requestedSeat = null;
   heldKeys.add(key);
 });
 addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
@@ -1057,10 +1070,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 let hoveredTile = null;
-function tileAtPointer(event) {
+function pointerPosition(event) {
   const bounds = cv.getBoundingClientRect();
   const x = (event.clientX - bounds.left) * W / bounds.width - CX;
   const y = (event.clientY - bounds.top) * H / bounds.height - CY;
+  return [x, y];
+}
+
+function tileAtPointer(event) {
+  const [x, y] = pointerPosition(event);
   // Keer P(a, b, 0) om om te bepalen boven welke vloertegel de muis staat.
   const a = Math.floor((y + x / 2) / (2 * TILE_SIZE));
   const b = Math.floor((y - x / 2) / (2 * TILE_SIZE));
@@ -1071,12 +1089,24 @@ cv.addEventListener('pointermove', event => {
   if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
 });
 cv.addEventListener('click', event => {
-  const tile = tileAtPointer(event);
+  const [px, py] = pointerPosition(event);
+  const seats = inSecondRoom ? librarySeats : [armchairSeat];
+  const seat = seats.find(({ tile, hit }) => {
+    const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
+    return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
+  });
+  if (seat && seat === requestedSeat) {
+    requestedSeat = null;
+    clearRoute();
+    return;
+  }
+  const tile = seat ? seat.approach : tileAtPointer(event);
   if (!tile || !isWalkable(...tile)) return;
   const start = wizard.step ?? wizard;
   const nextRoute = findRoute(start, ...tile);
   if (!nextRoute) return;
   heldKeys.clear();
+  requestedSeat = seat ?? null;
   route = nextRoute;
   destination = route.length ? tile : null;
 });
@@ -1126,6 +1156,18 @@ const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint.textContent;
 
 function updateWizard(dt) {
+  if (seatProgress > 0 && activeSeat !== requestedSeat) {
+    seatProgress = Math.max(0, seatProgress - dt / .3);
+    if (!seatProgress) activeSeat = null;
+    return;
+  }
+  if (requestedSeat && !wizard.step &&
+      wizard.a === requestedSeat.approach[0] && wizard.b === requestedSeat.approach[1]) {
+    activeSeat = requestedSeat;
+    wizard.direction = activeSeat.direction;
+    seatProgress = Math.min(1, seatProgress + dt / .4);
+    return;
+  }
   if (!wizard.step) {
     const key = Array.from(heldKeys).pop();
     const move = key ? moves.get(aliases[key] || key) : route.pop();
@@ -1144,11 +1186,12 @@ function updateWizard(dt) {
         inSecondRoom = !inSecondRoom;
         wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
         wizard.direction = inSecondRoom ? 'sw' : 'ne';
+        requestedSeat = null;
         clearRoute();
         clearHover();
         heldKeys.clear();
         movementHint.textContent = inSecondRoom
-          ? 'Bibliotheek · Loop naar de stenen boog om terug te gaan.'
+          ? 'Bibliotheek · Klik op een stoel om te zitten of loop naar de boog om terug te gaan.'
           : defaultHint;
       }
       wizard.step = null;
@@ -1168,8 +1211,53 @@ function drawRoomOccupants(t, dt) {
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
     drawFurnishing(roomFurnishings[index], t, dt);
   }
-  WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  if (!seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
   for (; index < roomFurnishings.length; index++) drawFurnishing(roomFurnishings[index], t, dt);
+}
+
+function drawSeatedWizard(t, seat) {
+  if (seat !== activeSeat || !seatProgress) return;
+  const ease = seatProgress ** 2 * (3 - 2 * seatProgress);
+  const [x, y] = P((seat.approach[0] + .5) * TILE_SIZE, (seat.approach[1] + .5) * TILE_SIZE, 0);
+  const [sx, sy] = P((seat.tile[0] + .5) * TILE_SIZE, (seat.tile[1] + .5) * TILE_SIZE - 1, seat.height);
+  const px = Math.round(x + (sx - x) * ease);
+  const py = Math.round(y + (sy - y) * ease);
+  const frame = WIZARD.canvas(seat.direction, 'idle', t);
+  const head = 23;
+  const torso = Math.round(WIZARD.CH - head - 11 * ease);
+  const left = px - WIZARD.FX;
+  const top = py - head - torso + 5;
+  ctx.drawImage(frame, 0, 0, WIZARD.CW, head, left, top, WIZARD.CW, head);
+  if (seatProgress < .75) {
+    ctx.drawImage(frame, 0, head, WIZARD.CW, WIZARD.CH - head,
+      left, top + head, WIZARD.CW, torso);
+    return;
+  }
+
+  const mirror = seat.direction.endsWith('w');
+  ctx.save();
+  if (mirror) {
+    ctx.translate(px * 2, 0);
+    ctx.scale(-1, 1);
+  }
+  const collar = top + head;
+  // De cape volgt de schouders en vouwt over de gebogen benen.
+  const folds = [
+    [-5, 5], [-6, 6], [-6, 6], [-6, 6], [-5, 7], [-5, 8],
+    [-4, 9], [-3, 9], [-2, 8], [0, 7]
+  ];
+  for (const [row, [start, end]] of folds.entries()) {
+    const yy = collar + row;
+    rect(ctx, px + start, yy, end - start + 1, 1, '#30283e');
+    rect(ctx, px + start + 1, yy, end - start - 1, 1, '#554a66');
+    dot(ctx, px + start + 2, yy, '#80728f');
+    dot(ctx, px + Math.floor(row / 2), yy, '#3f354e');
+    if (row >= 6) dot(ctx, px + end - 1, yy, '#736381');
+  }
+  rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
+  dot(ctx, px + 8, collar + 9, '#49405c');
+  rect(ctx, px + 8, collar, 1, 9, '#a06a3a');
+  ctx.restore();
 }
 
 function drawFurnishing({ canvas, animate }, t, dt) {
