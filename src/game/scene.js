@@ -933,11 +933,15 @@ function drawChest(t, dt) {
   }
 
   // Het deksel draait om het scharnier langs de achterzijde van de kist.
-  const lid = (a, length, thickness = 0) => P(
-    47.5 + a,
-    .5 + length * Math.cos(angle) - thickness * Math.sin(angle),
-    8 + length * Math.sin(angle) + thickness * Math.cos(angle)
-  );
+  const lid = (a, length, thickness = 0) => {
+    // Schaal de vorm naar de buitenmaten van de bak (8 × 6).
+    const span = length * 6 / 7;
+    return P(
+      48 + a * 8 / 9,
+      1 + span * Math.cos(angle) - thickness * Math.sin(angle),
+      8 + span * Math.sin(angle) + thickness * Math.cos(angle)
+    );
+  };
   const face = (color, points) => {
     ctx.beginPath();
     ctx.moveTo(...points[0]);
