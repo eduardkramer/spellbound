@@ -497,6 +497,11 @@ function buildFront() {
   chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
   store(seatA + seatB + 7);
 
+  // Hoge zitstok voor de sneeuwuil.
+  box(g, 51, 0, 55, 10, 4.5, 3, woodD);
+  box(g, 55, 0, 50, 2, 2, 5, woodD);
+  store(0, drawOwl);
+
   // planken: rechter plank + drankjes
   box(g, 33, 0, 44, 7, 5.5, 2, wood); box(g, 34, 0, 40, 1.2, 3, 4, woodD); box(g, 38, 0, 40, 1.2, 3, 4, woodD);
   let [x, y] = P(35.5, 2.6, 46); flask(g, x, y, '#46d6e8');
@@ -1198,6 +1203,41 @@ function updateWizard(dt) {
       if (!route.length) destination = null;
     }
   }
+}
+
+function drawOwl(t) {
+  const [x, feet] = P(56, 2.5, 58);
+  const headX = x + Math.round(Math.sin(t * .72) * 1.5);
+  const headY = feet - 16 + Math.round(Math.sin(t * 1.7) * .55);
+  const outline = '#263248', feather = '#e8edf0', shade = '#9cb5c9';
+  ell(ctx, x - 3, feet - 3, 4, 2, outline);
+  ell(ctx, x, feet - 8, 6, 8, outline);
+  ell(ctx, x, feet - 8, 5, 7, shade);
+  ell(ctx, x + 1, feet - 9, 4, 6, feather);
+  ell(ctx, x - 2, feet - 8, 3, 5, '#c3d4df');
+  for (const [dx, dy] of [[-3,-7],[-2,-5],[-4,-9],[0,-8],[1,-5]]) {
+    dot(ctx, x + dx, feet + dy, '#8da6ba');
+  }
+  // Oorpluimen lopen schuin naar buiten en bewegen mee met de kop.
+  for (const side of [-1, 1]) {
+    const tip = headX + 6 * side;
+    line(ctx, tip, headY - 8, headX + 3 * side, headY - 3, outline);
+    line(ctx, tip - side, headY - 7, headX + 2 * side, headY - 3, feather);
+    dot(ctx, tip - side, headY - 6, shade);
+  }
+  ell(ctx, headX, headY, 6, 5, outline);
+  ell(ctx, headX, headY, 5, 4, feather);
+  const blink = t % 4.7 > 4.52;
+  for (const dx of [-2, 2]) {
+    if (blink) rect(ctx, headX + dx - 1, headY, 3, 1, '#46536a');
+    else {
+      rect(ctx, headX + dx - 1, headY - 1, 3, 3, '#e7b956');
+      dot(ctx, headX + dx, headY, '#11182a');
+    }
+  }
+  dot(ctx, headX, headY + 2, '#53657a');
+  rect(ctx, x - 4, feet - 1, 3, 1, '#b59256');
+  rect(ctx, x + 1, feet - 1, 3, 1, '#b59256');
 }
 
 function drawRoomOccupants(t, dt) {
