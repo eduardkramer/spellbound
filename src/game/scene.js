@@ -309,6 +309,30 @@ function drawPassage(g, rear) {
 }
 
 /* ---------- bibliotheek ---------- */
+const libraryLayout = [
+  [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
+  [4, 6, 'desk'], [4, 7, 'chair'], [0, 6, 'plant'], [7, 0, 'plant']
+];
+const leftShelfRanges = [[4, 64], [66, 124]];
+const rightShelfRanges = [[8, 48], [98, 126]];
+
+function shadedLibraryFloor(a, b) {
+  const color = libraryFloor(a, b);
+  let shade = 1;
+  if ((a < 8 && leftShelfRanges.some(([start, end]) => b * 2 >= start && b * 2 < end)) ||
+      (b < 8 && rightShelfRanges.some(([start, end]) => a * 2 >= start && a * 2 < end))) {
+    shade = Math.min(shade, Math.min(a, b) < 5 ? .65 : .85);
+  }
+  for (const [column, row, type] of libraryLayout) {
+    const radius = type === 'desk' ? 5 : 3.4;
+    const da = (a - (column + .5) * TILE_SIZE - 1) / radius;
+    const db = (b - (row + .5) * TILE_SIZE - 1.5) / radius;
+    const distance = da * da + db * db;
+    if (distance < 1) shade = Math.min(shade, distance < .55 ? .62 : .8);
+  }
+  return shade === 1 ? color : sh(color, shade);
+}
+
 function libraryFloor(a, b) {
   if (a >= 9 && a < 58 && b >= 15 && b < 58) {
     const edge = Math.min(a - 9, 58 - a, b - 15, 58 - b);
@@ -364,18 +388,18 @@ function libraryShelf(start, end, ladderAt) {
 function drawLibraryShelves(g) {
   const depth = 3, height = 87;
   const timber = flat('#916447', '#603d30', '#51332b');
-  for (const [start, end] of [[4, 64], [66, 124]]) {
+  for (const [start, end] of leftShelfRanges) {
     box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
     wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
   }
-  for (const [start, end] of [[8, 54], [90, 126]]) {
+  for (const [start, end] of rightShelfRanges) {
     box(g, start / 2, 0, 0, (end - start) / 2, depth, height, timber);
     wallR(g, depth, start, end, 0, height, libraryShelf(start, end, null));
   }
 }
 
 function buildStatic(sg, library = false) {
-  topFace(sg, 0, 0, N, 0, N, library ? libraryFloor : floorFn);
+  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : floorFn);
   wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
   wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
   topFace(sg, WH, -T, N, -T, 0, copingFn);
@@ -581,10 +605,6 @@ for (const [canvas, empty] of [[statC, false], [secondC, true]]) {
 }
 buildFront();
 
-const libraryLayout = [
-  [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
-  [4, 6, 'desk'], [4, 7, 'chair'], [0, 6, 'plant'], [7, 0, 'plant']
-];
 const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   const canvas = mk(), g = canvas.getContext('2d');
   const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
