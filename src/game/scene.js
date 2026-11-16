@@ -1553,6 +1553,40 @@ function drawLibrarianBook(x, y, face) {
   dot(ctx, spine + face * 2, y - 2, '#d2a96b');
 }
 
+const dittoPixels = [
+  '.....oo.........',
+  '....ohho..oo....',
+  '..oohppooohho...',
+  '.ohhoppophhppo..',
+  '.opppppppppppo..',
+  '.opppopppopppo.',
+  '..oppppoooppppo.',
+  '..ohppppppppppo.',
+  '.ohhhppppppppppo',
+  '.ophhhpppppppppo',
+  '.opphhpppppppppo',
+  '..opppppppppppo.',
+  '...oooppooppoo.',
+  '.....ooo..ooo...'
+];
+const dittoColors = { o: '#33243c', h: '#f0c9ec', p: '#ce97d9' };
+const libraryDitto = { depth: 107, animate: drawLibraryDitto };
+
+function drawLibraryDitto(t) {
+  const [x, y] = P(58, 49, 0);
+  const jump = Math.min(1, Math.max(0, (t % 6.4 - 5.65) / .6));
+  const lift = Math.sin(Math.PI * jump);
+  const wobble = Math.sin(t * 3.2);
+  ell(ctx, x, y, Math.round(6 - lift * 2), 2, '#3e4738');
+  for (const [row, pixels] of dittoPixels.entries()) {
+    const sway = Math.round(wobble * (13 - row) / 11);
+    for (let column = 0; column < pixels.length; column++) {
+      const color = dittoColors[pixels[column]];
+      if (color) dot(ctx, x - 8 + column + sway, y - 14 + row - Math.round(5 * lift), color);
+    }
+  }
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
@@ -1560,7 +1594,7 @@ function drawRoomOccupants(t, dt) {
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
   const roomFurnishings = inSecondRoom
-    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer()].sort((left, right) => left.depth - right.depth)
+    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
     : furnishings;
   let index = 0;
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
