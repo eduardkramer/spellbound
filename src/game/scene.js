@@ -954,11 +954,15 @@ function drawChest(t, dt) {
   }
 
   // Het deksel draait om het scharnier langs de achterzijde van de kist.
-  const lid = (a, length, thickness = 0) => P(
-    47.5 + a,
-    .5 + length * Math.cos(angle) - thickness * Math.sin(angle),
-    8 + length * Math.sin(angle) + thickness * Math.cos(angle)
-  );
+  const lid = (a, length, thickness = 0) => {
+    // Schaal de vorm naar de buitenmaten van de bak (8 × 6).
+    const span = length * 6 / 7;
+    return P(
+      48 + a * 8 / 9,
+      1 + span * Math.cos(angle) - thickness * Math.sin(angle),
+      8 + span * Math.sin(angle) + thickness * Math.cos(angle)
+    );
+  };
   const face = (color, points) => {
     ctx.beginPath();
     ctx.moveTo(...points[0]);
@@ -971,7 +975,7 @@ function drawChest(t, dt) {
     face(color, [lid(left, start), lid(right, start), lid(right, end), lid(left, end)]);
 
   const rim = [0, 1, 2.25, 3.5, 4.75, 6, 7];
-  const arch = [1, 3.2, 4.6, 5.2, 4.6, 3.2, 1];
+  const arch = [1, 3.6, 5.2, 5.9, 5.2, 3.6, 1];
   const boards = [.88, 1.03, 1.24, 1.16, 1.02, .87].map(light => sh('#5a3320', light));
   const brass = ['#8c653a', '#b7864a', '#e4be76', '#d6a65f', '#ad7941', '#8b6037'];
   const curvedStrip = (color, left, right, i) => face(color, [
