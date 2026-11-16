@@ -321,7 +321,6 @@ const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
 const TABLE_A = 48, TABLE_B = 44;
 const CHEST_TILE = [6, 0];
-const CHEST_WOOD = woodC('#7a4a2a');
 let chestOpening = 0;
 
 function buildFront() {
@@ -654,25 +653,23 @@ function drawChest(t, dt) {
   const [a, b] = CHEST_TILE;
   const nearby = Math.abs(wizard.a - a) + Math.abs(wizard.b - b) === 1;
   chestOpening = Math.max(0, Math.min(1, chestOpening + (nearby ? dt : -dt) * 2.2));
-  if (!chestOpening) {
-    box(ctx, 47.5, .5, 8, 9, 7, 2, CHEST_WOOD);
-    return;
-  }
-
   const opening = chestOpening * chestOpening * (3 - 2 * chestOpening);
   const angle = opening * 1.7;
   const [x, y] = P(52, 4, 8);
-  const glow = ctx.createRadialGradient(x, y - 6, 1, x, y - 6, 44);
-  glow.addColorStop(0, 'rgba(255, 235, 169, ' + .65 * opening + ')');
-  glow.addColorStop(.4, 'rgba(255, 192, 75, ' + .3 * opening + ')');
-  glow.addColorStop(1, 'rgba(255, 192, 75, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(x - 44, y - 50, 88, 88);
+  if (opening) {
+    const glow = ctx.createRadialGradient(x, y - 6, 1, x, y - 6, 44);
+    glow.addColorStop(0, 'rgba(255, 235, 169, ' + .65 * opening + ')');
+    glow.addColorStop(.4, 'rgba(255, 192, 75, ' + .3 * opening + ')');
+    glow.addColorStop(1, 'rgba(255, 192, 75, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - 44, y - 50, 88, 88);
 
-  topFace(ctx, 8, 48, 56, 1, 7, (a, b) => {
-    if (a < 48.5 || a > 55.5 || b < 1.5 || b > 6.5) return '#e1a750';
-    return opening > .4 ? '#fff4bd' : '#d8983f';
-  });
+    topFace(ctx, 8, 48, 56, 1, 7, (a, b) => {
+      if (a < 48.5 || a > 55.5 || b < 1.5 || b > 6.5) return '#e1a750';
+      return opening > .4 ? '#fff4bd' : '#d8983f';
+    });
+
+  }
 
   // Het deksel draait om het scharnier langs de achterzijde van de kist.
   const lid = (a, length, thickness = 0) => P(
@@ -691,16 +688,41 @@ function drawChest(t, dt) {
   const panel = (color, left, right, start, end) =>
     face(color, [lid(left, start), lid(right, start), lid(right, end), lid(left, end)]);
 
-  face('#62422d', [lid(9, 0), lid(9, 7), lid(9, 7, 1.5), lid(9, 0, 1.5)]);
-  face('#ad7843', [lid(0, 7), lid(9, 7), lid(9, 7, 1.5), lid(0, 7, 1.5)]);
-  panel('#63412c', 0, 9, 0, 7);
-  panel('#b57841', .5, 8.5, .5, 3.3);
-  panel('#ce9251', .5, 8.5, 3.6, 6.5);
-  for (const strip of [1, 7]) {
-    panel('#8e673e', strip, strip + 1, 0, 7);
-    for (const end of [1, 6]) dot(ctx, ...lid(strip + .5, end), '#ffe3a0');
+  const rim = [0, 1, 2.25, 3.5, 4.75, 6, 7];
+  const arch = [1, 2.4, 3.4, 3.7, 3.4, 2.4, 1];
+  const boards = ['#744327', '#9d5d34', '#c3864c', '#b37441', '#995a32', '#804926'];
+  const brass = ['#8c653a', '#b7864a', '#e4be76', '#d6a65f', '#ad7941', '#8b6037'];
+  const curvedStrip = (color, left, right, i) => face(color, [
+    lid(left, rim[i], arch[i]), lid(right, rim[i], arch[i]),
+    lid(right, rim[i + 1], arch[i + 1]), lid(left, rim[i + 1], arch[i + 1])
+  ]);
+
+  if (angle < Math.atan(2)) {
+    for (let i = 0; i < boards.length; i++) {
+      curvedStrip(boards[i], 0, 9, i);
+      for (const band of [.65, 7.3]) curvedStrip(brass[i], band, band + 1, i);
+      if (i % 2 === 0) {
+        for (const band of [1.15, 7.8]) dot(ctx, ...lid(band, rim[i], arch[i]), '#ffe2a2');
+      }
+    }
+  } else {
+    face('#62422d', [lid(9, 0), lid(9, 7), lid(9, 7, 1.5), lid(9, 0, 1.5)]);
+    face('#ad7843', [lid(0, 7), lid(9, 7), lid(9, 7, 1.5), lid(0, 7, 1.5)]);
+    panel('#63412c', 0, 9, 0, 7);
+    panel('#b57841', .5, 8.5, .5, 3.3);
+    panel('#ce9251', .5, 8.5, 3.6, 6.5);
+    for (const strip of [1, 7]) {
+      panel('#8e673e', strip, strip + 1, 0, 7);
+      for (const end of [1, 6]) dot(ctx, ...lid(strip + .5, end), '#ffe3a0');
+    }
+    line(ctx, ...lid(0, 7, 1.5), ...lid(9, 7, 1.5), '#e3ae68');
+
   }
-  line(ctx, ...lid(0, 7, 1.5), ...lid(9, 7, 1.5), '#e3ae68');
+  face('#684529', [lid(9, 0), ...rim.map((length, i) => lid(9, length, arch[i])), lid(9, 7)]);
+  for (let i = 0; i < boards.length; i++) {
+    line(ctx, ...lid(9, rim[i], arch[i]), ...lid(9, rim[i + 1], arch[i + 1]), '#9e6a3d');
+  }
+  if (!opening) return;
 
   for (let i = 0; i < 40; i++) {
     const age = (t * (.46 + hash(i, 9) * .3) + hash(i, 3)) % 1;
