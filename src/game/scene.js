@@ -163,22 +163,22 @@ const copingFn = (a, b) => {
 /* ---------- vloer ---------- */
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
-  [21.5, 4.5, 12, 4], [20.5, 21, 5.5, 5.5],
-  [49, 45.5, 6, 6], [53, 5, 5.5, 4.5],
-  [5, 53, 4.8, 4.8], [37, 6, 3.7, 3.5],
-  [7.7, 34, 3.8, 3.8], [14.5, 36, 3.8, 3.3]
+  [21.5, 4.5, 11.5, 3.4], [21, 21.5, 4.8, 4.8],
+  [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
+  [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
+  [8, 34.5, 3.4, 3.4], [15, 37, 3.4, 3.2]
 ];
 
+function contactShade(a, b, centerA, centerB, radiusA, radiusB) {
+  const distance = ((a - centerA) / radiusA) ** 2 + ((b - centerB) / radiusB) ** 2;
+  return distance < .55 ? .62 : distance < 1 ? .8 : 1;
+}
+
 function shadedTowerFloor(a, b) {
-  let distance = 1;
-  for (const [centerA, centerB, radiusA, radiusB] of towerShadows) {
-    distance = Math.min(distance, ((a - centerA) / radiusA) ** 2 + ((b - centerB) / radiusB) ** 2);
-  }
+  let shade = 1;
+  for (const shadow of towerShadows) shade = Math.min(shade, contactShade(a, b, ...shadow));
   const color = floorFn(a, b);
-  if (distance < .37) return sh(color, .63);
-  if (distance < .68) return sh(color, .76);
-  if (distance < 1) return sh(color, .89);
-  return color;
+  return shade < 1 ? sh(color, shade) : color;
 }
 
 function floorFn(a, b) {
@@ -363,10 +363,9 @@ function shadedLibraryFloor(a, b) {
   }
   for (const [column, row, type] of libraryLayout) {
     const radius = type === 'desk' ? 5 : 3.4;
-    const da = (a - (column + .5) * TILE_SIZE - 1) / radius;
-    const db = (b - (row + .5) * TILE_SIZE - 1.5) / radius;
-    const distance = da * da + db * db;
-    if (distance < 1) shade = Math.min(shade, distance < .55 ? .62 : .8);
+    const centerA = (column + .5) * TILE_SIZE + 1;
+    const centerB = (row + .5) * TILE_SIZE + 1.5;
+    shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
   }
   return shade === 1 ? color : sh(color, shade);
 }
