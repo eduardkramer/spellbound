@@ -16,6 +16,12 @@
   #zoom{display:flex;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
+  #portrait-bubble{position:fixed;z-index:2;pointer-events:none;transform:translate(-50%,-100%);
+    background:#2b172d;color:#fff5dc;border:2px solid #d5aa64;border-radius:4px;
+    box-shadow:0 3px 8px #100b1b;white-space:nowrap;padding:7px 12px;
+    font:700 16px/1.2 ui-monospace,Menlo,Consolas,monospace}
+  #portrait-bubble::after{content:"";position:absolute;left:calc(50% - 5px);bottom:-7px;
+    width:8px;height:8px;background:#2b172d;border:solid #d5aa64;border-width:0 2px 2px 0;transform:rotate(45deg)}
   #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
 
   /* ---- muziekspeler ---- */
@@ -90,6 +96,7 @@
     </div>
   </div>
 </div>
+<div id="portrait-bubble" role="tooltip" hidden>Maddam Aubert</div>
 <script src="src/audio/tracks.js"></script>
 <script src="src/game/wizard.js"></script>
 <script src="src/game/scene.js"></script>
