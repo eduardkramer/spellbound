@@ -165,7 +165,7 @@ const copingFn = (a, b) => {
 /* ---------- vloer ---------- */
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
-  [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 14.5, 4.7],
+  [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
   [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
   [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
   [8, 34.5, 3.4, 3.4], [15, 37, 3.4, 3.2]
@@ -531,18 +531,18 @@ function buildFront() {
   // Donker schrijfbureau met uitgesneden panelen.
   const deskWood = woodC('#64412d');
   const gilding = flat('#aa7f4c', '#7c5233', '#8e633d');
-  box(g, 14.5, 25, 0, 27, 6, 2, deskWood);
-  box(g, 14.5, 25, 2, 27, 6, 12, deskWood);
-  wallR(g, 31, 29, 83, 2, 14, (u, z) => {
-    const column = (u - 29) % 9;
-    if (column === 0 || u === 82 || z === 2 || z === 13) return '#987044';
+  box(g, 16.5, 25, 0, 23, 6, 2, deskWood);
+  box(g, 16.5, 25, 2, 23, 6, 12, deskWood);
+  wallR(g, 31, 33, 79, 2, 14, (u, z) => {
+    const column = (u - 33) % 9;
+    if (column === 0 || u === 78 || z === 2 || z === 13) return '#987044';
     const curve = Math.hypot(column - 4.5, Math.max(0, z - 8));
     if (curve < 2.15 && z > 4) return '#3c2924';
     if (curve < 3 && z > 3) return '#9c7147';
     return '#65432e';
   });
-  box(g, 14, 24.5, 13, 28, 7, 2.5, deskWood);
-  box(g, 14.25, 31, 14, 27.5, .4, 1, gilding);
+  box(g, 16, 24.5, 13, 24, 7, 2.5, deskWood);
+  box(g, 16.25, 31, 14, 23.5, .4, 1, gilding);
   const pages = flat('#dbc79d', '#8c6c4c', '#ad9064');
   box(g, 26, 27, 15.5, 2.25, 2.5, .8, pages);
   box(g, 28.35, 27, 15.5, 2.25, 2.5, .8, pages);
