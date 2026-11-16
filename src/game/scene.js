@@ -890,11 +890,16 @@ function drawCat(t) {
   const progress = Math.max(0, (t % interval - CAT_REST) / CAT_JUMP);
   const position = from.map((coordinate, axis) => coordinate + (to[axis] - coordinate) * progress);
   position[2] += 15 * Math.sin(Math.PI * progress);
-  const [bx, by] = P(...position), k = CAT_FUR, k2 = CAT_LIGHT;
+  const [bx, by] = P(...position);
   if (progress > 0) {
     drawJumpingCat(bx, by, to[1] > from[1] ? -1 : 1, progress);
     return;
   }
+  drawRestingCat(t, bx, by, '#ffd23a');
+}
+
+function drawRestingCat(t, bx, by, eyes) {
+  const k = CAT_FUR, k2 = CAT_LIGHT;
   // staart
   for (let i = 0; i < 10; i++) { const x = bx + 5 + i * .8, y = by - 2 - Math.sin(i * .45 + t * 2.4) * (1 + i * .25); rect(ctx, x, y, 2, 2, k); }
   ell(ctx, bx, by - 5, 5, 5, k);
@@ -910,7 +915,7 @@ function drawCat(t) {
   dot(ctx, bx - 3, by - 17, '#a65b73'); dot(ctx, bx + 3, by - 17, '#a65b73');
   const blink = (t % 4.6) > 4.45;
   if (blink) { rect(ctx, bx - 3, by - 13, 2, 1, '#3a3a50'); rect(ctx, bx + 1, by - 13, 2, 1, '#3a3a50'); }
-  else { rect(ctx, bx - 3, by - 14, 2, 2, '#ffd23a'); rect(ctx, bx + 1, by - 14, 2, 2, '#ffd23a'); dot(ctx, bx - 2, by - 14, '#111'); dot(ctx, bx + 2, by - 14, '#111'); }
+  else { rect(ctx, bx - 3, by - 14, 2, 2, eyes); rect(ctx, bx + 1, by - 14, 2, 2, eyes); dot(ctx, bx - 2, by - 14, '#111'); dot(ctx, bx + 2, by - 14, '#111'); }
   dot(ctx, bx, by - 11, '#7a3a4a');
 }
 function drawDiamond(t) {
@@ -1340,10 +1345,15 @@ function libraryCatLayer(t) {
 }
 
 function drawLibraryCat(t, x, y, face, jumping, walking) {
-  const fur = '#53445a', light = '#877387', dark = '#2e263a';
+  const eyes = '#79d8ff';
+  if (!walking && !jumping) {
+    drawRestingCat(t, x, y, eyes);
+    return;
+  }
+  const fur = CAT_FUR, light = CAT_LIGHT, dark = CAT_PAW;
   const stride = walking ? Math.round(Math.sin(t * 16)) : 0;
-  for (let i = 0; i < 7; i++) {
-    dot(ctx, x - face * (4 + i), y - 4 - Math.round(i * .55 + Math.sin(t * 2 + i * .4)), dark);
+  for (let i = 0; i < 9; i++) {
+    rect(ctx, x - face * (4 + i), y - 3 - Math.round(i * .65 + Math.sin(t * 2 + i * .4)), 2, 2, fur);
   }
   ell(ctx, x, y - 4, jumping ? 7 : 5, 3, fur);
   ell(ctx, x - face, y - 5, 3, 1, light);
@@ -1351,12 +1361,17 @@ function drawLibraryCat(t, x, y, face, jumping, walking) {
   ell(ctx, x - face * (jumping ? 5 : 3), y - 1 - stride, 2, 1, dark);
   const head = x + face * 4;
   ell(ctx, head, y - 7, 4, 3, fur);
-  rect(ctx, head - 3, y - 12, 2, 4, fur);
-  rect(ctx, head + 1, y - 12, 2, 4, fur);
+  rect(ctx, head - 4, y - 13, 2, 4, fur);
+  rect(ctx, head - 3, y - 11, 3, 3, fur);
+  rect(ctx, head + 2, y - 13, 2, 4, fur);
+  rect(ctx, head + 1, y - 11, 3, 3, fur);
   dot(ctx, head - 2, y - 11, '#bb848a');
   dot(ctx, head + 1, y - 11, '#bb848a');
   const blink = t % 4.4 > 4.2;
-  for (const dx of [-2, 2]) dot(ctx, head + dx, y - 8, blink ? dark : '#79d8ff');
+  for (const dx of [-2, 2]) {
+    rect(ctx, head + dx, y - 8, 2, blink ? 1 : 2, blink ? light : eyes);
+    if (!blink) dot(ctx, head + dx + 1, y - 8, '#d5f4ff');
+  }
   dot(ctx, head + face, y - 6, '#d3a2a2');
 }
 
