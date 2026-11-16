@@ -311,7 +311,7 @@ function drawPassage(g, rear) {
 /* ---------- bibliotheek ---------- */
 const libraryLayout = [
   [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
-  [4, 6, 'desk'], [4, 7, 'chair'], [0, 6, 'plant'], [7, 0, 'plant']
+  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant']
 ];
 const leftShelfRanges = [[4, 64], [66, 124]];
 const rightShelfRanges = [[8, 48], [98, 126]];
