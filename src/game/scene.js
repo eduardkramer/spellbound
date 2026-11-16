@@ -168,7 +168,7 @@ const towerShadows = [
   [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
   [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
   [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
-  [8, 34.5, 3.4, 3.4], [15, 37, 3.4, 3.2]
+  [8, 34.5, 3.4, 3.4]
 ];
 
 function contactShade(a, b, centerA, centerB, radiusA, radiusB) {
@@ -552,6 +552,7 @@ function buildFront() {
   box(g, 25.6, 29.5, 15.5, 1.4, 1.4, 1.5, flat('#555279', '#2c2949', '#3e3a5b'));
   box(g, 31.2, 26, 15.5, 1.6, 1.6, 3, gilding);
   box(g, 30.9, 25.7, 18, 2.2, 2.2, 1, gilding);
+  box(g, 35.5, 27, 15.5, 4, 3, 1.5, flat('#2f7a3a', '#e8dcb0', '#17481f'));
   store(56, drawDeskOrb);
 
   // Hoge zitstok voor de sneeuwuil.
@@ -612,11 +613,6 @@ function buildFront() {
   store(41.5, t => {
     if ((t % 7) > 6.4) rect(ctx, KN[0] - 3, KN[1] - 33, 6, 1, '#ff3a3a');
   });
-
-  // groen boek op de grond
-  box(g, 11, 33, 0, 6, 5, 3, flat('#2f7a3a', '#e8dcb0', '#17481f'));
-
-  store(47);
 
   // Voorraadkist langs de rechterwand
   box(g, 48, 1, 0, 8, 6, 8, woodD);
@@ -1093,7 +1089,7 @@ const towerFloor = [
   '........',
   '...X....',
   '..XXX...',
-  'XX......',
+  'X.......',
   '.....XX.',
   'X.......',
   '........'
