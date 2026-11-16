@@ -675,17 +675,32 @@ function drawChest(t, dt) {
   });
 
   // Het deksel draait om het scharnier langs de achterzijde van de kist.
-  const hinge = .5, lidB = hinge + 7 * Math.cos(angle), lidZ = 8 + 7 * Math.sin(angle);
-  const corners = [P(47.5, hinge, 8), P(56.5, hinge, 8), P(56.5, lidB, lidZ), P(47.5, lidB, lidZ)];
-  ctx.beginPath();
-  ctx.moveTo(...corners[0]);
-  for (const corner of corners.slice(1)) ctx.lineTo(...corner);
-  ctx.closePath();
-  ctx.fillStyle = sh('#a36532', .8 + opening * .6);
-  ctx.fill();
-  for (let i = 0; i < corners.length; i++) {
-    line(ctx, ...corners[i], ...corners[(i + 1) % corners.length], i === 2 ? '#f3bf72' : '#563221');
+  const lid = (a, length, thickness = 0) => P(
+    47.5 + a,
+    .5 + length * Math.cos(angle) - thickness * Math.sin(angle),
+    8 + length * Math.sin(angle) + thickness * Math.cos(angle)
+  );
+  const face = (color, points) => {
+    ctx.beginPath();
+    ctx.moveTo(...points[0]);
+    for (const point of points.slice(1)) ctx.lineTo(...point);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  const panel = (color, left, right, start, end) =>
+    face(color, [lid(left, start), lid(right, start), lid(right, end), lid(left, end)]);
+
+  face('#62422d', [lid(9, 0), lid(9, 7), lid(9, 7, 1.5), lid(9, 0, 1.5)]);
+  face('#ad7843', [lid(0, 7), lid(9, 7), lid(9, 7, 1.5), lid(0, 7, 1.5)]);
+  panel('#63412c', 0, 9, 0, 7);
+  panel('#b57841', .5, 8.5, .5, 3.3);
+  panel('#ce9251', .5, 8.5, 3.6, 6.5);
+  for (const strip of [1, 7]) {
+    panel('#8e673e', strip, strip + 1, 0, 7);
+    for (const end of [1, 6]) dot(ctx, ...lid(strip + .5, end), '#ffe3a0');
   }
+  line(ctx, ...lid(0, 7, 1.5), ...lid(9, 7, 1.5), '#e3ae68');
 
   for (let i = 0; i < 40; i++) {
     const age = (t * (.46 + hash(i, 9) * .3) + hash(i, 3)) % 1;
