@@ -1,6 +1,3 @@
-Klikroute en zoom, kist opent bij naburige tegel, geeft goudlicht en sluit na vertrek.
-Heen en terug via de boog en vrij bewegen op de lege vloer gecontroleerd.
-Tovenaar loopt naar de fauteuil, blijft zitten en staat op bij een nieuwe bestemming.
 /* De Toren van de Tovenaar — proof of concept
  * Isometrische pixel-kamer, volledig procedureel getekend op een canvas.
  * Coördinaten: (a, b, z)  a = naar rechtsonder, b = naar linksonder, z = omhoog.
