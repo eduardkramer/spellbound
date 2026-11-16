@@ -1351,42 +1351,49 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
     return;
   }
   const fur = CAT_FUR, light = CAT_LIGHT, dark = CAT_PAW;
-  const gait = Math.round(2 * Math.sin(t * 16));
-  const reach = jumping ? Math.round(3 * progress) : gait;
-  const tuck = jumping ? Math.round(3 * Math.sin(Math.PI * progress)) : 0;
+  const phase = t * 14;
+  const stretch = jumping ? Math.sin(Math.PI * progress) : 0;
+  const bob = walking && Math.cos(phase * 2) > .7 ? 1 : 0;
+  const bodyY = y - 5 - bob;
   const tailLift = Math.round(Math.sin(t * 4));
-  const points = [[-4, -5], [-8, -5], [-11, -8], [-11, -11 + tailLift], [-9, -13 + tailLift]];
-  for (let i = 1; i < points.length; i++) {
-    const [ax, ay] = points[i - 1], [bx, by] = points[i];
-    line(ctx, x + face * ax, y + ay, x + face * bx, y + by, fur);
-    line(ctx, x + face * ax, y + ay + 1, x + face * bx, y + by + 1, fur);
+  const tail = [[-4, -1], [-7, -2], [-9, -5], [-9, -8 + tailLift], [-7, -9 + tailLift]];
+  for (let i = 1; i < tail.length; i++) {
+    const [ax, ay] = tail[i - 1], [bx, by] = tail[i];
+    line(ctx, x + face * ax, bodyY + ay, x + face * bx, bodyY + by, fur);
+    line(ctx, x + face * ax, bodyY + ay + 1, x + face * bx, bodyY + by + 1, fur);
   }
 
-  for (const side of [-1, 1]) {
+  function leg(side, near) {
+    const cycle = phase + (side === 1 ? Math.PI : 0) + (near ? 0 : Math.PI);
     const hip = x + face * side * 4;
-    const far = x + face * (side * 4 - reach * side);
-    line(ctx, hip, y - 5, far, y - 2 - tuck, dark);
-    ell(ctx, far, y - 2 - tuck, 1, 1, dark);
+    const reach = jumping ? Math.round(side * (2 - 3 * stretch)) : Math.round(Math.cos(cycle) * 2);
+    const lift = jumping ? Math.round(3 * stretch) : Math.round(Math.max(0, Math.sin(cycle)) * 2);
+    const paw = hip + face * reach;
+    const ankle = y - 1 - lift - (near ? 0 : 1);
+    const color = near ? fur : dark;
+    const knee = hip + face * (side < 0 ? 1 : 0);
+    line(ctx, hip, bodyY, knee, ankle - 2, color);
+    line(ctx, knee, ankle - 2, paw, ankle, color);
+    rect(ctx, paw + (face === 1 ? 0 : -1), ankle, 2, 1, near ? light : dark);
   }
-  ell(ctx, x, y - 6, jumping ? 7 : 6, 3, fur);
-  ell(ctx, x - face * 2, y - 7, 3, 1, light);
-  for (const side of [-1, 1]) {
-    const hip = x + face * side * 4;
-    const paw = x + face * (side * 4 + reach * side);
-    line(ctx, hip, y - 5, paw, y - 1 - tuck, fur);
-    ell(ctx, paw, y - 1 - tuck, 1, 1, fur);
-    dot(ctx, paw + face, y - 1 - tuck, light);
-  }
+  for (const side of [-1, 1]) leg(side, false);
+  ell(ctx, x - face, bodyY, jumping ? 7 : 6, 3, fur);
+  ell(ctx, x - face * 2, bodyY - 2, 3, 1, light);
+  for (const side of [-1, 1]) leg(side, true);
 
-  const head = x + face * 5;
-  ell(ctx, head, y - 9, 4, 4, fur);
-  for (const side of [-1, 1]) {
-    rect(ctx, head + side * 3 - 1, y - 15, 2, 4, fur);
-    dot(ctx, head + side * 3, y - 14, '#a65b73');
-    rect(ctx, head + side * 2 - 1, y - 10, 2, t % 4.6 > 4.45 ? 1 : 2,
-      t % 4.6 > 4.45 ? light : eyes);
+  const head = x + face * 5, headY = bodyY - 3;
+  ell(ctx, head - face, headY + 2, 3, 3, fur);
+  ell(ctx, head, headY, 4, 3, fur);
+  // Losse oorpunten en een vooruitstekend snuitje houden het profiel herkenbaar.
+  for (const ear of [-2, 2]) {
+    dot(ctx, head + face * ear, headY - 6, fur);
+    rect(ctx, head + face * ear - 1, headY - 5, 3, 3, fur);
+    dot(ctx, head + face * ear, headY - 4, '#a65b73');
   }
-  dot(ctx, head + face, y - 7, '#a65b73');
+  dot(ctx, head - face, headY, t % 4.6 > 4.45 ? light : '#4586ae');
+  rect(ctx, head + face * 2 - 1, headY - 1, 2, 2, t % 4.6 > 4.45 ? light : eyes);
+  rect(ctx, head + face * 4 - (face < 0 ? 1 : 0), headY + 1, 2, 1, light);
+  dot(ctx, head + face * 5, headY + 1, '#a65b73');
 }
 
 function drawRoomOccupants(t, dt) {
