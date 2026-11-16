@@ -1474,18 +1474,28 @@ function drawLibrarian(x, y, face, action, progress, watching) {
   dot(ctx, x + 5 * face, head + 1, '#d8aa89');
   dot(ctx, x + 3 * face, head + 3, '#9d695e');
 
-  // Puntmuts met een omgeslagen punt en een koperen gesp.
-  for (let row = 0; row < 10; row++) {
-    const half = Math.floor(row / 2) + 1;
+  // De rand loopt over de haarlijn; de kroon sluit direct op de rand aan.
+  const brim = head - 4;
+  for (let row = 0; row < 11; row++) {
+    const half = Math.min(5, Math.floor(row / 2) + 1);
     const tip = x - face * Math.max(0, 3 - Math.floor(row / 2));
-    rect(ctx, tip - half, head - 17 + row, half * 2 + 1, 1, ink);
-    if (row > 0) rect(ctx, tip - half + 1, head - 17 + row, half * 2 - 1, 1, '#466657');
-    if (row > 2) dot(ctx, tip - half + 1, head - 17 + row, '#71917a');
+    const yy = brim - 11 + row;
+    rect(ctx, tip - half, yy, half * 2 + 1, 1, ink);
+    if (row > 0) rect(ctx, tip - half + 1, yy, half * 2 - 1, 1, '#466657');
+    if (row > 2) dot(ctx, tip - half + 1, yy, '#71917a');
+    if (row > 5) dot(ctx, tip + half - 1, yy, '#30463e');
   }
-  rect(ctx, x - 5, head - 8, 11, 2, '#867351');
-  dot(ctx, x + face * 3, head - 7, '#e3c581');
-  rect(ctx, x - 7, head - 6, 15, 2, ink);
-  rect(ctx, x - 6, head - 6, 13, 1, '#6b8a76');
+  rect(ctx, x - 5, brim - 2, 11, 2, '#887451');
+  rect(ctx, x + face * 3 - 1, brim - 2, 3, 2, '#d9b46c');
+  dot(ctx, x + face * 3, brim - 1, '#65513d');
+  rect(ctx, x - 7, brim, 15, 2, ink);
+  rect(ctx, x - 6, brim, 13, 1, '#6b8a76');
+  rect(ctx, x - 4, brim + 2, 9, 1, '#987767');
+
+  // Sluiting en goudsteken langs de zoom.
+  dot(ctx, x, y - 17, '#f0d59b');
+  dot(ctx, x + 1, y - 16, '#806249');
+  for (const dx of [-4, -2, 0, 2, 4]) dot(ctx, x + dx, y - 5, '#c0a577');
 
   if (action === 'shelve' && !watching) {
     const raise = Math.min(1, progress * 1.8);
