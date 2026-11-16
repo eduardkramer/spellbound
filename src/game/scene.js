@@ -173,11 +173,21 @@ function floorFn(a, b) {
     return hash(Math.floor(a * 2), Math.floor(b * 2)) > .9 ? '#a82838' : '#9c2030';
   }
   if (b >= N - .8 || a >= N - .8) return '#6a6aa0';  // voorrand
-  const ea = ((a % TILE_SIZE) + TILE_SIZE) % TILE_SIZE, eb = ((b % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
-  if (ea < .5 || eb < .5) return '#2f2f50';
-  const ta = Math.floor(a / TILE_SIZE), tb = Math.floor(b / TILE_SIZE);
-  if (hash(Math.floor(a * 2), Math.floor(b * 2)) > .93) return '#53537f';
-  return ((ta + tb) & 1) ? '#4a4a76' : '#43436d';
+  const width = 2.5, length = 4;
+  const column = Math.floor(a / width), row = Math.floor(b / width);
+  const phase = (column + row) % (length * 2);
+  const acrossA = phase < length;
+  const offset = phase % length;
+  const cross = (acrossA ? b : a) % width;
+  const along = offset * width + (acrossA ? a : b) % width;
+  if (cross < .34 || along < .34) return '#543323';
+
+  // Elke plank is vier vakjes lang. De twee richtingen grijpen trapsgewijs in elkaar.
+  const startA = column - (acrossA ? offset : 0);
+  const startB = row - (acrossA ? 0 : offset);
+  const tone = .85 + hash(startA, startB) * .27;
+  const grain = hash(Math.floor(cross * 5), Math.floor(along / 2) + startA * 17 + startB);
+  return sh('#966745', tone * (cross > width - .35 ? 1.09 : grain > .87 ? .91 : 1));
 };
 
 /* ---------- onderbouw met bogen ---------- */
