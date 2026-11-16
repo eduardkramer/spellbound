@@ -33,13 +33,15 @@ function hash(x, y) {
   return (h >>> 0) / 4294967296;
 }
 const _sh = new Map();
-function sh(hex, f) {
-  const k = hex + '|' + f;
-  if (_sh.has(k)) return _sh.get(k);
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.min(255, ((n >> 16) & 255) * f), g = Math.min(255, ((n >> 8) & 255) * f), b = Math.min(255, (n & 255) * f);
-  const s = 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')';
-  _sh.set(k, s); return s;
+function sh(color, factor) {
+  const key = color + '|' + factor;
+  if (_sh.has(key)) return _sh.get(key);
+  const channels = color.startsWith('#')
+    ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
+    : color.slice(4, -1).split(',').map(Number);
+  const result = 'rgb(' + channels.map(channel => Math.min(255, Math.floor(channel * factor))).join(',') + ')';
+  _sh.set(key, result);
+  return result;
 }
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); }
 function dot(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
@@ -178,7 +180,7 @@ function shadedTowerFloor(a, b) {
   let shade = 1;
   for (const shadow of towerShadows) shade = Math.min(shade, contactShade(a, b, ...shadow));
   const color = floorFn(a, b);
-  return shade < 1 ? sh(color, shade) : color;
+  return shade < 1 ? sh(color, 1 - (1 - shade) * .72) : color;
 }
 
 function floorFn(a, b) {
