@@ -18,6 +18,8 @@ const W = 4 * (N + T) + 10, CX = W / 2, CY = 162;
 const H = CY + 2 * N + F + 12;
 
 const cv = document.getElementById('scene');
+const preview = cv.dataset?.preview !== undefined;
+if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
@@ -167,7 +169,7 @@ const copingFn = (a, b) => {
 const towerShadows = [
   [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
   [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
-  [5, 53.5, 4.1, 4.1], [37.5, 6.5, 3.4, 3.4],
+  [5, 53.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
   [8, 34.5, 3.4, 3.4]
 ];
 
@@ -596,7 +598,7 @@ function buildFront() {
   });
 
   // ridder
-  { const [bx, by] = P(36.5, 5, 0); KN = [bx, by];
+  { const [bx, by] = P(4, 4, 0); KN = [bx, by];
     const lt = '#c9d0de', md = '#8f99ab', dk = '#5c6579';
     const part = (x0, y0, w, h) => { rect(g, x0, y0, w, h, md); rect(g, x0 + w - Math.ceil(w / 3), y0, Math.ceil(w / 3), h, lt); rect(g, x0, y0, Math.max(1, Math.floor(w / 4)), h, dk); };
     part(bx - 6, by - 3, 5, 3); part(bx + 1, by - 3, 5, 3);          // laarzen
@@ -610,7 +612,7 @@ function buildFront() {
     rect(g, bx - 3, by - 33, 6, 1, '#1a1d2a');
     rect(g, bx - 1, by - 40, 2, 3, '#b8232f'); }
 
-  store(41.5, t => {
+  store(8, t => {
     if ((t % 7) > 6.4) rect(ctx, KN[0] - 3, KN[1] - 33, 6, 1, '#ff3a3a');
   });
 
@@ -1095,7 +1097,7 @@ function drawFlaskGlints(t) {
 const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 // Rijen lopen over b, kolommen over a. X staat voor een meubel of de haard.
 const towerFloor = [
-  '.XXXX.X.',
+  'XXXX..X.',
   '........',
   '...X....',
   '..XXX...',
@@ -1126,20 +1128,22 @@ function clearRoute() {
   destination = null;
 }
 
-addEventListener('keydown', event => {
-  const key = event.key.toLowerCase();
-  if (!moves.has(aliases[key] || key) || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
-      event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-  event.preventDefault();
-  clearRoute();
-  requestedSeat = null;
-  heldKeys.add(key);
-});
-addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
-addEventListener('blur', () => heldKeys.clear());
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) heldKeys.clear();
-});
+if (!preview) {
+  addEventListener('keydown', event => {
+    const key = event.key.toLowerCase();
+    if (!moves.has(aliases[key] || key) || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+        event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    event.preventDefault();
+    clearRoute();
+    requestedSeat = null;
+    heldKeys.add(key);
+  });
+  addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
+  addEventListener('blur', () => heldKeys.clear());
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) heldKeys.clear();
+  });
+}
 
 let hoveredTile = null;
 function pointerPosition(event) {
@@ -1157,42 +1161,44 @@ function tileAtPointer(event) {
   return currentFloor()[b]?.[a] ? [a, b] : null;
 }
 
-cv.addEventListener('pointermove', event => {
-  if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
-});
-cv.addEventListener('click', event => {
-  const [px, py] = pointerPosition(event);
-  if (inSecondRoom && librarianHit) {
-    const [x, y] = librarianHit;
-    if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
-      librarianDialogue.hidden = !librarianDialogue.hidden;
-      clearRoute();
+if (!preview) {
+  cv.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
+  });
+  cv.addEventListener('click', event => {
+    const [px, py] = pointerPosition(event);
+    if (inSecondRoom && librarianHit) {
+      const [x, y] = librarianHit;
+      if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
+        librarianDialogue.hidden = !librarianDialogue.hidden;
+        clearRoute();
+        requestedSeat = null;
+        heldKeys.clear();
+        return;
+      }
+    }
+    librarianDialogue.hidden = true;
+    const seats = inSecondRoom ? librarySeats : [armchairSeat];
+    const seat = seats.find(({ tile, hit }) => {
+      const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
+      return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
+    });
+    if (seat && seat === requestedSeat) {
       requestedSeat = null;
-      heldKeys.clear();
+      clearRoute();
       return;
     }
-  }
-  librarianDialogue.hidden = true;
-  const seats = inSecondRoom ? librarySeats : [armchairSeat];
-  const seat = seats.find(({ tile, hit }) => {
-    const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
-    return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
+    const tile = seat ? seat.approach : tileAtPointer(event);
+    if (!tile || !isWalkable(...tile)) return;
+    const start = wizard.step ?? wizard;
+    const nextRoute = findRoute(start, ...tile);
+    if (!nextRoute) return;
+    heldKeys.clear();
+    requestedSeat = seat ?? null;
+    route = nextRoute;
+    destination = route.length ? tile : null;
   });
-  if (seat && seat === requestedSeat) {
-    requestedSeat = null;
-    clearRoute();
-    return;
-  }
-  const tile = seat ? seat.approach : tileAtPointer(event);
-  if (!tile || !isWalkable(...tile)) return;
-  const start = wizard.step ?? wizard;
-  const nextRoute = findRoute(start, ...tile);
-  if (!nextRoute) return;
-  heldKeys.clear();
-  requestedSeat = seat ?? null;
-  route = nextRoute;
-  destination = route.length ? tile : null;
-});
+}
 
 // Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
 function findRoute(start, targetA, targetB) {
@@ -1218,8 +1224,10 @@ function findRoute(start, targetA, targetB) {
   return null;
 }
 function clearHover() { hoveredTile = null; }
-cv.addEventListener('pointerleave', clearHover);
-cv.addEventListener('pointercancel', clearHover);
+if (!preview) {
+  cv.addEventListener('pointerleave', clearHover);
+  cv.addEventListener('pointercancel', clearHover);
+}
 
 function drawTileBorder(tile, color) {
   if (!tile) return;
@@ -1236,7 +1244,7 @@ function drawTileBorder(tile, color) {
 }
 
 const movementHint = document.getElementById('movement-hint');
-const defaultHint = movementHint.textContent;
+const defaultHint = movementHint?.textContent;
 
 function updateWizard(dt) {
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
@@ -1476,13 +1484,15 @@ function updateLibrarian(dt) {
 
 const librarianDialogue = document.getElementById('librarian-dialogue');
 let librarianHit = null;
-librarianDialogue.hidden = true;
-document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
+if (!preview) {
   librarianDialogue.hidden = true;
-});
-addEventListener('keydown', event => {
-  if (event.key === 'Escape') librarianDialogue.hidden = true;
-});
+  document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
+    librarianDialogue.hidden = true;
+  });
+  addEventListener('keydown', event => {
+    if (event.key === 'Escape') librarianDialogue.hidden = true;
+  });
+}
 
 function librarianLayer() {
   const { a, b, step, stop, elapsed, dwell } = librarian;
@@ -1639,7 +1649,7 @@ function drawRoomOccupants(t, dt) {
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
     drawFurnishing(roomFurnishings[index], t, dt);
   }
-  if (!seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
   for (; index < roomFurnishings.length; index++) drawFurnishing(roomFurnishings[index], t, dt);
 }
 
@@ -1718,9 +1728,15 @@ function frame(ms) {
   const [gx, gy] = P(21, 6, 14);
   glow(gx, gy, 80, 56, '255,150,50', .045 + .015 * n);
   for (const [x, y] of cand) glow(x, y + 4, 22, 16, '255,200,120', .03);
+  if (preview && cv.hidden) {
+    cv.hidden = false;
+    cv.previousElementSibling.hidden = true;
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+if (preview) return;
 
 /* ---------- zoom ---------- */
 const sceneView = document.getElementById('scene-view');
