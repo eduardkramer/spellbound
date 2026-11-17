@@ -1,4 +1,4 @@
-DE TOREN VAN DE TOVENAAR - cozy vibe-setting
+Spelbound
 
 Starten: pak de zip uit en open index.html en kies Spelen. Geen server of installatie nodig.
 

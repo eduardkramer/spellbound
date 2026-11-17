@@ -1,4 +1,4 @@
-/* De Toren van de Tovenaar — proof of concept
+/* Spelbound — proof of concept
  * Isometrische pixel-kamer, volledig procedureel getekend op een canvas.
  * Coördinaten: (a, b, z)  a = naar rechtsonder, b = naar linksonder, z = omhoog.
  * Achterhoek van de kamer = (0,0,0). Zie P() voor de projectie.

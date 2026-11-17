@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Verken de torenkamer en bibliotheek van Wizard Tower.">
-  <title>Wizard Tower</title>
+  <meta name="description" content="Verken de torenkamer en bibliotheek van Spelbound.">
+  <title>Spelbound</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&amp;family=DM+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet">
@@ -32,9 +32,8 @@
     .intro{position:relative;z-index:1}
     .mark{display:flex;align-items:center;gap:12px;color:var(--gold);width:97px;margin-bottom:10px}
     .mark::before,.mark::after{content:"";height:1px;flex:1;background:#d8b97888}
-    h1{font:700 clamp(4.8rem,10.2vw,9rem)/.73 'Cormorant Garamond',Georgia,serif;
-      letter-spacing:-.07em;color:var(--paper);margin:0;text-shadow:0 4px 0 #412b42,0 10px 30px #100d20}
-    h1 span{display:block;color:var(--gold);margin-left:.16em}
+    h1{font:700 clamp(3.2rem,7.7vw,7.8rem)/.94 'Cormorant Garamond',Georgia,serif;
+      letter-spacing:-.065em;color:var(--gold);margin:0;text-shadow:0 4px 0 #412b42,0 10px 30px #100d20}
     .intro p{max-width:30ch;margin:28px 0 25px;color:#e4d9e6;text-wrap:pretty}
     .play{display:inline-flex;align-items:center;gap:12px;min-height:52px;padding:10px 27px;
       border:1px solid #ffdf99;background:#eac176;color:#21182a;box-shadow:3px 4px #795966;
@@ -51,7 +50,7 @@
       .hero{padding:42px 20px 28px}
       .layout{grid-template-columns:1fr;gap:24px;text-align:center}
       .mark,.intro p{margin-inline:auto}
-      h1{font-size:clamp(3.75rem,14vw,6rem)}
+      h1{font-size:clamp(3.1rem,12.5vw,6rem)}
       .scene img{width:min(100%,390px)}
     }
     @media(prefers-reduced-motion:reduce){.play:hover{transform:none}}
@@ -72,7 +71,7 @@
     <div class="layout">
       <div class="intro">
         <div class="mark" aria-hidden="true">✦</div>
-        <h1>Wizard <span>Tower</span></h1>
+        <h1>Spelbound</h1>
         <p>Neem plaats bij het vuur, dwaal door de bibliotheek en ontdek wie er in de toren woont.</p>
         <a class="play" href="./game.html"><span aria-hidden="true">▶</span> Spelen</a>
       </div>
