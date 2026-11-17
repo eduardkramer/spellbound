@@ -1620,7 +1620,7 @@ function drawRoomOccupants(t, dt) {
   for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
     drawFurnishing(roomFurnishings[index], t, dt);
   }
-  if (!seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
   for (; index < roomFurnishings.length; index++) drawFurnishing(roomFurnishings[index], t, dt);
 }
 
