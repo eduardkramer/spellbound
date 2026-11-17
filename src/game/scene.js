@@ -909,7 +909,12 @@ function drawRestingCat(t, bx, by, eyes) {
     ell(ctx, bx + offset, by - 1, 2, 1, CAT_PAW);
     dot(ctx, bx + offset, by - 1, k2);
   }
-  rect(ctx, bx - 4, by - 16, 8, 7, k);                      // kop
+  drawCatHead(t, bx, by, eyes);
+}
+
+function drawCatHead(t, bx, by, eyes) {
+  const k = CAT_FUR, k2 = CAT_LIGHT;
+  rect(ctx, bx - 4, by - 16, 8, 7, k);
   rect(ctx, bx - 4, by - 18, 2, 2, k); rect(ctx, bx + 2, by - 18, 2, 2, k);
   rect(ctx, bx - 4, by - 16, 8, 1, k2);
   dot(ctx, bx - 3, by - 17, '#a65b73'); dot(ctx, bx + 3, by - 17, '#a65b73');
@@ -1359,12 +1364,12 @@ function libraryCatLayer(t) {
 // Afzet, ingetrokken poten en landing hebben elk een eigen silhouet.
 const catMotionFrames = [
   [
-    '...............o...o.',
-    '...............on.on.',
-    '...............offfo.',
-    '..oo..........offffo.',
-    '.offoo.....oooofefoo.',
-    '...offooooofffflllno.',
+    '.....................',
+    '.....................',
+    '.....................',
+    '..oo..........o......',
+    '.offoo.....oooo......',
+    '...offoooooffff......',
     '.....offffffffllloo..',
     '......offfffffooo....',
     '.....oflooooflo......',
@@ -1372,12 +1377,12 @@ const catMotionFrames = [
     '...oooo.......oooo...'
   ],
   [
-    '..............o...o..',
-    '..............on.on..',
-    '..oo..........offfo..',
-    '.offoo.......offffo..',
-    '...offoo...ooofefoo..',
-    '.....offoooffflllno..',
+    '.....................',
+    '.....................',
+    '..oo.................',
+    '.offoo.......o.......',
+    '...offoo...ooo.......',
+    '.....offooofff.......',
     '......offffffllloo...',
     '......offffffooo.....',
     '.......oolooflo......',
@@ -1385,12 +1390,12 @@ const catMotionFrames = [
     '.....................'
   ],
   [
-    '.............o...o...',
-    '.............on.on...',
-    '.............offfo...',
-    '.....oo.....offffo...',
-    '..oooffoooooofefoo...',
-    '.offffffffffflllno...',
+    '.....................',
+    '.....................',
+    '.....................',
+    '.....oo.....o........',
+    '..oooffoooooo........',
+    '.offfffffffff........',
     '...offffffffllloo....',
     '.....offffffooo......',
     '.....oloooollo.......',
@@ -1398,23 +1403,24 @@ const catMotionFrames = [
     '.....ooo....ooo......'
   ]
 ];
-const movingCatColors = { o: '#161322', f: '#40354b', l: '#655570', e: '#79d8ff', n: '#be8490' };
+const movingCatColors = { o: CAT_FUR, f: CAT_PAW, l: CAT_LIGHT };
+const LIBRARY_CAT_EYES = '#79d8ff';
 
 function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
   if (!walking && !jumping) {
-    drawRestingCat(t, x, y, movingCatColors.e);
+    drawRestingCat(t, x, y, LIBRARY_CAT_EYES);
     return;
   }
   const gait = [0, 2, 1, 2];
   const pose = jumping ? (progress < .26 ? 0 : progress < .76 ? 1 : 2) : gait[Math.floor(t * 9) % gait.length];
-  const blink = t % 4.6 > 4.45;
   for (const [row, pixels] of catMotionFrames[pose].entries()) {
     for (let column = 0; column < pixels.length; column++) {
       const pixel = pixels[column];
       if (pixel === '.') continue;
-      dot(ctx, x + face * (column - 10), y + row - 10, movingCatColors[blink && pixel === 'e' ? 'f' : pixel]);
+      dot(ctx, x + face * (column - 10), y + row - 10, movingCatColors[pixel]);
     }
   }
+  drawCatHead(t, x + face * (6 - pose), y + (pose === 1 ? 2 : 3), LIBRARY_CAT_EYES);
 }
 
 const librarianStops = [
