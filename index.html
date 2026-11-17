@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Maddam Aubert is verdwenen in Oakhaven Castle. Verken het kasteel en los het mysterie op als jonge tovenaar.">
+  <meta name="description" content="Madame Aubert is verdwenen in Oakhaven Castle. Verken het kasteel en los het mysterie op als jonge tovenaar.">
   <title>Spellbound</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,17 +51,20 @@
     .scene::before{content:"";position:absolute;z-index:-1;width:76%;aspect-ratio:1;border-radius:50%;
       border:1px solid #dab38251;box-shadow:0 0 0 9px #dab38213,0 0 70px #b47c452b;
       background:radial-gradient(circle at 44% 43%,#9e6d6855,#4e385132 74%,transparent 75%)}
-    .scene img{display:block;width:100%;max-width:610px;height:auto;image-rendering:pixelated;
+    .scene img,.scene canvas{display:block;width:100%;max-width:610px;height:auto;image-rendering:pixelated;
       filter:drop-shadow(0 19px 15px #0e1021)}
+    .scene [hidden]{display:none}
     @media(max-width:700px){
       .hero{padding:42px 20px 28px}
       .layout{grid-template-columns:1fr;gap:24px;text-align:center}
       .mark,.intro .setting,.intro .story{margin-inline:auto}
       h1{font-size:clamp(3.1rem,12.5vw,6rem)}
-      .scene img{width:min(100%,390px)}
+      .scene img,.scene canvas{width:min(100%,390px)}
     }
     @media(prefers-reduced-motion:reduce){.play:hover{transform:none}}
   </style>
+  <script defer src="./src/game/wizard.js"></script>
+  <script defer src="./src/game/scene.js"></script>
 </head>
 <body>
   <main class="hero">
@@ -83,12 +86,14 @@
         <div class="mark" aria-hidden="true">✦</div>
         <h1>Spellbound</h1>
         <p class="setting">Welkom bij Oakhaven Castle!</p>
-        <p class="story">Maddam Aubert is plotseling verdwenen. Haar portret hangt nog boven de bibliotheekdeur, maar niemand in Oakhaven Castle weet waar ze gebleven is.</p>
-        <p class="story">Jij bent een jonge tovenaar. Verken de kamers van het kasteel, praat met de bibliothecaris en ontdek wat er met Maddam Aubert is gebeurd.</p>
+        <p class="story">Madame Aubert is plotseling verdwenen. Haar portret hangt nog boven de bibliotheekdeur, maar niemand in Oakhaven Castle weet waar ze gebleven is.</p>
+        <p class="story">Jij bent een jonge tovenaar. Verken de kamers van het kasteel, praat met de bibliothecaris en ontdek wat er met Madame Aubert is gebeurd.</p>
         <a class="play" href="./game.html"><span aria-hidden="true">▶</span> Spelen</a>
       </div>
       <figure class="scene">
         <img src="./assets/images/tower-preview.png" width="346" height="358" alt="De torenkamer in pixelstijl, met de tovenaar, een open haard en een boekenkast">
+        <canvas id="scene" data-preview width="346" height="358" role="img"
+          aria-label="Geanimeerde torenkamer met een brandende haard en een glinsterende diamant" hidden></canvas>
       </figure>
     </div>
   </main>

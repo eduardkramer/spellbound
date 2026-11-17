@@ -18,6 +18,8 @@ const W = 4 * (N + T) + 10, CX = W / 2, CY = 162;
 const H = CY + 2 * N + F + 12;
 
 const cv = document.getElementById('scene');
+const preview = cv.dataset?.preview !== undefined;
+if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
@@ -1121,20 +1123,22 @@ function clearRoute() {
   destination = null;
 }
 
-addEventListener('keydown', event => {
-  const key = event.key.toLowerCase();
-  if (!moves.has(aliases[key] || key) || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
-      event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-  event.preventDefault();
-  clearRoute();
-  requestedSeat = null;
-  heldKeys.add(key);
-});
-addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
-addEventListener('blur', () => heldKeys.clear());
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) heldKeys.clear();
-});
+if (!preview) {
+  addEventListener('keydown', event => {
+    const key = event.key.toLowerCase();
+    if (!moves.has(aliases[key] || key) || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+        event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    event.preventDefault();
+    clearRoute();
+    requestedSeat = null;
+    heldKeys.add(key);
+  });
+  addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
+  addEventListener('blur', () => heldKeys.clear());
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) heldKeys.clear();
+  });
+}
 
 let hoveredTile = null;
 function pointerPosition(event) {
@@ -1152,42 +1156,44 @@ function tileAtPointer(event) {
   return currentFloor()[b]?.[a] ? [a, b] : null;
 }
 
-cv.addEventListener('pointermove', event => {
-  if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
-});
-cv.addEventListener('click', event => {
-  const [px, py] = pointerPosition(event);
-  if (inSecondRoom && librarianHit) {
-    const [x, y] = librarianHit;
-    if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
-      librarianDialogue.hidden = !librarianDialogue.hidden;
-      clearRoute();
+if (!preview) {
+  cv.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'touch') hoveredTile = tileAtPointer(event);
+  });
+  cv.addEventListener('click', event => {
+    const [px, py] = pointerPosition(event);
+    if (inSecondRoom && librarianHit) {
+      const [x, y] = librarianHit;
+      if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
+        librarianDialogue.hidden = !librarianDialogue.hidden;
+        clearRoute();
+        requestedSeat = null;
+        heldKeys.clear();
+        return;
+      }
+    }
+    librarianDialogue.hidden = true;
+    const seats = inSecondRoom ? librarySeats : [armchairSeat];
+    const seat = seats.find(({ tile, hit }) => {
+      const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
+      return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
+    });
+    if (seat && seat === requestedSeat) {
       requestedSeat = null;
-      heldKeys.clear();
+      clearRoute();
       return;
     }
-  }
-  librarianDialogue.hidden = true;
-  const seats = inSecondRoom ? librarySeats : [armchairSeat];
-  const seat = seats.find(({ tile, hit }) => {
-    const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
-    return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
+    const tile = seat ? seat.approach : tileAtPointer(event);
+    if (!tile || !isWalkable(...tile)) return;
+    const start = wizard.step ?? wizard;
+    const nextRoute = findRoute(start, ...tile);
+    if (!nextRoute) return;
+    heldKeys.clear();
+    requestedSeat = seat ?? null;
+    route = nextRoute;
+    destination = route.length ? tile : null;
   });
-  if (seat && seat === requestedSeat) {
-    requestedSeat = null;
-    clearRoute();
-    return;
-  }
-  const tile = seat ? seat.approach : tileAtPointer(event);
-  if (!tile || !isWalkable(...tile)) return;
-  const start = wizard.step ?? wizard;
-  const nextRoute = findRoute(start, ...tile);
-  if (!nextRoute) return;
-  heldKeys.clear();
-  requestedSeat = seat ?? null;
-  route = nextRoute;
-  destination = route.length ? tile : null;
-});
+}
 
 // Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
 function findRoute(start, targetA, targetB) {
@@ -1213,8 +1219,10 @@ function findRoute(start, targetA, targetB) {
   return null;
 }
 function clearHover() { hoveredTile = null; }
-cv.addEventListener('pointerleave', clearHover);
-cv.addEventListener('pointercancel', clearHover);
+if (!preview) {
+  cv.addEventListener('pointerleave', clearHover);
+  cv.addEventListener('pointercancel', clearHover);
+}
 
 function drawTileBorder(tile, color) {
   if (!tile) return;
@@ -1231,7 +1239,7 @@ function drawTileBorder(tile, color) {
 }
 
 const movementHint = document.getElementById('movement-hint');
-const defaultHint = movementHint.textContent;
+const defaultHint = movementHint?.textContent;
 
 function updateWizard(dt) {
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
@@ -1447,13 +1455,15 @@ function updateLibrarian(dt) {
 
 const librarianDialogue = document.getElementById('librarian-dialogue');
 let librarianHit = null;
-librarianDialogue.hidden = true;
-document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
+if (!preview) {
   librarianDialogue.hidden = true;
-});
-addEventListener('keydown', event => {
-  if (event.key === 'Escape') librarianDialogue.hidden = true;
-});
+  document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
+    librarianDialogue.hidden = true;
+  });
+  addEventListener('keydown', event => {
+    if (event.key === 'Escape') librarianDialogue.hidden = true;
+  });
+}
 
 function librarianLayer() {
   const { a, b, step, stop, elapsed, dwell } = librarian;
@@ -1689,9 +1699,15 @@ function frame(ms) {
   const [gx, gy] = P(21, 6, 14);
   glow(gx, gy, 80, 56, '255,150,50', .045 + .015 * n);
   for (const [x, y] of cand) glow(x, y + 4, 22, 16, '255,200,120', .03);
+  if (preview && cv.hidden) {
+    cv.hidden = false;
+    cv.previousElementSibling.hidden = true;
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+if (preview) return;
 
 /* ---------- zoom ---------- */
 const sceneView = document.getElementById('scene-view');
