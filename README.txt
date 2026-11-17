@@ -1,4 +1,4 @@
-Spelbound
+Spellbound
 
 Starten: pak de zip uit en open index.html en kies Spelen. Geen server of installatie nodig.
 

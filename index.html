@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Verken de torenkamer en bibliotheek van Spelbound.">
-  <title>Spelbound</title>
+  <meta name="description" content="Maddam Aubert is verdwenen in Oakhaven Castle. Verken het kasteel en los het mysterie op als jonge tovenaar.">
+  <title>Spellbound</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&amp;family=DM+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet">
@@ -23,9 +23,13 @@
       mask-image:linear-gradient(#000 0%,#000 42%,transparent 88%)}
     .hero::after{background:linear-gradient(0deg,#101225,transparent 26%)}
     .stars{position:absolute;inset:0;z-index:-1;pointer-events:none}
-    .stars i{position:absolute;left:var(--x);top:var(--y);width:3px;height:3px;background:#ffe8a9;
-      box-shadow:0 0 8px #f5d294;opacity:.22;animation:twinkle var(--period) var(--delay) infinite ease-in-out}
-    @keyframes twinkle{0%,72%,100%{opacity:.22} 83%{opacity:.9}}
+    .stars i{position:absolute;left:var(--x);top:var(--y);width:11px;height:11px;
+      background:linear-gradient(90deg,transparent,#ffe6a8 48%,#fff8dc 52%,transparent) center/100% 2px no-repeat,
+        linear-gradient(0deg,transparent,#ffe6a8 48%,#fff8dc 52%,transparent) center/2px 100% no-repeat;
+      filter:drop-shadow(0 0 5px #f7c774);opacity:.44;
+      animation:twinkle var(--period) var(--delay) infinite ease-in-out}
+    .stars i:nth-child(3n){width:15px;height:15px}
+    @keyframes twinkle{0%,58%,100%{opacity:.44;transform:scale(.66)} 78%{opacity:1;transform:scale(1.3)}}
     @media(prefers-reduced-motion:reduce){.stars i{animation:none}}
     .layout{width:min(100%,1160px);display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);
       align-items:center;gap:clamp(24px,4vw,70px)}
@@ -35,6 +39,9 @@
     h1{font:700 clamp(3.2rem,7.7vw,7.8rem)/.94 'Cormorant Garamond',Georgia,serif;
       letter-spacing:-.065em;color:var(--gold);margin:0;text-shadow:0 4px 0 #412b42,0 10px 30px #100d20}
     .intro p{max-width:30ch;margin:28px 0 25px;color:#e4d9e6;text-wrap:pretty}
+    .intro .setting{margin:16px 0 20px;color:#eac176;font-weight:700;letter-spacing:.1em}
+    .intro .story{max-width:39ch;margin:0 0 15px}
+    .intro .story:last-of-type{margin-bottom:26px}
     .play{display:inline-flex;align-items:center;gap:12px;min-height:52px;padding:10px 27px;
       border:1px solid #ffdf99;background:#eac176;color:#21182a;box-shadow:3px 4px #795966;
       font-weight:700;text-decoration:none}
@@ -49,7 +56,7 @@
     @media(max-width:700px){
       .hero{padding:42px 20px 28px}
       .layout{grid-template-columns:1fr;gap:24px;text-align:center}
-      .mark,.intro p{margin-inline:auto}
+      .mark,.intro .setting,.intro .story{margin-inline:auto}
       h1{font-size:clamp(3.1rem,12.5vw,6rem)}
       .scene img{width:min(100%,390px)}
     }
@@ -67,12 +74,17 @@
       <i style="--x:52%;--y:26%;--period:12s;--delay:-2s"></i>
       <i style="--x:94%;--y:43%;--period:9s;--delay:-4s"></i>
       <i style="--x:74%;--y:67%;--period:13s;--delay:-10s"></i>
+      <i style="--x:6%;--y:68%;--period:11s;--delay:-3s"></i>
+      <i style="--x:83%;--y:77%;--period:10s;--delay:-2s"></i>
+      <i style="--x:96%;--y:24%;--period:8s;--delay:-1s"></i>
     </div>
     <div class="layout">
       <div class="intro">
         <div class="mark" aria-hidden="true">✦</div>
-        <h1>Spelbound</h1>
-        <p>Neem plaats bij het vuur, dwaal door de bibliotheek en ontdek wie er in de toren woont.</p>
+        <h1>Spellbound</h1>
+        <p class="setting">Oakhaven Castle</p>
+        <p class="story">Maddam Aubert is plotseling verdwenen. Haar portret hangt nog boven de bibliotheekdeur, maar niemand in Oakhaven Castle weet waar ze gebleven is.</p>
+        <p class="story">Jij bent een jonge tovenaar. Verken de kamers van het kasteel, praat met de bibliothecaris en ontdek wat er met Maddam Aubert is gebeurd.</p>
         <a class="play" href="./game.html"><span aria-hidden="true">▶</span> Spelen</a>
       </div>
       <figure class="scene">
