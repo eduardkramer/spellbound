@@ -1379,18 +1379,25 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
     drawRestingCat(t, x, y, movingCatColors.e);
     return;
   }
-  const stride = Math.floor(t * 9) % 4;
-  const bob = walking ? stride % 2 : 0;
-  const tuck = jumping ? Math.round(2 * Math.sin(Math.PI * progress)) : 0;
+  const stride = Math.floor(t * 8) % 8;
+  const bob = walking && stride % 4 === 2 ? 1 : 0;
+  const airborne = Math.sin(Math.PI * progress);
   const pixelAt = (column, row, color) => dot(ctx, x + face * (column - 8), y + row, color);
-  for (const [base, phase, near] of [[7, 2, false], [12, 0, false], [7, 0, true], [12, 2, true]]) {
-    const step = (stride + phase) % 4;
-    const offset = jumping ? (base < 10 ? -1 : 1) : [-1, 0, 1, 0][step];
-    const bottom = -tuck - (near ? 0 : 1) - (walking && step === 3 ? 1 : 0);
-    pixelAt(base, -3 - bob, movingCatColors.o);
-    pixelAt(base + offset, bottom - 1, movingCatColors.o);
-    pixelAt(base + offset, bottom, near ? movingCatColors.l : movingCatColors.o);
-    pixelAt(base + offset + 1, bottom, movingCatColors.o);
+  // Achter- en voorpoten aan elke kant worden in verschillende fasen opgetild.
+  for (const [hip, phase, near] of [[7, 2, false], [11, 6, false], [7, 0, true], [11, 4, true]]) {
+    const step = (stride + phase) % 8;
+    const swing = [2, 1, 0, -1, -2, -1, 0, 1][step];
+    const raised = step >= 5 ? 1 : 0;
+    const offset = jumping ? Math.round((hip === 7 ? -2 : 2) * (1 - airborne)) : swing;
+    const pawY = (near ? 0 : -1) - (jumping ? Math.round(2 * airborne) : raised);
+    const paw = hip + offset;
+    const knee = hip + Math.trunc(offset / 2);
+    const hipY = -4 - bob;
+    const ankleY = pawY - 1;
+    const color = near ? movingCatColors.f : movingCatColors.o;
+    line(ctx, x + face * (hip - 8), y + hipY, x + face * (knee - 8), y + ankleY, color);
+    line(ctx, x + face * (knee - 8), y + ankleY, x + face * (paw - 8), y + pawY, color);
+    pixelAt(paw + 1, pawY, near ? movingCatColors.l : movingCatColors.o);
   }
   const blink = t % 4.6 > 4.45;
   for (const [row, pixels] of movingCatPixels.entries()) {
