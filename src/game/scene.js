@@ -1367,9 +1367,9 @@ const catMotionFrames = [
     '.....................',
     '.....................',
     '.........oooooo......',
-    '..oo...ooffffffoo....',
-    '.offoooofflfffffoo...',
-    '...offofffffflfffo...',
+    '.......ooffffffoo....',
+    '......oofflfffffoo...',
+    '.....oofffffflfffo...',
     '....offlffffffffo....',
     '....offffffffffo.....',
     '.....oflooooflo......',
@@ -1379,9 +1379,9 @@ const catMotionFrames = [
   [
     '.....................',
     '.....................',
-    '..oo.....oooooo......',
-    '.offoo.ooffffffoo....',
-    '...offoofflfffffo....',
+    '.........oooooo......',
+    '.......ooffffffoo....',
+    '......oofflfffffo....',
     '....offflfffflffo....',
     '.....offffffffffo....',
     '.....offffffffoo.....',
@@ -1393,9 +1393,9 @@ const catMotionFrames = [
     '.....................',
     '.....................',
     '.........oooooo......',
-    '.....ooooffffffo.....',
-    '..oooffofflfffffo....',
-    '.offffffoffflfffo....',
+    '.......ooffffffo.....',
+    '......oofflfffffo....',
+    '.....offoffflfffo....',
     '...offlfffffffffo....',
     '....offffffffffo.....',
     '.....oloooollo.......',
@@ -1413,6 +1413,13 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
   }
   const gait = [0, 2, 1, 2];
   const pose = jumping ? (progress < .26 ? 0 : progress < .76 ? 1 : 2) : gait[Math.floor(t * 9) % gait.length];
+  // Teken de staart achter de heup, met meer beweging aan het uiteinde.
+  const tailPhase = jumping ? progress * Math.PI * 2 : t * 14;
+  for (let i = 0; i < 9; i++) {
+    const sway = Math.round(Math.sin(tailPhase - i * .25) * i / 4);
+    const tailY = y - 4 - Math.round(i * .45) + sway;
+    rect(ctx, x - face * (4 + i), tailY, 2, i < 4 ? 3 : 2, CAT_FUR);
+  }
   for (const [row, pixels] of catMotionFrames[pose].entries()) {
     for (let column = 0; column < pixels.length; column++) {
       const pixel = pixels[column];
