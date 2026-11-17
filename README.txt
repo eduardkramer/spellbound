@@ -1,6 +1,6 @@
 DE TOREN VAN DE TOVENAAR - cozy vibe-setting
 
-Starten: pak de zip uit en dubbelklik op index.html. Geen server of installatie nodig.
+Starten: pak de zip uit en open index.html en kies Spelen. Geen server of installatie nodig.
 
 SPELEN
   Beweeg de tovenaar met de pijltjestoetsen of WASD. Houd een toets
@@ -33,7 +33,8 @@ TOVENAAR (sprite)
   tiles.html: loop met pijltjestoetsen of WASD door de testkamer.
 
 Bestanden
-  index.html  speelbare torenkamer en muziekspeler
+  index.html  landingspagina
+  game.html   speelbare torenkamer en muziekspeler
   src/game/scene.js    de kamer (procedureel getekend, geen plaatjes)
   src/audio/player.js   de muziekspeler
   src/audio/tracks.js   jouw afspeellijst

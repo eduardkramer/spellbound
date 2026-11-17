@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>De Toren van de Tovenaar</title>
+<style>
+  :root{--bg:#12163a;--bg2:#1a1f4d;--line:#6f7fd0;--dim:#7f8ad8;--txt:#dfe4ff;--gold:#f0c75a;--pink:#ff7fbf}
+  html,body{margin:0;height:100%;background:#0c0f24;color:var(--txt);font-family:ui-monospace,Menlo,Consolas,monospace}
+  body{background:radial-gradient(ellipse at 50% 35%,#1d2150 0%,#0c0f24 70%)}
+  #wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px;box-sizing:border-box}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+
+  #scene-view{width:100%;max-height:70vh;overflow:auto;scrollbar-color:var(--line) var(--bg)}
+  #scene{margin-inline:auto}
+  #zoom{display:flex;align-items:center;gap:6px}
+  #zoom #zoom-reset{width:60px;font-size:12px}
+  #zoom button:disabled{opacity:.45;cursor:default}
+  #librarian-dialogue{margin:0 auto 12px;padding:12px 16px;max-width:440px;
+    border:2px solid #b79259;background:#30263a;color:#fff1d3;box-shadow:3px 3px #20192a}
+  #librarian-dialogue p{margin:6px 0 10px}
+  #close-librarian-dialogue{width:auto;padding:0 10px}
+  #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
+
+  /* ---- muziekspeler ---- */
+  #player{width:min(460px,calc(100vw - 24px));box-sizing:border-box;background:var(--bg);padding:10px 12px;
+    border:2px solid var(--line);box-shadow:0 0 0 2px #0c0f24,4px 4px 0 2px #0c0f24, inset 0 0 0 2px var(--bg2);position:relative}
+  #player::before,#player::after{content:"";position:absolute;width:4px;height:4px;background:var(--gold);top:-5px}
+  #player::before{left:-5px}#player::after{right:-5px}
+  .row{display:flex;align-items:center;gap:10px}
+  #eq{display:flex;align-items:flex-end;gap:2px;height:16px;width:22px;flex:none}
+  #eq i{display:block;width:3px;height:3px;background:var(--pink)}
+  #player.playing #eq i{animation:eq .9s steps(5) infinite}
+  #eq i:nth-child(2){animation-delay:-.3s!important;background:var(--gold)}
+  #eq i:nth-child(3){animation-delay:-.6s!important}
+  #eq i:nth-child(4){animation-delay:-.15s!important;background:var(--gold)}
+  #eq i:nth-child(5){animation-delay:-.45s!important}
+  @keyframes eq{0%{height:3px}20%{height:14px}40%{height:7px}60%{height:16px}80%{height:5px}100%{height:3px}}
+  #info{min-width:0;flex:1}
+  #title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt)}
+  #sub{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  #time{font-size:11px;color:var(--dim);flex:none;font-variant-numeric:tabular-nums}
+  button{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;background:var(--bg2);
+    box-shadow:inset 0 0 0 2px var(--line);color:var(--txt)}
+  button:hover{background:#262c66;color:var(--gold)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--gold)}
+  button svg{width:16px;height:16px;shape-rendering:crispEdges;fill:currentColor}
+  #play{width:34px;height:34px}
+  #play svg{width:20px;height:20px}
+  #controls{margin-top:10px;justify-content:space-between}
+  #left{display:flex;gap:6px;align-items:center}
+  #right{display:flex;gap:8px;align-items:center}
+  button.on{color:var(--pink)}
+  input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer;height:14px}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;background:#0c0f24;box-shadow:0 0 0 2px var(--line)}
+  input[type=range]::-moz-range-track{height:6px;background:#0c0f24;box-shadow:0 0 0 2px var(--line)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;margin-top:-4px;background:var(--gold);border:0;border-radius:0}
+  input[type=range]::-moz-range-thumb{width:8px;height:14px;background:var(--gold);border:0;border-radius:0}
+  #seek{flex:1;margin-top:10px;display:block;width:100%}
+  #vol{width:70px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="zoom" role="group" aria-label="Zoom van de speelkamer">
+    <button type="button" id="zoom-out" aria-label="Uitzoomen">−</button>
+    <button type="button" id="zoom-reset">100%</button>
+    <button type="button" id="zoom-in" aria-label="Inzoomen">+</button>
+  </div>
+  <div id="scene-view">
+    <canvas id="scene" aria-label="De speelkamer van de tovenaar" aria-describedby="movement-hint"></canvas>
+  </div>
+  <aside id="librarian-dialogue" aria-label="Gesprek met de bibliothecaris" aria-live="polite" hidden>
+    <strong>Bibliothecaris</strong>
+    <p>Ze zeggen dat Maddam Aubert haar ogen opent als iemand na middernacht een boek terugzet.</p>
+    <button type="button" id="close-librarian-dialogue">Sluiten</button>
+  </aside>
+  <p id="movement-hint">Klik op een tegel om te lopen of op een stoel om te zitten. Lopen kan ook met de pijltjestoetsen of WASD.</p>
+
+  <div id="player">
+    <div class="row">
+      <div id="eq"><i></i><i></i><i></i><i></i><i></i></div>
+      <div id="info"><div id="title">…</div><div id="sub"></div></div>
+      <div id="time">0:00 / 0:00</div>
+    </div>
+    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Positie">
+    <div class="row" id="controls">
+      <div id="left">
+        <button id="prev" title="Vorige" aria-label="Vorige"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="1" height="6"/><rect x="2" y="3.5" width="1" height="1"/><rect x="3" y="2.5" width="1" height="3"/><rect x="4" y="1.5" width="1" height="5"/><rect x="5" y="0.5" width="1" height="7"/><rect x="6" y="0" width="1" height="0"/></svg></button>
+        <button id="play" title="Afspelen / pauzeren" aria-label="Afspelen"></button>
+        <button id="next" title="Volgende" aria-label="Volgende"><svg viewBox="0 0 8 8"><rect x="7" y="1" width="1" height="6"/><rect x="5" y="3.5" width="1" height="1"/><rect x="4" y="2.5" width="1" height="3"/><rect x="3" y="1.5" width="1" height="5"/><rect x="2" y="0.5" width="1" height="7"/></svg></button>
+        <button id="shuffle" title="Willekeurig" aria-label="Willekeurig"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="2" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="6" y="6" width="2" height="1"/></svg></button>
+      </div>
+      <div id="right">
+        <button id="mute" title="Geluid" aria-label="Geluid"></button>
+        <input id="vol" type="range" min="0" max="100" value="60" aria-label="Volume">
+      </div>
+    </div>
+  </div>
+</div>
+<script src="src/audio/tracks.js"></script>
+<script src="src/game/wizard.js"></script>
+<script src="src/game/scene.js"></script>
+<script src="src/audio/player.js"></script>
+</body>
+</html>
