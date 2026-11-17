@@ -1356,21 +1356,47 @@ function libraryCatLayer(t) {
   return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking, progress) };
 }
 
-const movingCatPixels = [
-  '..........o....o.',
-  '.........ofo..ofo',
-  '.........offooffo',
-  '........offfffffo',
-  '........offllllfo',
-  '........oflelelo',
-  '.o......oflelelo',
-  '.of.....offllnlo.',
-  '.of....offllllo..',
-  '.off..offffffo...',
-  '..offofffffffo...',
-  '...oofflllllfo...',
-  '.....offffffo....',
-  '......oooooo.....'
+// Afzet, ingetrokken poten en landing hebben elk een eigen silhouet.
+const catMotionFrames = [
+  [
+    '...............o...o.',
+    '...............on.on.',
+    '...............offfo.',
+    '..oo..........offffo.',
+    '.offoo.....oooofefoo.',
+    '...offooooofffflllno.',
+    '.....offffffffllloo..',
+    '......offfffffooo....',
+    '.....oflooooflo......',
+    '....oflo.....ofllo...',
+    '...oooo.......oooo...'
+  ],
+  [
+    '..............o...o..',
+    '..............on.on..',
+    '..oo..........offfo..',
+    '.offoo.......offffo..',
+    '...offoo...ooofefoo..',
+    '.....offoooffflllno..',
+    '......offffffllloo...',
+    '......offffffooo.....',
+    '.......oolooflo......',
+    '........ooo.ooo......',
+    '.....................'
+  ],
+  [
+    '.............o...o...',
+    '.............on.on...',
+    '.............offfo...',
+    '.....oo.....offffo...',
+    '..oooffoooooofefoo...',
+    '.offffffffffflllno...',
+    '...offffffffllloo....',
+    '.....offffffooo......',
+    '.....oloooollo.......',
+    '.....olo....olo......',
+    '.....ooo....ooo......'
+  ]
 ];
 const movingCatColors = { o: '#161322', f: '#40354b', l: '#655570', e: '#79d8ff', n: '#be8490' };
 
@@ -1379,31 +1405,14 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
     drawRestingCat(t, x, y, movingCatColors.e);
     return;
   }
-  const stride = Math.floor(t * 8) % 8;
-  const bob = walking && stride % 4 === 2 ? 1 : 0;
-  const airborne = Math.sin(Math.PI * progress);
-  const pixelAt = (column, row, color) => dot(ctx, x + face * (column - 8), y + row, color);
-  // Achter- en voorpoten aan elke kant worden in verschillende fasen opgetild.
-  for (const [hip, phase, near] of [[7, 2, false], [11, 6, false], [7, 0, true], [11, 4, true]]) {
-    const step = (stride + phase) % 8;
-    const swing = [2, 1, 0, -1, -2, -1, 0, 1][step];
-    const raised = step >= 5 ? 1 : 0;
-    const offset = jumping ? Math.round((hip === 7 ? -2 : 2) * (1 - airborne)) : swing;
-    const pawY = (near ? 0 : -1) - (jumping ? Math.round(2 * airborne) : raised);
-    const paw = hip + offset;
-    const knee = hip + Math.trunc(offset / 2);
-    const hipY = -4 - bob;
-    const ankleY = pawY - 1;
-    const color = near ? movingCatColors.f : movingCatColors.o;
-    line(ctx, x + face * (hip - 8), y + hipY, x + face * (knee - 8), y + ankleY, color);
-    line(ctx, x + face * (knee - 8), y + ankleY, x + face * (paw - 8), y + pawY, color);
-    pixelAt(paw + 1, pawY, near ? movingCatColors.l : movingCatColors.o);
-  }
+  const gait = [0, 2, 1, 2];
+  const pose = jumping ? (progress < .26 ? 0 : progress < .76 ? 1 : 2) : gait[Math.floor(t * 9) % gait.length];
   const blink = t % 4.6 > 4.45;
-  for (const [row, pixels] of movingCatPixels.entries()) {
-    for (const [column, pixel] of [...pixels].entries()) {
+  for (const [row, pixels] of catMotionFrames[pose].entries()) {
+    for (let column = 0; column < pixels.length; column++) {
+      const pixel = pixels[column];
       if (pixel === '.') continue;
-      pixelAt(column, row - 15 - bob, movingCatColors[blink && pixel === 'e' ? 'f' : pixel]);
+      dot(ctx, x + face * (column - 10), y + row - 10, movingCatColors[blink && pixel === 'e' ? 'f' : pixel]);
     }
   }
 }
