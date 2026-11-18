@@ -1660,13 +1660,14 @@ function drawSeatedWizard(t, seat) {
   const [sx, sy] = P((seat.tile[0] + .5) * TILE_SIZE, (seat.tile[1] + .5) * TILE_SIZE + (seat.offsetB ?? -1), seat.height);
   const px = Math.round(x + (sx - x) * ease);
   const py = Math.round(y + (sy - y) * ease);
-  const frame = WIZARD.canvas(seat.direction, 'idle', t);
+  const settling = seatProgress < .75;
+  const frame = WIZARD.canvas(seat.direction, 'idle', t, settling && WIZARD.staffEquipped);
   const head = 23;
   const torso = Math.round(WIZARD.CH - head - 11 * ease);
   const left = px - WIZARD.FX;
   const top = py - head - torso + 5;
   ctx.drawImage(frame, 0, 0, WIZARD.CW, head, left, top, WIZARD.CW, head);
-  if (seatProgress < .75) {
+  if (settling) {
     ctx.drawImage(frame, 0, head, WIZARD.CW, WIZARD.CH - head,
       left, top + head, WIZARD.CW, torso);
     return;
@@ -1694,7 +1695,7 @@ function drawSeatedWizard(t, seat) {
   }
   rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
   dot(ctx, px + 8, collar + 9, '#49405c');
-  if (WIZARD.staffEquipped) rect(ctx, px + 8, collar, 1, 9, '#a06a3a');
+  if (WIZARD.staffEquipped) WIZARD.drawSeatedStaff(ctx, px + 3, top + 1);
   ctx.restore();
 }
 
