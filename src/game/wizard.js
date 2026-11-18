@@ -66,7 +66,7 @@ const staffHeadHeight = 12;
 
 function staffPixels(plot, length = 44) {
   const colors = { d: '#795137', w: '#9b6239', l: '#d39a5d',
-    g: '#e8b75d', a: '#896033', b: '#20556c', t: '#36a6ad', c: '#80ebdb', h: '#effff3' };
+    g: '#e8b75d', a: '#896033', b: '#287a91', t: '#49cbd0', c: '#a0fff0', h: '#ffffff' };
   for (let y = staffHeadHeight; y < length; y++) {
     const band = y < 15 || (y >= 24 && y <= 26) || y >= length - 3;
     plot(3, y, '#876043'); plot(6, y, '#76503a');
@@ -94,9 +94,11 @@ function staffPixels(plot, length = 44) {
 }
 
 function drawStaffGlow(g, x, y) {
-  const radius = 5;
+  const radius = 7;
   const glow = g.createRadialGradient(x, y, 0, x, y, radius);
-  glow.addColorStop(0, 'rgba(128, 235, 219, .42)');
+  glow.addColorStop(0, 'rgba(205, 255, 248, .95)');
+  glow.addColorStop(.3, 'rgba(116, 255, 231, .65)');
+  glow.addColorStop(.65, 'rgba(70, 220, 224, .24)');
   glow.addColorStop(1, 'rgba(128, 235, 219, 0)');
   g.fillStyle = glow;
   g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
