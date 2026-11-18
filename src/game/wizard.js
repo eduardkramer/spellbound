@@ -105,7 +105,10 @@ function figure(g, back, f, walking, withStaff) {
   const capeSwing = walking ? [0, -1, 0, 1][f] : 0;
   if (!back) drawCape(g, cx, shoulder, capeSwing, false);
 
-  if (withStaff) staffPixels((x, y, color) => dot(g, cx + 3 + x, fy - 43 + bob + y, color));
+  if (withStaff) staffPixels((x, y, color) => {
+    const edge = y < 8 ? '#34515b' : '#513b30';
+    dot(g, cx + 3 + x, fy - 43 + bob + y, color === '#17131c' ? edge : color);
+  });
 
   // laarzen
   rect(g, cx - 4, fy - 3 - lL, 3, 3, '#2a2140'); rect(g, cx + 1, fy - 3 - lR, 3, 3, '#2a2140');
@@ -185,6 +188,25 @@ for (const dir of DIRS) {
       if (dir[1] === 'w') { g.translate(CW, 0); g.scale(-1, 1); }
       g.drawImage(t, 0, 0); g.setTransform(1, 0, 0, 1, 0, 0);
       outline(g, '#0f1226');
+      if (withStaff) {
+        const pixels = g.getImageData(0, 0, CW, CH);
+        const bob = st === 'walk' && (f & 1) ? -1 : 0;
+        staffPixels((sx, sy) => {
+          const x = dir[1] === 'w' ? CW - 1 - (FX + 3 + sx) : FX + 3 + sx;
+          const y = FY - 43 + bob + sy;
+          for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) {
+            const px = x + dx, py = y + dy;
+            if (px < 0 || px >= CW || py < 0 || py >= CH) continue;
+            const index = (py * CW + px) * 4;
+            if (pixels.data[index] === 15 && pixels.data[index + 1] === 18 &&
+                pixels.data[index + 2] === 38 && pixels.data[index + 3]) {
+              const edge = sy < 8 ? [52, 71, 78] : [67, 47, 39];
+              pixels.data.set(edge, index);
+            }
+          }
+        });
+        g.putImageData(pixels, 0, 0);
+      }
       cache[dir][st].push(c);
     }
   }
