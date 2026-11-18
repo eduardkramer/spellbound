@@ -1123,6 +1123,86 @@ let route = [];
 let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
+const iceBalls = [];
+let iceCooldown = 0;
+
+function castIceBall() {
+  if (!WIZARD.staffEquipped || iceCooldown > 0 || chestInventory?.open ||
+      !librarianDialogue.hidden) return;
+  const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
+  const progress = wizard.step ? wizard.step.elapsed / STEP_TIME : 0;
+  const a = (wizard.a + .5 + (wizard.step ? (wizard.step.a - wizard.a) * progress : 0)) * TILE_SIZE;
+  const b = (wizard.b + .5 + (wizard.step ? (wizard.step.b - wizard.b) * progress : 0)) * TILE_SIZE;
+  const seated = activeSeat && seatProgress >= .75;
+  const originA = seated ? (activeSeat.tile[0] + .5) * TILE_SIZE : a;
+  const originB = seated ? (activeSeat.tile[1] + .5) * TILE_SIZE + (activeSeat.offsetB ?? -1) : b;
+  const side = wizard.direction.endsWith('w') ? -1 : 1;
+  iceBalls.push({
+    a: originA + side * 2, b: originB - side * 2,
+    z: seated ? activeSeat.height + 28 : 37,
+    da, db, age: 0, impact: 0,
+    startA: Math.floor(originA / TILE_SIZE), startB: Math.floor(originB / TILE_SIZE)
+  });
+  iceCooldown = .55;
+}
+
+function updateIceBalls(dt) {
+  iceCooldown = Math.max(0, iceCooldown - dt);
+  for (let i = iceBalls.length - 1; i >= 0; i--) {
+    const ball = iceBalls[i];
+    ball.age += dt;
+    if (ball.impact) {
+      ball.impact += dt;
+      if (ball.impact > .3) iceBalls.splice(i, 1);
+      continue;
+    }
+    const steps = Math.ceil(dt * 36);
+    for (let step = 0; step < steps; step++) {
+      const a = ball.a + ball.da * dt * 36 / steps;
+      const b = ball.b + ball.db * dt * 36 / steps;
+      const tileA = Math.floor(a / TILE_SIZE), tileB = Math.floor(b / TILE_SIZE);
+      const outside = a < 0 || b < 0 || a >= N || b >= N;
+      const blocked = (tileA !== ball.startA || tileB !== ball.startB) && !isWalkable(tileA, tileB);
+      if (outside || blocked || ball.age > 2) {
+        ball.impact = .001;
+        break;
+      }
+      ball.a = a; ball.b = b;
+    }
+  }
+}
+
+function iceBallLayers() {
+  return iceBalls.map(ball => ({
+    depth: ball.a + ball.b,
+    animate() {
+      const [x, y] = P(ball.a, ball.b, ball.z);
+      ctx.save();
+      if (ball.impact) {
+        ctx.globalAlpha = Math.max(0, 1 - ball.impact / .3);
+        for (let i = 0; i < 8; i++) {
+          const angle = i * Math.PI / 4;
+          const radius = 2 + ball.impact * 26;
+          rect(ctx, x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, 2, 2, '#c4f8ff');
+        }
+      } else {
+        glow(x, y, 10, 8, '99,211,255', .16);
+        for (let i = 1; i <= 5; i++) {
+          const [tx, ty] = P(ball.a - ball.da * i * 1.1, ball.b - ball.db * i * 1.1, ball.z);
+          ctx.globalAlpha = (1 - i / 6) * .65;
+          dot(ctx, tx, ty + Math.round(Math.sin(ball.age * 16 + i) * 2), '#bcefff');
+        }
+        ctx.globalAlpha = 1;
+        ell(ctx, x, y, 4, 4, '#27658c');
+        ell(ctx, x, y, 3, 3, '#77d9f5');
+        rect(ctx, x - 2, y - 2, 3, 2, '#e8ffff');
+        dot(ctx, x + 1, y + 2, '#46a9d8');
+      }
+      ctx.restore();
+    }
+  }));
+}
+
 function clearRoute() {
   route = [];
   destination = null;
@@ -1156,6 +1236,11 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (key === 'f') {
+      event.preventDefault();
+      if (!event.repeat) castIceBall();
+      return;
+    }
     if (key === 'e' && chestInventory && !event.repeat && !wizard.step && nextToChest()) {
       event.preventDefault();
       requestChest();
@@ -1323,6 +1408,7 @@ function updateWizard(dt) {
       wizard.b = wizard.step.b;
       if (wizard.a === EXIT_COLUMN && wizard.b === (inSecondRoom ? 0 : ROOM_TILES - 1)) {
         inSecondRoom = !inSecondRoom;
+        iceBalls.length = 0;
         librarianDialogue.hidden = true;
         wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
         wizard.direction = inSecondRoom ? 'sw' : 'ne';
@@ -1693,12 +1779,13 @@ function drawRoomOccupants(t, dt) {
   const roomFurnishings = inSecondRoom
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
     : furnishings;
+  const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
   let index = 0;
-  for (; index < roomFurnishings.length && roomFurnishings[index].depth <= a + b; index++) {
-    drawFurnishing(roomFurnishings[index], t, dt);
+  for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
+    drawFurnishing(occupants[index], t, dt);
   }
   if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
-  for (; index < roomFurnishings.length; index++) drawFurnishing(roomFurnishings[index], t, dt);
+  for (; index < occupants.length; index++) drawFurnishing(occupants[index], t, dt);
 }
 
 function drawSeatedWizard(t, seat) {
@@ -1757,6 +1844,7 @@ function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   ctx.clearRect(0, 0, W, H);
   updateWizard(dt);
+  if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (!inSecondRoom) drawSky(t);
   ctx.drawImage(inSecondRoom ? secondC : statC, 0, 0);
   drawTileBorder(hoveredTile, '#ffe083');
