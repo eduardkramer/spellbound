@@ -62,32 +62,44 @@ function drawCape(g, cx, shoulder, drift, back) {
 }
 
 
-function staffPixels(plot) {
-  const colors = { o: '#17131c', d: '#533326', w: '#8f5936', l: '#c28b51',
-    g: '#e3b96a', b: '#243b79', p: '#6754a0', t: '#279fae', c: '#62e6df', h: '#e1fff3' };
-  // Houtnerf en schuine banden lopen door tot in de bolhouder.
-  for (let y = 10; y < 44; y++) {
-    plot(3, y, colors.o); plot(6, y, colors.o);
-    plot(4, y, y % 7 < 2 ? colors.g : colors.w);
-    plot(5, y, y % 7 < 2 ? colors.l : colors.d);
+const staffHeadHeight = 12;
+
+function staffPixels(plot, length = 44) {
+  const colors = { d: '#795137', w: '#9b6239', l: '#d39a5d',
+    g: '#e8b75d', a: '#896033', b: '#20556c', t: '#36a6ad', c: '#80ebdb', h: '#effff3' };
+  for (let y = staffHeadHeight; y < length; y++) {
+    const band = y < 15 || (y >= 24 && y <= 26) || y >= length - 3;
+    plot(3, y, '#876043'); plot(6, y, '#76503a');
+    plot(4, y, band ? colors.g : colors.l);
+    plot(5, y, band ? colors.a : colors.d);
   }
   const crown = [
-    '..oo.....',
-    '.owoooo..',
-    '.owtcco..',
-    'owbtchho.',
-    'owbbtcho.',
-    'owpbbtco.',
-    'owlppbwo.',
-    '.owlglwo.',
-    '.odwwoo..',
-    '..owlo...',
-    '..owdo...',
-    '...oo....'
+    '.....o...',
+    '....oto..',
+    '...otco..',
+    '..otcho..',
+    '.ootccto.',
+    'owobtcbo.',
+    'ologtbao.',
+    'odlggawo.',
+    '.odwawo..',
+    '..olwo...',
+    '...oloo..',
+    '...oldo..'
   ];
   crown.forEach((row, y) => [...row].forEach((pixel, x) => {
-    if (colors[pixel]) plot(x, y, colors[pixel]);
+    if (pixel === 'o') plot(x, y, y < 7 ? '#46666c' : '#876043');
+    else if (colors[pixel]) plot(x, y, colors[pixel]);
   }));
+}
+
+function drawStaffGlow(g, x, y) {
+  const radius = 5;
+  const glow = g.createRadialGradient(x, y, 0, x, y, radius);
+  glow.addColorStop(0, 'rgba(128, 235, 219, .42)');
+  glow.addColorStop(1, 'rgba(128, 235, 219, 0)');
+  g.fillStyle = glow;
+  g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
 /* tekent de tovenaar naar rechts-onder (voorkant) of rechts-boven (achterkant); links = gespiegeld */
@@ -105,10 +117,12 @@ function figure(g, back, f, walking, withStaff) {
   const capeSwing = walking ? [0, -1, 0, 1][f] : 0;
   if (!back) drawCape(g, cx, shoulder, capeSwing, false);
 
-  if (withStaff) staffPixels((x, y, color) => {
-    const edge = y < 8 ? '#34515b' : '#513b30';
-    dot(g, cx + 3 + x, fy - 43 + bob + y, color === '#17131c' ? edge : color);
-  });
+  if (withStaff) {
+    const x = cx + 3;
+    const y = fy - 43 + bob;
+    drawStaffGlow(g, x + 5.5, y + 4.5);
+    staffPixels((sx, sy, color) => dot(g, x + sx, y + sy, color));
+  }
 
   // laarzen
   rect(g, cx - 4, fy - 3 - lL, 3, 3, '#2a2140'); rect(g, cx + 1, fy - 3 - lR, 3, 3, '#2a2140');
@@ -135,8 +149,6 @@ function figure(g, back, f, walking, withStaff) {
 
   if (back) {
     drawCape(g, cx, shoulder, capeSwing, true);
-    // De bol en het uiteinde van de staf blijven zichtbaar langs de cape.
-    // De staf blijft naast de cape zichtbaar.
   } else {
     // Open kraag met twee gouden sluitingen onder de baard.
     rect(g, cx - 7, shoulder + 2, 4, 5, '#625575');
@@ -200,7 +212,7 @@ for (const dir of DIRS) {
             const index = (py * CW + px) * 4;
             if (pixels.data[index] === 15 && pixels.data[index + 1] === 18 &&
                 pixels.data[index + 2] === 38 && pixels.data[index + 3]) {
-              const edge = sy < 8 ? [52, 71, 78] : [67, 47, 39];
+              const edge = sy < 7 ? [71, 95, 98] : [117, 82, 57];
               pixels.data.set(edge, index);
             }
           }
@@ -219,15 +231,30 @@ window.WIZARD = {
   CW, CH, FX, FY, DIRS, FPS, FRAMES,
   drawStaffIcon(g) {
     g.clearRect(0, 0, 32, 32);
-    staffPixels((x, y, color) => {
-      g.fillStyle = color;
-      g.fillRect(4 + Math.round((x + 43 - y) * .52),
-        29 + Math.round((y - 43 + x - 4) * .52), 1, 1);
-    });
+    const sprite = document.createElement('canvas');
+    sprite.width = 13;
+    sprite.height = 44;
+    const pixels = sprite.getContext('2d');
+    drawStaffGlow(pixels, 7.5, 4.5);
+    staffPixels((x, y, color) => dot(pixels, x + 2, y, color));
+    const scale = 36 / sprite.height;
+    const width = sprite.width * scale;
+    const height = sprite.height * scale;
+    g.save();
+    g.imageSmoothingEnabled = false;
+    g.translate(16, 16);
+    g.rotate(Math.PI / 4);
+    g.drawImage(sprite, -width / 2, -height / 2, width, height);
+    g.restore();
+  },
+  drawSeatedStaff(g, x, y) {
+    drawStaffGlow(g, x + 5.5, y + 4.5);
+    staffPixels((sx, sy, color) => dot(g, x + sx, y + sy, color), 34);
+    rect(g, x + 2, y + 25, 2, 2, '#d6ab84');
   },
   get staffEquipped() { return staffEquipped; },
   set staffEquipped(value) { staffEquipped = Boolean(value); },
-  canvas: (dir, st, t) => currentCache()[dir][st][frameOf(st, t)],
+  canvas: (dir, st, t, withStaff = staffEquipped) => variants[withStaff][dir][st][frameOf(st, t)],
   frame: (dir, st, f) => currentCache()[dir][st][f],
   /* x, y = midden van de tile-ruit (TILESET.center) */
   draw(ctx, dir, st, t, x, y) { ctx.drawImage(currentCache()[dir][st][frameOf(st, t)], Math.round(x) - FX, Math.round(y) - FY + 2); },
