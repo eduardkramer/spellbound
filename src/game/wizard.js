@@ -238,8 +238,32 @@ window.WIZARD = {
   castingHand(dir, strength) {
     const vectors = { se: [2, 1], sw: [-2, 1], ne: [2, -1], nw: [-2, -1] };
     const [dx, dy] = vectors[dir];
+    return { x: dx * 4 * strength, y: -13 + dy * 3 * strength };
+  },
+  drawCastingPose(g, dir, x, y, strength, seated = false) {
+    const hand = this.castingHand(dir, strength);
     const side = dir.endsWith('w') ? -1 : 1;
-    return { x: -6 * side + dx * 3 * strength, y: -12 + dy * 4 * strength };
+    const targetX = x + hand.x, targetY = y + hand.y;
+    const rightX = x + side * 7 * (1 - strength) + hand.x * strength;
+    const rightY = y - 12 + (hand.y + 12) * strength;
+    const leftX = x - side * 7 * (1 - strength) + hand.x * strength;
+    const leftY = y - 12 + (hand.y + 12) * strength;
+    // De staf volgt de grijphand tot de handen op hetzelfde punt samenkomen.
+    g.save();
+    g.translate(rightX, rightY);
+    g.rotate(side * strength * .22);
+    staffPixels((sx, sy, color) => dot(g, sx - 4, sy - 29, color), seated ? 34 : 44);
+    drawStaffGlow(g, 1.5, -24.5, Date.now() / 1000);
+    g.restore();
+    for (const [shoulder, hx, hy] of [[-6, leftX, leftY], [6, rightX, rightY]]) {
+      for (let i = 0; i <= 7; i++) {
+        rect(g, x + shoulder + (hx - x - shoulder) * i / 7 - 1,
+          y - 19 + (hy - y + 19) * i / 7, 3, 3, '#625575');
+      }
+      rect(g, hx - 1, hy - 1, 3, 3, '#d6ab84');
+      dot(g, hx - 1, hy - 1, '#edc7a0');
+    }
+    if (strength > .45) drawStaffGlow(g, targetX, targetY, Date.now() / 1000);
   },
   drawStaffIcon(g) {
     g.clearRect(0, 0, 32, 32);
@@ -279,25 +303,7 @@ window.WIZARD = {
     const castingStaff = staffEquipped && casting > 0;
     ctx.drawImage(variants[staffEquipped && !castingStaff][dir][st][frameOf(st, t)], left, top);
     if (castingStaff) {
-      ctx.save();
-      ctx.translate(left, top);
-      if (dir[1] === 'w') { ctx.translate(CW, 0); ctx.scale(-1, 1); }
-      const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
-      staffPixels((sx, sy, color) => dot(ctx, 19 + sx, 1 + bob + sy, color));
-      drawStaffGlow(ctx, 24.5, 5.5 + bob, Date.now() / 1000);
-      rect(ctx, 21, 29 + bob, 3, 2, '#d6ab84');
-      ctx.restore();
-      const hand = this.castingHand(dir, casting);
-      const side = dir.endsWith('w') ? -1 : 1;
-      const hx = Math.round(x + hand.x), hy = Math.round(y + hand.y);
-      // De vrije arm strekt zich vanuit de schouder naar de hand.
-      const shoulderX = Math.round(x - side * 6), shoulderY = Math.round(y - 19);
-      for (let i = 0; i <= 6; i++) {
-        rect(ctx, shoulderX + (hx - shoulderX) * i / 6,
-          shoulderY + (hy - shoulderY) * i / 6, 3, 3, '#625575');
-      }
-      rect(ctx, hx - 1, hy - 1, 3, 3, '#d6ab84');
-      drawStaffGlow(ctx, hx, hy, Date.now() / 1000);
+      this.drawCastingPose(ctx, dir, x, y, casting);
       return;
     }
     if (staffEquipped) {
