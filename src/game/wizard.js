@@ -253,19 +253,39 @@ window.WIZARD = {
     g.drawImage(sprite, -width / 2, -height / 2, width, height);
     g.restore();
   },
-  drawSeatedStaff(g, x, y) {
+  drawSeatedStaff(g, x, y, casting = 0) {
+    g.save();
+    g.translate(x + 4, y + 25);
+    g.rotate(casting * .18);
+    g.translate(-x - 4, -y - 25);
     drawStaffGlow(g, x + 5.5, y + 4.5);
     staffPixels((sx, sy, color) => dot(g, x + sx, y + sy, color), 34);
     rect(g, x + 2, y + 25, 2, 2, '#d6ab84');
+    g.restore();
   },
   get staffEquipped() { return staffEquipped; },
   set staffEquipped(value) { staffEquipped = Boolean(value); },
   canvas: (dir, st, t, withStaff = staffEquipped) => variants[withStaff][dir][st][frameOf(st, t)],
   frame: (dir, st, f) => currentCache()[dir][st][f],
   /* x, y = midden van de tile-ruit (TILESET.center) */
-  draw(ctx, dir, st, t, x, y) {
+  draw(ctx, dir, st, t, x, y, casting = 0) {
     const left = Math.round(x) - FX, top = Math.round(y) - FY + 2;
-    ctx.drawImage(currentCache()[dir][st][frameOf(st, t)], left, top);
+    const castingStaff = staffEquipped && casting > 0;
+    ctx.drawImage(variants[staffEquipped && !castingStaff][dir][st][frameOf(st, t)], left, top);
+    if (castingStaff) {
+      ctx.save();
+      ctx.translate(left, top);
+      if (dir[1] === 'w') { ctx.translate(CW, 0); ctx.scale(-1, 1); }
+      const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
+      ctx.translate(23, 31 + bob);
+      ctx.rotate(casting * .18);
+      ctx.translate(-23, -31 - bob);
+      staffPixels((sx, sy, color) => dot(ctx, 19 + sx, 1 + bob + sy, color));
+      drawStaffGlow(ctx, 24.5, 5.5 + bob, Date.now() / 1000);
+      rect(ctx, 21, 29 + bob, 3, 2, '#d6ab84');
+      ctx.restore();
+      return;
+    }
     if (staffEquipped) {
       const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
       const orbX = dir[1] === 'w' ? CW - 24.5 : 24.5;
