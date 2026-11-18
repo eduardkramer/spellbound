@@ -93,8 +93,11 @@ function staffPixels(plot, length = 44) {
   }));
 }
 
-function drawStaffGlow(g, x, y) {
-  const radius = 7;
+function drawStaffGlow(g, x, y, time = 0) {
+  const pulse = .5 + .5 * Math.sin(time * Math.PI * 2 / 2.8);
+  const radius = 6 + pulse * 3;
+  g.save();
+  g.globalAlpha *= .45 + pulse * .55;
   const glow = g.createRadialGradient(x, y, 0, x, y, radius);
   glow.addColorStop(0, 'rgba(205, 255, 248, .95)');
   glow.addColorStop(.3, 'rgba(116, 255, 231, .65)');
@@ -102,6 +105,7 @@ function drawStaffGlow(g, x, y) {
   glow.addColorStop(1, 'rgba(128, 235, 219, 0)');
   g.fillStyle = glow;
   g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  g.restore();
 }
 
 /* tekent de tovenaar naar rechts-onder (voorkant) of rechts-boven (achterkant); links = gespiegeld */
@@ -122,7 +126,7 @@ function figure(g, back, f, walking, withStaff) {
   if (withStaff) {
     const x = cx + 3;
     const y = fy - 43 + bob;
-    drawStaffGlow(g, x + 5.5, y + 4.5);
+    drawStaffGlow(g, x + 5.5, y + 4.5, Date.now() / 1000);
     staffPixels((sx, sy, color) => dot(g, x + sx, y + sy, color));
   }
 
@@ -259,7 +263,15 @@ window.WIZARD = {
   canvas: (dir, st, t, withStaff = staffEquipped) => variants[withStaff][dir][st][frameOf(st, t)],
   frame: (dir, st, f) => currentCache()[dir][st][f],
   /* x, y = midden van de tile-ruit (TILESET.center) */
-  draw(ctx, dir, st, t, x, y) { ctx.drawImage(currentCache()[dir][st][frameOf(st, t)], Math.round(x) - FX, Math.round(y) - FY + 2); },
+  draw(ctx, dir, st, t, x, y) {
+    const left = Math.round(x) - FX, top = Math.round(y) - FY + 2;
+    ctx.drawImage(currentCache()[dir][st][frameOf(st, t)], left, top);
+    if (staffEquipped) {
+      const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
+      const orbX = dir[1] === 'w' ? CW - 24.5 : 24.5;
+      drawStaffGlow(ctx, left + orbX, top + 5.5 + bob, Date.now() / 1000);
+    }
+  },
   /* spritesheet: per richting een rij: 2 idle-frames + 4 walk-frames */
   sheet() {
     const c = document.createElement('canvas'); c.width = 6 * CW; c.height = DIRS.length * CH;
