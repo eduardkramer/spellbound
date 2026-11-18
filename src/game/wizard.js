@@ -235,6 +235,12 @@ const frameOf = (st, t) => Math.floor((t || 0) * FPS[st]) % FRAMES[st];
 
 window.WIZARD = {
   CW, CH, FX, FY, DIRS, FPS, FRAMES,
+  castingHand(dir, strength) {
+    const vectors = { se: [2, 1], sw: [-2, 1], ne: [2, -1], nw: [-2, -1] };
+    const [dx, dy] = vectors[dir];
+    const side = dir.endsWith('w') ? -1 : 1;
+    return { x: -6 * side + dx * 3 * strength, y: -12 + dy * 4 * strength };
+  },
   drawStaffIcon(g) {
     g.clearRect(0, 0, 32, 32);
     const sprite = document.createElement('canvas');
@@ -256,7 +262,7 @@ window.WIZARD = {
   drawSeatedStaff(g, x, y, casting = 0) {
     g.save();
     g.translate(x + 4, y + 25);
-    g.rotate(casting * .18);
+    g.rotate(0);
     g.translate(-x - 4, -y - 25);
     drawStaffGlow(g, x + 5.5, y + 4.5);
     staffPixels((sx, sy, color) => dot(g, x + sx, y + sy, color), 34);
@@ -277,13 +283,21 @@ window.WIZARD = {
       ctx.translate(left, top);
       if (dir[1] === 'w') { ctx.translate(CW, 0); ctx.scale(-1, 1); }
       const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
-      ctx.translate(23, 31 + bob);
-      ctx.rotate(casting * .18);
-      ctx.translate(-23, -31 - bob);
       staffPixels((sx, sy, color) => dot(ctx, 19 + sx, 1 + bob + sy, color));
       drawStaffGlow(ctx, 24.5, 5.5 + bob, Date.now() / 1000);
       rect(ctx, 21, 29 + bob, 3, 2, '#d6ab84');
       ctx.restore();
+      const hand = this.castingHand(dir, casting);
+      const side = dir.endsWith('w') ? -1 : 1;
+      const hx = Math.round(x + hand.x), hy = Math.round(y + hand.y);
+      // De vrije arm strekt zich vanuit de schouder naar de hand.
+      const shoulderX = Math.round(x - side * 6), shoulderY = Math.round(y - 19);
+      for (let i = 0; i <= 6; i++) {
+        rect(ctx, shoulderX + (hx - shoulderX) * i / 6,
+          shoulderY + (hy - shoulderY) * i / 6, 3, 3, '#625575');
+      }
+      rect(ctx, hx - 1, hy - 1, 3, 3, '#d6ab84');
+      drawStaffGlow(ctx, hx, hy, Date.now() / 1000);
       return;
     }
     if (staffEquipped) {
