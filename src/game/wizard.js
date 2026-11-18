@@ -61,6 +61,35 @@ function drawCape(g, cx, shoulder, drift, back) {
   }
 }
 
+
+function staffPixels(plot) {
+  const colors = { o: '#17131c', d: '#533326', w: '#8f5936', l: '#c28b51',
+    g: '#e3b96a', b: '#243b79', p: '#6754a0', t: '#279fae', c: '#62e6df', h: '#e1fff3' };
+  // Houtnerf en schuine banden lopen door tot in de bolhouder.
+  for (let y = 10; y < 44; y++) {
+    plot(3, y, colors.o); plot(6, y, colors.o);
+    plot(4, y, y % 7 < 2 ? colors.g : colors.w);
+    plot(5, y, y % 7 < 2 ? colors.l : colors.d);
+  }
+  const crown = [
+    '..oo.....',
+    '.owoooo..',
+    '.owtcco..',
+    'owbtchho.',
+    'owbbtcho.',
+    'owpbbtco.',
+    'owlppbwo.',
+    '.owlglwo.',
+    '.odwwoo..',
+    '..owlo...',
+    '..owdo...',
+    '...oo....'
+  ];
+  crown.forEach((row, y) => [...row].forEach((pixel, x) => {
+    if (colors[pixel]) plot(x, y, colors[pixel]);
+  }));
+}
+
 /* tekent de tovenaar naar rechts-onder (voorkant) of rechts-boven (achterkant); links = gespiegeld */
 function figure(g, back, f, walking, withStaff) {
   const cx = FX, fy = FY;
@@ -76,13 +105,7 @@ function figure(g, back, f, walking, withStaff) {
   const capeSwing = walking ? [0, -1, 0, 1][f] : 0;
   if (!back) drawCape(g, cx, shoulder, capeSwing, false);
 
-  if (withStaff) {
-  // staf met lichtgevende bol
-  rect(g, cx + 7, fy - 36 + bob, 1, 36, '#a06a3a'); rect(g, cx + 8, fy - 36 + bob, 1, 36, '#6a3c22');
-  ell(g, cx + 8, fy - 39 + bob, 2, 2, '#2a7a8a'); ell(g, cx + 8, fy - 39 + bob, 1, 1, pulse ? '#7fffd4' : '#46d6e8');
-  dot(g, cx + 7, fy - 40 + bob, '#ffffff');
-
-  }
+  if (withStaff) staffPixels((x, y, color) => dot(g, cx + 3 + x, fy - 43 + bob + y, color));
 
   // laarzen
   rect(g, cx - 4, fy - 3 - lL, 3, 3, '#2a2140'); rect(g, cx + 1, fy - 3 - lR, 3, 3, '#2a2140');
@@ -110,7 +133,7 @@ function figure(g, back, f, walking, withStaff) {
   if (back) {
     drawCape(g, cx, shoulder, capeSwing, true);
     // De bol en het uiteinde van de staf blijven zichtbaar langs de cape.
-    if (withStaff) rect(g, cx + 8, fy - 24 + bob, 1, 16, '#8b5935');
+    // De staf blijft naast de cape zichtbaar.
   } else {
     // Open kraag met twee gouden sluitingen onder de baard.
     rect(g, cx - 7, shoulder + 2, 4, 5, '#625575');
@@ -172,6 +195,14 @@ const frameOf = (st, t) => Math.floor((t || 0) * FPS[st]) % FRAMES[st];
 
 window.WIZARD = {
   CW, CH, FX, FY, DIRS, FPS, FRAMES,
+  drawStaffIcon(g) {
+    g.clearRect(0, 0, 32, 32);
+    staffPixels((x, y, color) => {
+      g.fillStyle = color;
+      g.fillRect(4 + Math.round((x + 43 - y) * .52),
+        29 + Math.round((y - 43 + x - 4) * .52), 1, 1);
+    });
+  },
   get staffEquipped() { return staffEquipped; },
   set staffEquipped(value) { staffEquipped = Boolean(value); },
   canvas: (dir, st, t) => currentCache()[dir][st][frameOf(st, t)],
