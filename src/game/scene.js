@@ -1193,10 +1193,19 @@ function iceBallLayers() {
           dot(ctx, tx, ty + Math.round(Math.sin(ball.age * 16 + i) * 2), '#bcefff');
         }
         ctx.globalAlpha = 1;
-        ell(ctx, x, y, 4, 4, '#27658c');
-        ell(ctx, x, y, 3, 3, '#77d9f5');
-        rect(ctx, x - 2, y - 2, 3, 2, '#e8ffff');
-        dot(ctx, x + 1, y + 2, '#46a9d8');
+        // Een spits kristal wijst steeds in de vliegrichting.
+        const dx = 2 * (ball.da - ball.db), dy = ball.da + ball.db;
+        const length = Math.hypot(dx, dy);
+        const ux = dx / length, uy = dy / length;
+        const nx = -uy, ny = ux;
+        for (let along = -6; along <= 9; along++) {
+          const width = along < -3 ? 1 : Math.max(0, Math.floor((9 - along) / 4));
+          for (let across = -width; across <= width; across++) {
+            const color = across === -width ? '#e8ffff'
+              : across < 0 ? '#a9efff' : across === width ? '#347fae' : '#64c8ed';
+            dot(ctx, x + ux * along + nx * across, y + uy * along + ny * across, color);
+          }
+        }
       }
       ctx.restore();
     }
