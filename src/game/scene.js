@@ -1694,7 +1694,7 @@ function drawSeatedWizard(t, seat) {
   }
   rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
   dot(ctx, px + 8, collar + 9, '#49405c');
-  rect(ctx, px + 8, collar, 1, 9, '#a06a3a');
+  if (WIZARD.staffEquipped) rect(ctx, px + 8, collar, 1, 9, '#a06a3a');
   ctx.restore();
 }
 
