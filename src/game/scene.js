@@ -1129,11 +1129,12 @@ function clearRoute() {
   requestedChest = false;
 }
 
-function nextToChest() {
-  return !inSecondRoom && Math.abs(wizard.a - CHEST_TILE[0]) + Math.abs(wizard.b - CHEST_TILE[1]) === 1;
+function nextToChest(a = wizard.a, b = wizard.b) {
+  return !inSecondRoom && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
 }
 
 function requestChest() {
+  if (chestInventory.open) return;
   const start = wizard.step ?? wizard;
   const [a, b] = CHEST_TILE;
   const approaches = Array.from(moves.values(), ([da, db]) => [a + da, b + db]);
@@ -1153,7 +1154,7 @@ function requestChest() {
 if (!preview) {
   addEventListener('keydown', event => {
     const key = event.key.toLowerCase();
-    if (chestInventory?.open || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
     if (key === 'e' && chestInventory && !event.repeat && !wizard.step && nextToChest()) {
       event.preventDefault();
@@ -1283,7 +1284,6 @@ const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint?.textContent;
 
 function updateWizard(dt) {
-  if (chestInventory?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
@@ -1294,7 +1294,7 @@ function updateWizard(dt) {
     clearHover();
     const [da, db] = [CHEST_TILE[0] - wizard.a, CHEST_TILE[1] - wizard.b];
     wizard.direction = Array.from(moves.values()).find(([a, b]) => a === da && b === db)[2];
-    chestInventory.showModal();
+    chestInventory.show();
     return;
   }
   if (requestedSeat && !wizard.step &&
@@ -1311,7 +1311,10 @@ function updateWizard(dt) {
     const [da, db, direction] = move;
     const a = wizard.a + da, b = wizard.b + db;
     wizard.direction = direction;
-    if (isWalkable(a, b)) wizard.step = { a, b, elapsed: 0 };
+    if (isWalkable(a, b)) {
+      if (chestInventory?.open && !nextToChest(a, b)) chestInventory.close();
+      wizard.step = { a, b, elapsed: 0 };
+    }
   }
   if (wizard.step) {
     wizard.step.elapsed += dt;

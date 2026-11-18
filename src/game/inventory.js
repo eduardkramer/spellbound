@@ -110,6 +110,11 @@ for (const [index, button] of hotbarButtons.entries()) {
 }
 
 addEventListener('keydown', event => {
+  if (dialog.open && event.key === 'Escape') {
+    event.preventDefault();
+    dialog.close();
+    return;
+  }
   if (dialog.open || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
       event.target.closest?.('input, textarea, select, [contenteditable]')) return;
   const match = /^(?:Digit|Numpad)([1-6])$/.exec(event.code);
@@ -117,6 +122,8 @@ addEventListener('keydown', event => {
   event.preventDefault();
   selectSlot(Number(match[1]) - 1);
 });
+
+document.getElementById('close-chest-inventory').addEventListener('click', () => dialog.close());
 
 dialog.addEventListener('close', () => {
   source = null;
