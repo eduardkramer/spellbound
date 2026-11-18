@@ -1125,6 +1125,8 @@ const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
 const iceBalls = [];
 let iceCooldown = 0;
+let castTime = 0;
+const castStrength = () => Math.sin(Math.PI * Math.max(0, castTime) / .32);
 
 function castIceBall() {
   if (!WIZARD.staffEquipped || iceCooldown > 0 || chestInventory?.open ||
@@ -1144,10 +1146,12 @@ function castIceBall() {
     startA: Math.floor(originA / TILE_SIZE), startB: Math.floor(originB / TILE_SIZE)
   });
   iceCooldown = .55;
+  castTime = .32;
 }
 
 function updateIceBalls(dt) {
   iceCooldown = Math.max(0, iceCooldown - dt);
+  castTime = Math.max(0, castTime - dt);
   for (let i = iceBalls.length - 1; i >= 0; i--) {
     const ball = iceBalls[i];
     ball.age += dt;
@@ -1198,8 +1202,8 @@ function iceBallLayers() {
         const length = Math.hypot(dx, dy);
         const ux = dx / length, uy = dy / length;
         const nx = -uy, ny = ux;
-        for (let along = -6; along <= 9; along++) {
-          const width = along < -3 ? 1 : Math.max(0, Math.floor((9 - along) / 4));
+        for (let along = -4; along <= 6; along++) {
+          const width = along < -2 ? 1 : Math.max(0, Math.floor((6 - along) / 2.5));
           for (let across = -width; across <= width; across++) {
             const color = across === -width ? '#e8ffff'
               : across < 0 ? '#a9efff' : across === width ? '#347fae' : '#64c8ed';
@@ -1418,6 +1422,7 @@ function updateWizard(dt) {
       if (wizard.a === EXIT_COLUMN && wizard.b === (inSecondRoom ? 0 : ROOM_TILES - 1)) {
         inSecondRoom = !inSecondRoom;
         iceBalls.length = 0;
+        castTime = 0;
         librarianDialogue.hidden = true;
         wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
         wizard.direction = inSecondRoom ? 'sw' : 'ne';
@@ -1793,7 +1798,7 @@ function drawRoomOccupants(t, dt) {
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
   }
-  if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y);
+  if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y, castStrength());
   for (; index < occupants.length; index++) drawFurnishing(occupants[index], t, dt);
 }
 
@@ -1839,7 +1844,7 @@ function drawSeatedWizard(t, seat) {
   }
   rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
   dot(ctx, px + 8, collar + 9, '#49405c');
-  if (WIZARD.staffEquipped) WIZARD.drawSeatedStaff(ctx, px + 3, top + 1);
+  if (WIZARD.staffEquipped) WIZARD.drawSeatedStaff(ctx, px + 3, top + 1, castStrength());
   ctx.restore();
 }
 
