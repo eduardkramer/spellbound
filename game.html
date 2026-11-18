@@ -140,30 +140,26 @@
     icon.fillStyle = color;
     icon.fillRect(x, y, width, height);
   }
-  // Diagonale pixelstappen houden de contour scherp.
-  for (let step = 0; step < 19; step++) {
-    const x = 6 + step, y = 27 - step;
-    iconPixel(x - 1, y - 1, 4, 4, '#171522');
-    iconPixel(x, y, 2, 2, '#70452e');
-    iconPixel(x, y, 1, 1, '#bf8950');
+  // Dezelfde slanke houten steel en kleine bol als in de tovenaarsprite.
+  for (let step = 0; step < 21; step++) {
+    const x = 5 + step, y = 28 - step;
+    iconPixel(x - 1, y - 1, 4, 4, '#0f1226');
   }
-  for (const step of [2, 3, 12, 13, 17]) {
-    iconPixel(6 + step, 27 - step, 2, 2, '#d6ae61');
-    iconPixel(6 + step, 27 - step, 1, 1, '#ffe0a0');
+  for (let step = 0; step < 21; step++) {
+    const x = 5 + step, y = 28 - step;
+    iconPixel(x, y, 1, 2, '#a06a3a');
+    iconPixel(x + 1, y + 1, 1, 1, '#6a3c22');
   }
-  iconPixel(19, 5, 9, 7, '#17243a');
-  iconPixel(20, 4, 7, 9, '#17243a');
-  iconPixel(20, 6, 7, 5, '#28778a');
-  iconPixel(21, 5, 5, 7, '#28778a');
-  iconPixel(21, 6, 5, 4, '#55d8d9');
-  iconPixel(22, 6, 3, 2, '#c1fff1');
-  iconPixel(21, 6, 1, 1, '#ffffff');
-  iconPixel(24, 10, 2, 1, '#319aa9');
-  iconPixel(21, 12, 3, 2, '#d6ae61');
-  iconPixel(21, 12, 2, 1, '#ffe0a0');
-  iconPixel(29, 2, 1, 5, '#a0e8e6');
-  iconPixel(27, 4, 5, 1, '#a0e8e6');
-  iconPixel(29, 4, 1, 1, '#ffffff');
+  iconPixel(22, 2, 7, 7, '#0f1226');
+  iconPixel(23, 1, 5, 9, '#0f1226');
+  iconPixel(21, 3, 9, 5, '#0f1226');
+  iconPixel(23, 3, 5, 5, '#2a7a8a');
+  iconPixel(24, 2, 3, 7, '#2a7a8a');
+  iconPixel(22, 4, 7, 3, '#2a7a8a');
+  iconPixel(24, 4, 3, 3, '#46d6e8');
+  iconPixel(25, 3, 1, 5, '#46d6e8');
+  iconPixel(23, 5, 5, 1, '#46d6e8');
+  iconPixel(23, 3, 2, 2, '#ffffff');
   hotbar.addEventListener('click', event => {
     const slot = event.target.closest('[data-slot]');
     if (slot) selectSlot(slot);
