@@ -95,9 +95,9 @@ function staffPixels(plot, length = 44) {
 
 function drawStaffGlow(g, x, y, time = 0) {
   const pulse = .5 + .5 * Math.sin(time * Math.PI * 2 / 2.8);
-  const radius = 6 + pulse * 3;
+  const radius = 6 + pulse;
   g.save();
-  g.globalAlpha *= .45 + pulse * .55;
+  g.globalAlpha *= .22 + pulse * .16;
   const glow = g.createRadialGradient(x, y, 0, x, y, radius);
   glow.addColorStop(0, 'rgba(205, 255, 248, .95)');
   glow.addColorStop(.3, 'rgba(116, 255, 231, .65)');
