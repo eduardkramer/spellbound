@@ -68,7 +68,27 @@
   #hotbar .hotbar-slot[aria-pressed="true"]{background:#372c40;color:#ffe2a1;
     box-shadow:inset 0 0 0 2px #f0c75a,inset 0 0 0 4px #87653d,0 0 9px #f0c75a30}
   #hotbar .hotbar-slot:focus-visible{outline:2px solid #fff1ce;outline-offset:3px}
-  #staff-icon{width:32px;height:32px;pointer-events:none}
+  .item-icon{width:min(100%,32px);height:auto;aspect-ratio:1;pointer-events:none}
+  #chest-inventory{position:fixed;inset:auto max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) auto;
+    z-index:2;margin:0;box-sizing:border-box;width:min(356px,calc(100% - 24px));max-height:min(390px,52dvh);
+    padding:8px 10px 10px;overflow:auto;overscroll-behavior:contain;color:#fff1d3;
+    border:3px solid #a87948;background:repeating-linear-gradient(#583727 0 10px,#503022 10px 12px,#653e2a 12px 13px);
+    box-shadow:0 0 0 2px #211621,4px 5px #16111b,inset 0 0 0 2px #39241f}
+  .chest-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 6px 5px 10px;
+    background:#684128;border-block:2px solid #b88750;box-shadow:inset 0 -3px #442a22}
+  .chest-heading h2{margin:0;color:#ffe0a0;font-size:16px;text-shadow:2px 2px #39251c}
+  #close-chest-inventory{flex:none;background:#4b3028;color:#ffe0a0;box-shadow:inset 0 0 0 2px #ba8a52;font-size:20px}
+  .inventory-slots{display:grid;gap:3px;padding:5px;border:2px solid #a87948;background:#35263b;
+    box-shadow:inset 0 0 0 2px #231828;grid-template-columns:repeat(8,minmax(0,1fr))}
+  #chest-slots{margin-top:6px}
+  #chest-hotbar{margin-top:6px;grid-template-columns:repeat(6,minmax(0,1fr));background:#211c32;border-color:#9a8154}
+  .inventory-slot{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;min-width:0;background:#483347;
+    box-shadow:inset 0 0 0 2px #76546a,inset 0 -4px #302237}
+  #chest-hotbar .inventory-slot{background:#17182c;box-shadow:inset 0 0 0 2px #59526f,inset 0 -5px #101222}
+  .inventory-slot:hover,#chest-hotbar .inventory-slot:hover{background:#614456}
+  .inventory-slot[aria-pressed="true"],#chest-hotbar .inventory-slot[aria-pressed="true"]{
+    box-shadow:inset 0 0 0 2px #ffe0a0,inset 0 0 0 4px #a57545}
+  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .slot-key{position:absolute;top:5px;left:6px;font-size:11px;line-height:1}
 </style>
 </head>
@@ -80,7 +100,7 @@
     <button type="button" id="zoom-in" aria-label="Inzoomen">+</button>
   </div>
   <div id="scene-view">
-    <canvas id="scene" aria-label="De speelkamer van de tovenaar" aria-describedby="movement-hint"></canvas>
+    <canvas id="scene" tabindex="0" aria-label="De speelkamer van de tovenaar" aria-describedby="movement-hint"></canvas>
   </div>
   <aside id="librarian-dialogue" aria-label="Gesprek met de bibliothecaris" aria-live="polite" hidden>
     <strong>Bibliothecaris</strong>
@@ -89,14 +109,14 @@
   </aside>
 
   <div id="hotbar" role="group" aria-label="Voorwerpen — selecteer met 1 tot en met 6">
-    <button type="button" class="hotbar-slot" data-slot="1" title="Toverstaf aan of uit · 1" aria-label="Toverstaf" aria-keyshortcuts="1" aria-pressed="true"><span class="slot-key" aria-hidden="true">1</span><canvas id="staff-icon" width="32" height="32" aria-hidden="true"></canvas></button>
+    <button type="button" class="hotbar-slot" data-slot="1" aria-label="Plek 1, toverstaf" aria-keyshortcuts="1" aria-pressed="true"><span class="slot-key" aria-hidden="true">1</span></button>
     <button type="button" class="hotbar-slot" data-slot="2" aria-label="Plek 2, leeg" aria-keyshortcuts="2" aria-pressed="false"><span class="slot-key" aria-hidden="true">2</span></button>
     <button type="button" class="hotbar-slot" data-slot="3" aria-label="Plek 3, leeg" aria-keyshortcuts="3" aria-pressed="false"><span class="slot-key" aria-hidden="true">3</span></button>
     <button type="button" class="hotbar-slot" data-slot="4" aria-label="Plek 4, leeg" aria-keyshortcuts="4" aria-pressed="false"><span class="slot-key" aria-hidden="true">4</span></button>
     <button type="button" class="hotbar-slot" data-slot="5" aria-label="Plek 5, leeg" aria-keyshortcuts="5" aria-pressed="false"><span class="slot-key" aria-hidden="true">5</span></button>
     <button type="button" class="hotbar-slot" data-slot="6" aria-label="Plek 6, leeg" aria-keyshortcuts="6" aria-pressed="false"><span class="slot-key" aria-hidden="true">6</span></button>
   </div>
-  <p id="movement-hint">Klik op een tegel om te lopen of op een stoel om te zitten. Lopen kan ook met de pijltjestoetsen of WASD.</p>
+  <p id="movement-hint">Klik op een tegel om te lopen of op een stoel om te zitten. Open de kist door erop te klikken of druk op E als je ernaast staat. Lopen kan ook met de pijltjestoetsen of WASD.</p>
 
   <div id="player">
     <div class="row">
@@ -119,38 +139,20 @@
     </div>
   </div>
 </div>
+<dialog id="chest-inventory" aria-labelledby="chest-title" aria-describedby="chest-help">
+  <div class="chest-heading">
+    <h2 id="chest-title">Chest</h2>
+    <button type="button" id="close-chest-inventory" aria-label="Kist sluiten" autofocus>×</button>
+  </div>
+  <p id="chest-help" class="visually-hidden">Kies een voorwerp en daarna een vakje om het te verplaatsen.</p>
+  <div id="chest-slots" class="inventory-slots" role="group" aria-label="Kist"></div>
+  <div id="chest-hotbar" class="inventory-slots" role="group" aria-label="Hotbar"></div>
+  <p id="chest-status" class="visually-hidden" role="status"></p>
+</dialog>
 <script src="src/audio/tracks.js"></script>
 <script src="src/game/wizard.js"></script>
+<script src="src/game/inventory.js"></script>
 <script src="src/game/scene.js"></script>
 <script src="src/audio/player.js"></script>
-
-<script>
-(function () {
-  const hotbar = document.getElementById('hotbar');
-  const slots = Array.from(hotbar.querySelectorAll('[data-slot]'));
-  let selectedSlot = null;
-  function selectSlot(slot, toggle = true) {
-    selectedSlot = toggle && selectedSlot === slot ? null : slot;
-    for (const button of slots) button.setAttribute('aria-pressed', String(button === selectedSlot));
-    hotbar.dataset.selectedSlot = selectedSlot?.dataset.slot || '';
-    WIZARD.staffEquipped = selectedSlot?.dataset.slot === '1';
-  }
-  const icon = document.getElementById('staff-icon').getContext('2d');
-  WIZARD.drawStaffIcon(icon);
-  hotbar.addEventListener('click', event => {
-    const slot = event.target.closest('[data-slot]');
-    if (slot) selectSlot(slot);
-  });
-  addEventListener('keydown', event => {
-    if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
-        event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
-    const match = /^(?:Digit|Numpad)([1-6])$/.exec(event.code);
-    if (!match) return;
-    event.preventDefault();
-    selectSlot(slots[Number(match[1]) - 1]);
-  });
-  selectSlot(slots[0], false);
-})();
-</script>
 </body>
 </html>
