@@ -235,6 +235,36 @@ const frameOf = (st, t) => Math.floor((t || 0) * FPS[st]) % FRAMES[st];
 
 window.WIZARD = {
   CW, CH, FX, FY, DIRS, FPS, FRAMES,
+  castingHand(dir, strength) {
+    const vectors = { se: [2, 1], sw: [-2, 1], ne: [2, -1], nw: [-2, -1] };
+    const [dx, dy] = vectors[dir];
+    return { x: dx * 4 * strength, y: -13 + dy * 3 * strength };
+  },
+  drawCastingPose(g, dir, x, y, strength, seated = false) {
+    const hand = this.castingHand(dir, strength);
+    const side = dir.endsWith('w') ? -1 : 1;
+    const targetX = x + hand.x, targetY = y + hand.y;
+    const rightX = x + side * 7 * (1 - strength) + hand.x * strength;
+    const rightY = y - 12 + (hand.y + 12) * strength;
+    const leftX = x - side * 7 * (1 - strength) + hand.x * strength;
+    const leftY = y - 12 + (hand.y + 12) * strength;
+    // De staf volgt de grijphand tot de handen op hetzelfde punt samenkomen.
+    g.save();
+    g.translate(rightX, rightY);
+    g.rotate(side * strength * .22);
+    staffPixels((sx, sy, color) => dot(g, sx - 4, sy - 29, color), seated ? 34 : 44);
+    drawStaffGlow(g, 1.5, -24.5, Date.now() / 1000);
+    g.restore();
+    for (const [shoulder, hx, hy] of [[-6, leftX, leftY], [6, rightX, rightY]]) {
+      for (let i = 0; i <= 7; i++) {
+        rect(g, x + shoulder + (hx - x - shoulder) * i / 7 - 1,
+          y - 19 + (hy - y + 19) * i / 7, 3, 3, '#625575');
+      }
+      rect(g, hx - 1, hy - 1, 3, 3, '#d6ab84');
+      dot(g, hx - 1, hy - 1, '#edc7a0');
+    }
+    if (strength > .45) drawStaffGlow(g, targetX, targetY, Date.now() / 1000);
+  },
   drawStaffIcon(g) {
     g.clearRect(0, 0, 32, 32);
     const sprite = document.createElement('canvas');
@@ -253,19 +283,29 @@ window.WIZARD = {
     g.drawImage(sprite, -width / 2, -height / 2, width, height);
     g.restore();
   },
-  drawSeatedStaff(g, x, y) {
+  drawSeatedStaff(g, x, y, casting = 0) {
+    g.save();
+    g.translate(x + 4, y + 25);
+    g.rotate(0);
+    g.translate(-x - 4, -y - 25);
     drawStaffGlow(g, x + 5.5, y + 4.5);
     staffPixels((sx, sy, color) => dot(g, x + sx, y + sy, color), 34);
     rect(g, x + 2, y + 25, 2, 2, '#d6ab84');
+    g.restore();
   },
   get staffEquipped() { return staffEquipped; },
   set staffEquipped(value) { staffEquipped = Boolean(value); },
   canvas: (dir, st, t, withStaff = staffEquipped) => variants[withStaff][dir][st][frameOf(st, t)],
   frame: (dir, st, f) => currentCache()[dir][st][f],
   /* x, y = midden van de tile-ruit (TILESET.center) */
-  draw(ctx, dir, st, t, x, y) {
+  draw(ctx, dir, st, t, x, y, casting = 0) {
     const left = Math.round(x) - FX, top = Math.round(y) - FY + 2;
-    ctx.drawImage(currentCache()[dir][st][frameOf(st, t)], left, top);
+    const castingStaff = staffEquipped && casting > 0;
+    ctx.drawImage(variants[staffEquipped && !castingStaff][dir][st][frameOf(st, t)], left, top);
+    if (castingStaff) {
+      this.drawCastingPose(ctx, dir, x, y, casting);
+      return;
+    }
     if (staffEquipped) {
       const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
       const orbX = dir[1] === 'w' ? CW - 24.5 : 24.5;
