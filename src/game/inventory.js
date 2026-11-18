@@ -7,16 +7,18 @@ const dialog = document.getElementById('chest-inventory');
 const status = document.getElementById('chest-status');
 const hotbarButtons = Array.from(hotbar.querySelectorAll('[data-slot]'));
 const items = { staff: { name: 'toverstaf', draw: WIZARD.drawStaffIcon } };
-const chestSize = 32;
+const chestSize = 40;
 
 function loadInventory() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (Array.isArray(saved?.hotbar) && saved.hotbar.length === hotbarButtons.length &&
-        Array.isArray(saved.chest) && saved.chest.length === chestSize) {
+        Array.isArray(saved.chest) && (saved.chest.length === 32 || saved.chest.length === chestSize)) {
       const contents = [...saved.hotbar, ...saved.chest];
       if (contents.every(item => item === null || Object.hasOwn(items, item)) &&
-          contents.filter(item => item === 'staff').length === 1) return saved;
+          contents.filter(item => item === 'staff').length === 1) {
+        return { hotbar: saved.hotbar, chest: [...saved.chest, ...Array(chestSize - saved.chest.length).fill(null)] };
+      }
     }
   } catch {
     // Ook zonder browseropslag blijft de inventaris tijdens het spelen beschikbaar.

@@ -78,10 +78,10 @@
     background:#684128;border-block:2px solid #b88750;box-shadow:inset 0 -3px #442a22}
   .chest-heading h2{margin:0;color:#ffe0a0;font-size:16px;text-shadow:2px 2px #39251c}
   #close-chest-inventory{flex:none;background:#4b3028;color:#ffe0a0;box-shadow:inset 0 0 0 2px #ba8a52;font-size:20px}
-  #chest-help,.chest-hotbar-label{margin:8px 0 5px;font-size:12px;line-height:1.4}
   .inventory-slots{display:grid;gap:3px;padding:5px;border:2px solid #a87948;background:#35263b;
     box-shadow:inset 0 0 0 2px #231828;grid-template-columns:repeat(8,minmax(0,1fr))}
-  #chest-hotbar{grid-template-columns:repeat(6,minmax(0,1fr));background:#211c32;border-color:#9a8154}
+  #chest-slots{margin-top:6px}
+  #chest-hotbar{margin-top:6px;grid-template-columns:repeat(6,minmax(0,1fr));background:#211c32;border-color:#9a8154}
   .inventory-slot{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;min-width:0;background:#483347;
     box-shadow:inset 0 0 0 2px #76546a,inset 0 -4px #302237}
   #chest-hotbar .inventory-slot{background:#17182c;box-shadow:inset 0 0 0 2px #59526f,inset 0 -5px #101222}
@@ -141,12 +141,11 @@
 </div>
 <dialog id="chest-inventory" aria-labelledby="chest-title" aria-describedby="chest-help">
   <div class="chest-heading">
-    <h2 id="chest-title">Voorraadkist</h2>
+    <h2 id="chest-title">Chest</h2>
     <button type="button" id="close-chest-inventory" aria-label="Kist sluiten" autofocus>×</button>
   </div>
-  <p id="chest-help">Kies een voorwerp en daarna een vakje om het te verplaatsen.</p>
+  <p id="chest-help" class="visually-hidden">Kies een voorwerp en daarna een vakje om het te verplaatsen.</p>
   <div id="chest-slots" class="inventory-slots" role="group" aria-label="Kist"></div>
-  <p class="chest-hotbar-label">Hotbar</p>
   <div id="chest-hotbar" class="inventory-slots" role="group" aria-label="Hotbar"></div>
   <p id="chest-status" class="visually-hidden" role="status"></p>
 </dialog>
