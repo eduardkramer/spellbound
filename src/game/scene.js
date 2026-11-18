@@ -1126,7 +1126,7 @@ const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 const iceBalls = [];
 let iceCooldown = 0;
 let castTime = 0;
-const castStrength = () => Math.sin(Math.PI * Math.max(0, castTime) / .32);
+const castStrength = () => castTime > .2 ? (.32 - castTime) / .12 : Math.max(0, castTime / .2);
 
 function castIceBall() {
   if (!WIZARD.staffEquipped || iceCooldown > 0 || chestInventory?.open ||
@@ -1138,10 +1138,10 @@ function castIceBall() {
   const seated = activeSeat && seatProgress >= .75;
   const originA = seated ? (activeSeat.tile[0] + .5) * TILE_SIZE : a;
   const originB = seated ? (activeSeat.tile[1] + .5) * TILE_SIZE + (activeSeat.offsetB ?? -1) : b;
-  const side = wizard.direction.endsWith('w') ? -1 : 1;
   iceBalls.push({
-    a: originA + side * 2, b: originB - side * 2,
-    z: seated ? activeSeat.height + 28 : 37,
+    a: originA, b: originB,
+    z: seated ? activeSeat.height + 14 : 14,
+    delay: .12, direction: wizard.direction,
     da, db, age: 0, impact: 0,
     startA: Math.floor(originA / TILE_SIZE), startB: Math.floor(originB / TILE_SIZE)
   });
@@ -1154,6 +1154,15 @@ function updateIceBalls(dt) {
   castTime = Math.max(0, castTime - dt);
   for (let i = iceBalls.length - 1; i >= 0; i--) {
     const ball = iceBalls[i];
+    if (ball.delay > 0) {
+      if (!WIZARD.staffEquipped) { iceBalls.splice(i, 1); continue; }
+      ball.delay -= dt;
+      if (ball.delay > 0) continue;
+      const hand = WIZARD.castingHand(ball.direction, 1);
+      const dy = hand.y + 14;
+      ball.a += (dy + hand.x / 2) / 2;
+      ball.b += (dy - hand.x / 2) / 2;
+    }
     ball.age += dt;
     if (ball.impact) {
       ball.impact += dt;
@@ -1177,7 +1186,7 @@ function updateIceBalls(dt) {
 }
 
 function iceBallLayers() {
-  return iceBalls.map(ball => ({
+  return iceBalls.filter(ball => ball.delay <= 0).map(ball => ({
     depth: ball.a + ball.b,
     animate() {
       const [x, y] = P(ball.a, ball.b, ball.z);
@@ -1844,7 +1853,16 @@ function drawSeatedWizard(t, seat) {
   }
   rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
   dot(ctx, px + 8, collar + 9, '#49405c');
-  if (WIZARD.staffEquipped) WIZARD.drawSeatedStaff(ctx, px + 3, top + 1, castStrength());
+  if (WIZARD.staffEquipped) {
+    WIZARD.drawSeatedStaff(ctx, px + 3, top + 1);
+    if (castTime > 0) {
+      const hand = WIZARD.castingHand('se', castStrength());
+      const hx = px + hand.x, hy = py + hand.y;
+      line(ctx, px - 6, py - 19, hx, hy, '#80728f');
+      rect(ctx, hx - 1, hy - 1, 3, 3, '#d6ab84');
+      glow(hx, hy, 5, 5, '140,235,255', .14);
+    }
+  }
   ctx.restore();
 }
 
