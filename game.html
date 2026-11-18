@@ -136,30 +136,7 @@
     WIZARD.staffEquipped = selectedSlot?.dataset.slot === '1';
   }
   const icon = document.getElementById('staff-icon').getContext('2d');
-  function iconPixel(x, y, width, height, color) {
-    icon.fillStyle = color;
-    icon.fillRect(x, y, width, height);
-  }
-  // Dezelfde slanke houten steel en kleine bol als in de tovenaarsprite.
-  for (let step = 0; step < 19; step++) {
-    const x = 5 + step, y = 28 - step;
-    iconPixel(x - 1, y - 1, 4, 4, '#0f1226');
-  }
-  for (let step = 0; step < 19; step++) {
-    const x = 5 + step, y = 28 - step;
-    iconPixel(x, y, 1, 2, '#a06a3a');
-    iconPixel(x + 1, y + 1, 1, 1, '#6a3c22');
-  }
-  iconPixel(22, 5, 7, 7, '#0f1226');
-  iconPixel(23, 4, 5, 9, '#0f1226');
-  iconPixel(21, 6, 9, 5, '#0f1226');
-  iconPixel(23, 6, 5, 5, '#2a7a8a');
-  iconPixel(24, 5, 3, 7, '#2a7a8a');
-  iconPixel(22, 7, 7, 3, '#2a7a8a');
-  iconPixel(24, 7, 3, 3, '#46d6e8');
-  iconPixel(25, 6, 1, 5, '#46d6e8');
-  iconPixel(23, 8, 5, 1, '#46d6e8');
-  iconPixel(23, 6, 2, 2, '#ffffff');
+  WIZARD.drawStaffIcon(icon);
   hotbar.addEventListener('click', event => {
     const slot = event.target.closest('[data-slot]');
     if (slot) selectSlot(slot);
