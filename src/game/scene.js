@@ -966,9 +966,7 @@ function drawDiamond(t) {
 }
 
 function drawChest(t, dt) {
-  const [a, b] = CHEST_TILE;
-  const nearby = Math.abs(wizard.a - a) + Math.abs(wizard.b - b) === 1;
-  chestOpening = Math.max(0, Math.min(1, chestOpening + (nearby ? dt : -dt) * 2.2));
+  chestOpening = Math.max(0, Math.min(1, chestOpening + (chestInventory?.open ? dt : -dt) * 2.2));
   const opening = chestOpening * chestOpening * (3 - 2 * chestOpening);
   const angle = opening * 1.7;
   const [x, y] = P(52, 4, 8);
@@ -1117,7 +1115,9 @@ const moves = new Map([
 ]);
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
+const chestInventory = document.getElementById('chest-inventory');
 let requestedSeat = null, activeSeat = null;
+let requestedChest = false;
 let seatProgress = 0;
 let route = [];
 let destination = null;
@@ -1126,13 +1126,41 @@ const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 function clearRoute() {
   route = [];
   destination = null;
+  requestedChest = false;
+}
+
+function nextToChest() {
+  return !inSecondRoom && Math.abs(wizard.a - CHEST_TILE[0]) + Math.abs(wizard.b - CHEST_TILE[1]) === 1;
+}
+
+function requestChest() {
+  const start = wizard.step ?? wizard;
+  const [a, b] = CHEST_TILE;
+  const approaches = Array.from(moves.values(), ([da, db]) => [a + da, b + db]);
+  const paths = approaches.filter(tile => isWalkable(...tile))
+    .map(tile => ({ tile, path: findRoute(start, ...tile) }))
+    .filter(({ path }) => path !== null)
+    .sort((first, second) => first.path.length - second.path.length);
+  if (!paths.length) return;
+  const [{ tile, path }] = paths;
+  heldKeys.clear();
+  requestedSeat = null;
+  requestedChest = true;
+  route = path;
+  destination = path.length ? tile : null;
 }
 
 if (!preview) {
   addEventListener('keydown', event => {
     const key = event.key.toLowerCase();
-    if (!moves.has(aliases[key] || key) || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+    if (chestInventory?.open || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (key === 'e' && chestInventory && !event.repeat && !wizard.step && nextToChest()) {
+      event.preventDefault();
+      requestChest();
+      return;
+    }
+    if (!moves.has(aliases[key] || key)) return;
     event.preventDefault();
     clearRoute();
     requestedSeat = null;
@@ -1167,6 +1195,13 @@ if (!preview) {
   });
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
+    if (!inSecondRoom && chestInventory) {
+      const [x, y] = P(52, 4, 8);
+      if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
+        requestChest();
+        return;
+      }
+    }
     if (inSecondRoom && librarianHit) {
       const [x, y] = librarianHit;
       if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
@@ -1195,6 +1230,7 @@ if (!preview) {
     if (!nextRoute) return;
     heldKeys.clear();
     requestedSeat = seat ?? null;
+    requestedChest = false;
     route = nextRoute;
     destination = route.length ? tile : null;
   });
@@ -1247,9 +1283,18 @@ const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint?.textContent;
 
 function updateWizard(dt) {
+  if (chestInventory?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
+    return;
+  }
+  if (requestedChest && !wizard.step && !route.length && nextToChest()) {
+    clearRoute();
+    clearHover();
+    const [da, db] = [CHEST_TILE[0] - wizard.a, CHEST_TILE[1] - wizard.b];
+    wizard.direction = Array.from(moves.values()).find(([a, b]) => a === da && b === db)[2];
+    chestInventory.showModal();
     return;
   }
   if (requestedSeat && !wizard.step &&
