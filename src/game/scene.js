@@ -1744,7 +1744,7 @@ const zoomOut = document.getElementById('zoom-out');
 const zoomIn = document.getElementById('zoom-in');
 const zoomReset = document.getElementById('zoom-reset');
 const MIN_ZOOM = 75, MAX_ZOOM = 200, ZOOM_STEP = 25;
-let zoom = 175;
+let zoom = 150;
 
 function fit() {
   clearHover();
