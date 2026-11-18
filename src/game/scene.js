@@ -1854,13 +1854,10 @@ function drawSeatedWizard(t, seat) {
   rect(ctx, px + 6, collar + 9, 4, 2, '#282135');
   dot(ctx, px + 8, collar + 9, '#49405c');
   if (WIZARD.staffEquipped) {
-    WIZARD.drawSeatedStaff(ctx, px + 3, top + 1);
     if (castTime > 0) {
-      const hand = WIZARD.castingHand('se', castStrength());
-      const hx = px + hand.x, hy = py + hand.y;
-      line(ctx, px - 6, py - 19, hx, hy, '#80728f');
-      rect(ctx, hx - 1, hy - 1, 3, 3, '#d6ab84');
-      glow(hx, hy, 5, 5, '140,235,255', .14);
+      WIZARD.drawCastingPose(ctx, seat.direction[0] + 'e', px, py, castStrength(), true);
+    } else {
+      WIZARD.drawSeatedStaff(ctx, px + 3, top + 1);
     }
   }
   ctx.restore();
