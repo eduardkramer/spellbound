@@ -2052,9 +2052,11 @@ function drawSkeletonMage(t) {
 const pumpkinA = 6.5 * TILE_SIZE, pumpkinB = .5 * TILE_SIZE;
 
 const pumpkinPixels = [
-  '..........sg.......',
-  '.........sg........',
-  '.........gg.s......',
+  '............s......',
+  '...........sbg.....',
+  '..........sbg......',
+  '.........gbg.......',
+  '.........gg........',
   '.....dddrggrdd.....',
   '...ddrohhoorwrd....',
   '..dohhohwwwowrrd...',
@@ -2070,20 +2072,20 @@ const pumpkinPixels = [
   '.....dddddddd......'
 ];
 const pumpkinPalette = {
-  s: '#a9ab61', g: '#536043', d: '#572e39', r: '#a34830',
+  s: '#c4cc82', b: '#829650', g: '#536043', d: '#572e39', r: '#a34830',
   w: '#c45b30', o: '#e27636', h: '#f49a52'
 };
 
 function drawPotionPumpkin(t) {
   const [x, y] = P(pumpkinA, pumpkinB, 0);
-  const pulse = .5 + .3 * Math.sin(t * 8) + .15 * Math.sin(t * 19);
+  const pulse = .5 + .32 * Math.sin(t * 2.4) + .1 * Math.sin(t * 4.8);
   ell(ctx, x, y, 9, 3, '#332938');
   glow(x, y - 2, 17, 9, '255,149,59', .035 + pulse * .025);
-  const candle = pulse > .62 ? '#fff0b0' : pulse > .31 ? '#ffd47b' : '#edaa55';
+  const candle = `rgb(255,${Math.round(206 + 14 * pulse)},${Math.round(115 + 19 * pulse)})`;
   for (const [dy, row] of pumpkinPixels.entries()) {
     for (const [dx, pixel] of Array.from(row).entries()) {
       if (pixel === '.') continue;
-      dot(ctx, x + dx - 9, y + dy - 15, pixel === 'f' ? candle : pumpkinPalette[pixel]);
+      dot(ctx, x + dx - 9, y + dy - pumpkinPixels.length + 1, pixel === 'f' ? candle : pumpkinPalette[pixel]);
     }
   }
 }
