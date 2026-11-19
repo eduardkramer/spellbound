@@ -15,11 +15,14 @@ const POTION_COLUMNS = 8;
 const POTION_ROWS = 7;
 const POTION_DOOR_ROW = 3;
 const LIBRARY_POTION_DOOR_ROW = 4;
+const STOCK_COLUMNS = 12, STOCK_ROWS = 10;
+const STOCK_WIDTH = STOCK_COLUMNS * TILE_SIZE, STOCK_DEPTH = STOCK_ROWS * TILE_SIZE;
+const POTION_STOCK_DOOR_COLUMN = POTION_COLUMNS - 1, STOCK_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
-const W = 4 * (N + T) + 10, CX = W / 2, CY = 162;
-const H = CY + 2 * N + F + 12;
+const W = 4 * (STOCK_WIDTH + T) + 10, CX = W / 2, CY = 162;
+const H = CY + STOCK_WIDTH + STOCK_DEPTH + F + 12;
 
 const cv = document.getElementById('scene');
 const preview = cv.dataset?.preview !== undefined;
@@ -27,7 +30,7 @@ if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk(), secondC = mk(), potionC = mk();
+const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk();
 const rooms = {
   tower: { canvas: statC, exits: [
     { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' }
@@ -37,7 +40,13 @@ const rooms = {
     { tile: [ROOM_TILES - 1, LIBRARY_POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
   ] },
   potion: { canvas: potionC, exits: [
-    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' }
+    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
+    { tile: [POTION_STOCK_DOOR_COLUMN, 0], wallB: 0,
+      target: 'stockroom', arrival: [1, STOCK_DOOR_ROW], direction: 'se' }
+  ] },
+  stockroom: { canvas: stockC, exits: [
+    { tile: [0, STOCK_DOOR_ROW], wallA: 0, target: 'potion',
+      arrival: [POTION_STOCK_DOOR_COLUMN, 1], direction: 'nw' }
   ] }
 };
 
@@ -373,6 +382,15 @@ function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
   box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+}
+
+const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
+
+function drawStockPassage(g, { tile, wallB }) {
+  const center = (tile[0] + .5) * TILE_SIZE;
+  box(g, center - 6, wallB, 0, 12, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
+    (u, z) => stockArchColor(u - 2 * center, z));
 }
 
 function drawSidePassage(g, { wallA, tile }, foreground) {
@@ -848,14 +866,49 @@ function drawPotionWorkbench(g) {
   line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
 }
 
-function drawCauldron(t) {
-  const [x, y] = P(cauldronA, cauldronB, 0);
-  ell(ctx, x, y, 19, 6, '#282339');
-  ell(ctx, x, y - 2, 11, 4, '#58363a');
-  for (let i = -2; i <= 2; i++) {
-    const flame = 2 + Math.round(2 * (1 + Math.sin(t * 9 + i * 2)));
-    rect(ctx, x + i * 3, y - flame, 2, flame, i % 2 ? '#ed9252' : '#ffc771');
+// Opeenvolgende silhouetten van een laag, breed vuur tussen de ketelpoten.
+const cauldronFlameFrames = [
+  [1, 3, 5, 4, 2, 3, 7, 10, 8, 5, 3, 3, 6, 8, 7, 4, 3, 2, 1],
+  [1, 2, 4, 7, 4, 3, 5, 8, 11, 7, 5, 3, 4, 7, 9, 6, 3, 2, 1],
+  [1, 3, 5, 8, 5, 3, 4, 6, 9, 10, 6, 4, 3, 5, 8, 8, 5, 3, 1],
+  [1, 2, 4, 6, 8, 4, 3, 5, 8, 10, 8, 4, 3, 5, 7, 9, 6, 2, 1],
+  [1, 3, 6, 5, 7, 5, 3, 7, 9, 8, 6, 4, 4, 7, 9, 6, 4, 3, 1],
+  [1, 4, 6, 5, 3, 4, 6, 9, 8, 6, 4, 3, 5, 9, 7, 5, 4, 2, 1]
+];
+
+function drawCauldronFire(x, y, t, intensity) {
+  if (intensity <= 0) return;
+  ell(ctx, x, y + 1, 11, 3, '#502636');
+  ell(ctx, x, y, 9, 2, '#8e342c');
+  const frame = cauldronFlameFrames[Math.floor(t * 12) % cauldronFlameFrames.length];
+  for (const [i, tip] of frame.entries()) {
+    const height = Math.round(tip * intensity);
+    if (!height) continue;
+    const dx = i - 9;
+    const baseY = y - (Math.abs(dx) > 6 ? 1 : 0);
+    rect(ctx, x + dx, baseY - height + 1, 1, height, '#b73b2e');
+    const orange = Math.floor(height * .8);
+    if (orange) rect(ctx, x + dx, baseY - orange + 1, 1, orange, '#f47b31');
+    const core = Math.floor(height * (i % 3 === 0 ? .54 : .4));
+    if (core) rect(ctx, x + dx, baseY - core + 1, 1, core, '#ffbc45');
+    if (core >= 3) rect(ctx, x + dx, baseY - 1, 1, 2, '#ffea89');
   }
+  for (let i = 0; i < 4; i++) {
+    const age = (t * (1.1 + i * .13) + i * .31) % 1;
+    if (intensity < .45 || age >= .82) continue;
+    dot(ctx, x + (i - 1.5) * 5 + Math.sin(age * 5 + i) * 2,
+      y - 3 - age * 11 * intensity, age < .38 ? '#ffd06a' : '#b85037');
+  }
+}
+
+function drawCauldron(t, dt) {
+  const [x, y] = P(cauldronA, cauldronB, 0);
+  const lit = questStage === 'ready' || questStage === 'complete';
+  if (lit) cauldronWarmup = Math.min(1, cauldronWarmup + dt / 2.5);
+  ell(ctx, x, y, 19, 6, '#282339');
+  ell(ctx, x, y - 1, 10, 3, '#3e302f');
+  line(ctx, x - 7, y + 1, x + 6, y - 1, '#76573f');
+  line(ctx, x - 5, y - 2, x + 7, y + 1, '#5a4033');
   for (const offset of [-11, 11]) {
     rect(ctx, x + offset - 2, y - 7, 5, 8, '#242733');
     rect(ctx, x + offset - 1, y - 5, 2, 4, '#545561');
@@ -868,6 +921,7 @@ function drawCauldron(t) {
     dot(ctx, x + dx, y - 21 + Math.round((1 - Math.abs(dx) / 10) * 2), '#999485');
   }
   ell(ctx, x, y - 11, 12, 7, '#303440');
+  drawCauldronFire(x, y + 1, t, Math.min(1, cauldronWarmup * 2.2));
   for (const side of [-1, 1]) {
     ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
     ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
@@ -883,9 +937,14 @@ function drawCauldron(t) {
 
   ell(ctx, x, y - 26, 19, 8, '#242431');
   ell(ctx, x, y - 27, 18, 7, '#73757b');
-  ell(ctx, x, y - 27, 16, 5, '#4f9e42');
-  ell(ctx, x - 2, y - 27, 12, 4, '#76c951');
-  for (let i = 0; i < 7; i++) {
+  const warmth = cauldronWarmup * cauldronWarmup * (3 - 2 * cauldronWarmup);
+  const liquidColor = (cold, hot) => `rgb(${cold.map((channel, i) =>
+    Math.round(channel + (hot[i] - channel) * warmth)).join(',')})`;
+  ell(ctx, x, y - 27, 16, 5, liquidColor([61, 102, 70], [79, 158, 66]));
+  ell(ctx, x - 2, y - 27, 12, 4, liquidColor([84, 124, 81], [118, 201, 81]));
+  ctx.save();
+  for (let i = 0; warmth > i / 8 && i < 7; i++) {
+    ctx.globalAlpha = Math.min(1, (warmth - i / 8) * 4);
     const age = (t * (.55 + hash(i, 17) * .27) + hash(i, 8)) % 1;
     const bx = x + (hash(i, 13) - .5) * 22;
     const by = y - 27 + (hash(i, 15) - .5) * 6;
@@ -897,19 +956,27 @@ function drawCauldron(t) {
       dot(ctx, bx + 1, by - 3 - 10 * (age - .8), '#d2f989');
     }
   }
-  // Roerlepel met de steel op de achterste rand.
-  line(ctx, x + 4, y - 28, x + 18, y - 40, '#593b30');
-  line(ctx, x + 5, y - 29, x + 18, y - 41, '#bd8959');
-  dot(ctx, x + 18, y - 41, '#e0ac75');
-  for (let i = 0; i < 4; i++) {
+  ctx.restore();
+
+  // Een deels ondergedompelde houten lepel met een verdikte grip.
+  ell(ctx, x + 5, y - 28, 4, 2, '#573b30');
+  ell(ctx, x + 5, y - 29, 3, 2, '#94633f');
+  line(ctx, x + 3, y - 29, x + 6, y - 30, '#c39563');
+  line(ctx, x + 6, y - 30, x + 18, y - 40, '#593b30');
+  line(ctx, x + 6, y - 31, x + 18, y - 41, '#bd8959');
+  line(ctx, x + 15, y - 39, x + 19, y - 42, '#dba873');
+  dot(ctx, x + 18, y - 42, '#ecc295');
+  dot(ctx, x + 18, y - 40, '#976441');
+  ctx.save();
+  for (let i = 0; i < 4 && warmth > 0; i++) {
     const age = (t * .39 + i / 4) % 1;
-    ctx.globalAlpha = Math.sin(age * Math.PI) * .29;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .29 * warmth;
     const steamX = x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3 + age * 5;
     const steamY = y - 31 - 25 * age;
     ell(ctx, steamX, steamY, 2 + Math.floor(age * 4), 2, '#bfe88e');
     ell(ctx, steamX - 2, steamY + 1, 2, 1, '#e9edbc');
   }
-  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 function potionFloor(a, b) {
@@ -951,12 +1018,194 @@ function tintFloor(color, contact, amount) {
     Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
 }
 
+function stockroomFloor(a, b) {
+  const column = Math.floor(a / 8), row = Math.floor(b / 8);
+  if (a % 8 < .55 || b % 8 < .55) return '#34343e';
+  const beam = Math.max(0, 1 - Math.abs(a - 35) / 24) * Math.max(0, 1 - Math.abs(b - 23) / 27);
+  const grit = hash(Math.floor(a * 2), Math.floor(b * 2));
+  return sh('#66636a', .84 + hash(column, row) * .25 + beam * .3 + (grit > .91 ? .09 : 0));
+}
+
+const stockShelfRanges = [[6, 29], [34, 58], [64, 89]];
+const stockBookcases = [[0, 3], [6, 9]];
+const stockLayout = [
+  [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
+  [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
+  [1, 6, 'table'], [2, 6, 'chair'], [4, 5, 'crystals'], [5, 5, 'herbs'],
+  [6, 5, 'crates'], [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
+  [2, 8, 'scrolls'], [3, 8, 'herbs'], [5, 8, 'books'], [6, 8, 'chair'],
+  [7, 8, 'table'], [9, 8, 'crates'], [10, 8, 'barrel'], [11, 8, 'chest']
+];
+const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
+
+function drawStockLanterns(t) {
+  for (const [x, y] of stockLanterns) {
+    glow(x, y, 36, 29, '255,170,92', .062 + .012 * Math.sin(t * 4 + x));
+    line(ctx, x, y - 12, x, y - 5, '#8c654e');
+    ell(ctx, x, y, 4, 5, '#503637');
+    ell(ctx, x, y, 3, 3, '#d39051');
+    dot(ctx, x, y - 1, '#fff1ad');
+    rect(ctx, x - 2, y + 4, 5, 1, '#976442');
+  }
+}
+
+function drawStockShelves(g) {
+  const timber = woodC('#83583c');
+  for (const [first, limit] of stockBookcases) {
+    const start = first * TILE_SIZE + 2, end = limit * TILE_SIZE - 2;
+    box(g, 0, start, 0, 4, end - start, 87, timber);
+    wallL(g, 4, start * 2, end * 2, 0, 87, libraryShelf(start * 2, end * 2, null));
+    box(g, 0, start - .5, 86, 4.5, end - start + 1, 2, timber);
+  }
+  for (const [start, end] of stockShelfRanges) {
+    box(g, start, 0, 0, end - start, 5, 57, timber);
+    wallR(g, 5, start * 2, end * 2, 2, 56, (u, z) => {
+      const column = u - start * 2;
+      const shelf = (z - 2) % 14;
+      if (column < 3 || u >= end * 2 - 3 || shelf < 2) return shelf === 1 ? '#ac7b52' : '#745039';
+      const group = Math.floor(column / 9);
+      const tier = Math.floor((z - 2) / 14);
+      const item = column % 9;
+      const kind = (group + tier + start) % 5;
+      if (kind !== 4 && item >= 1 && item <= 6) {
+        const palette = ['#6e8ba0', '#9477ab', '#778951', '#ad7b4c'];
+        const narrow = kind < 2;
+        if (shelf === 10 && item >= 3 && item <= 4) return '#c39c73';
+        if (shelf >= 8 && shelf < 10 && item >= 3 && item <= 4) return '#a5b9b2';
+        if (shelf >= 2 && shelf < 8 && (!narrow || (item >= 2 && item <= 5))) {
+          if (item === (narrow ? 2 : 1)) return '#a9c1b6';
+          if (shelf === 5 && item >= 3 && item <= 4 && !narrow) return '#dac198';
+          return sh(palette[kind], shelf > 4 ? 1 : .75);
+        }
+      }
+      return '#352b35';
+    });
+    box(g, start - .5, 0, 56, end - start + 1, 5.5, 2, timber);
+  }
+}
+
+function drawStockContainer(g, a, b, kind) {
+  const [x, y] = P(a, b, 0);
+  ell(g, x, y, 9, 4, '#4b434d');
+  ell(g, x, y, 6, 2, '#353039');
+  const furnitureWood = woodC('#9b6345'), darkWood = woodC('#673f2c');
+  if (kind === 'chair' || kind === 'table') {
+    const chair = kind === 'chair';
+    const height = chair ? 7 : 11;
+    const size = chair ? 4 : 6;
+    for (const da of [-size / 2, size / 2 - 1]) {
+      for (const db of [-size / 2, size / 2 - 1]) box(g, a + da, b + db, 0, 1, 1, height, darkWood);
+    }
+    box(g, a - size / 2, b - size / 2, height, size, size, 1.5, furnitureWood);
+    const surface = height + 1.5;
+    line(g, ...P(a - size / 2 + .5, b + size / 2 - .5, surface),
+      ...P(a + size / 2 - .5, b + size / 2 - .5, surface), '#c18d64');
+    line(g, ...P(a - 1.5, b + .55, surface), ...P(a + 1.5, b + .55, surface), '#85563d');
+    if (chair) {
+      box(g, a - 2, b - 2, height, 4, 1, 8, darkWood);
+      box(g, a - 2.2, b - 2.3, height + 6, 4.4, 1.5, 2, furnitureWood);
+      for (const da of [-1.4, 1.4]) dot(g, ...P(a + da, b - .8, height + 7), '#d0a47a');
+    } else {
+      box(g, a - 2.2, b - 1.75, height + 1.5, 3.5, 2.5, .75,
+        flat('#c1ad82', '#8a7559', '#a48a61'));
+      line(g, ...P(a - 1.7, b - .9, surface + .75), ...P(a + .5, b - .9, surface + .75), '#8f765d');
+    }
+    return;
+  }
+  if (kind === 'chest') {
+    box(g, a - 3, b - 2, 0, 6, 4, 5, darkWood);
+    box(g, a - 3.2, b - 2.2, 5, 6.4, 4.4, 2, furnitureWood);
+    box(g, a - 2.6, b - 1.8, 7, 5.2, 3.6, 1, furnitureWood);
+    for (const da of [-2, 2]) {
+      line(g, ...P(a + da, b + 2.25, 1), ...P(a + da, b + 2.25, 6), '#b28c59');
+    }
+    const [lx, ly] = P(a, b + 2.25, 4);
+    rect(g, lx - 1, ly - 1, 3, 2, '#d7b572');
+    dot(g, lx, ly, '#49312e');
+    line(g, ...P(a - 2.6, b + 2.25, 5), ...P(a + 2.6, b + 2.25, 5), '#59372b');
+    for (const da of [-2, 2]) {
+      dot(g, ...P(a + da, b + 2.25, 2), '#e2bb79');
+      dot(g, ...P(a + da, b + 2.25, 6), '#e2bb79');
+    }
+    return;
+  }
+  if (kind === 'barrel') {
+    ell(g, x, y - 5, 7, 6, '#72503d');
+    rect(g, x - 6, y - 12, 13, 9, '#876046');
+    for (const dx of [-4, 0, 4]) line(g, x + dx, y - 12, x + dx, y - 2, '#a77950');
+    for (const dy of [-9, -4]) rect(g, x - 6, y + dy, 13, 2, '#4c454d');
+    ell(g, x, y - 12, 7, 3, '#a47850');
+    ell(g, x, y - 12, 5, 2, '#634b3e');
+    line(g, x - 4, y - 12, x + 3, y - 11, '#8c6a4e');
+    for (const dy of [-8, -3]) {
+      dot(g, x - 4, y + dy, '#aaa0a1');
+      dot(g, x + 4, y + dy, '#81787e');
+    }
+    return;
+  }
+  if (kind === 'herbs') {
+    ell(g, x, y - 4, 6, 6, '#8f6c4f');
+    ell(g, x - 1, y - 5, 4, 5, '#b28e65');
+    ell(g, x, y - 10, 3, 2, '#79573f');
+    line(g, x - 3, y - 9, x + 2, y - 9, '#d8b986');
+    for (const [dx, dy] of [[-2,-10],[1,-11],[2,-10],[6,0],[8,1],[5,2]]) {
+      dot(g, x + dx, y + dy, dy < 0 ? '#a6ad65' : '#788c57');
+    }
+    for (const [dx, dy] of [[-3,-5],[-2,-4],[-3,-3]]) dot(g, x + dx, y + dy, '#d8b287');
+    line(g, x + 2, y - 6, x + 3, y - 3, '#76543e');
+    rect(g, x + 1, y - 5, 2, 2, '#c7a27b');
+    return;
+  }
+  const timber = woodC('#9b6b43');
+  box(g, a - 2.6, b - 2.6, 0, 5.2, 5.2, 8, timber);
+  box(g, a - 2.8, b - 2.8, 7, 5.6, 5.6, 1, woodC('#ae8156'));
+  line(g, ...P(a - 2, b + 2.6, 1), ...P(a + 2, b + 2.6, 7), '#bd8b5c');
+  line(g, ...P(a + 2.6, b - 2, 7), ...P(a + 2.6, b + 2, 1), '#81573d');
+  for (const z of [2, 5]) {
+    line(g, ...P(a - 2.5, b + 2.65, z), ...P(a + 2.5, b + 2.65, z), '#785339');
+  }
+  for (const da of [-2, 2]) for (const z of [1, 6]) {
+    dot(g, ...P(a + da, b + 2.7, z), '#c0a28a');
+  }
+  if (kind === 'crates') {
+    box(g, a - 1.6, b - 1.2, 8, 3.6, 3.2, 5, furnitureWood);
+    box(g, a - 1.8, b - 1.4, 12.5, 4, 3.6, .75, darkWood);
+  } else if (kind === 'books') {
+    const covers = ['#782d48', '#405e60', '#735086'];
+    for (const [index, cover] of covers.entries()) {
+      const offset = index % 2 ? -.5 : 0;
+      box(g, a - 2 + offset, b - 1.5, 8 + index * 1.4, 4, 3, 1.4,
+        flat(cover, '#bda781', '#8d7359'));
+      const spineZ = 8.6 + index * 1.4;
+      dot(g, ...P(a - 1.3 + offset, b + 1.55, spineZ), '#dbc18a');
+      dot(g, ...P(a + 1.2 + offset, b + 1.55, spineZ), '#ad9063');
+      line(g, ...P(a - 2 + offset, b + 1.55, 9 + index * 1.4),
+        ...P(a + 2 + offset, b + 1.55, 9 + index * 1.4), cover);
+    }
+  } else if (kind === 'glass') {
+    flask(g, x - 3, y - 7, '#89aaa0', 'tube', null);
+    flask(g, x + 3, y - 9, '#628c91', 'round', null);
+  } else if (kind === 'crystals') {
+    for (const [dx, dy, color] of [[-3, -7, '#b298db'], [0, -10, '#d2b6f5'], [3, -7, '#8975b6']]) {
+      line(g, x + dx, y + dy - 4, x + dx - 1, y + dy, color);
+      line(g, x + dx, y + dy - 3, x + dx + 1, y + dy, '#614f81');
+      dot(g, x + dx, y + dy - 4, '#ebd3fa');
+    }
+  } else {
+    ell(g, x - 4, y - 8, 2, 2, '#d7b87b');
+    line(g, x - 4, y - 10, x + 4, y - 9, '#ead095');
+    line(g, x - 4, y - 7, x + 4, y - 6, '#b58a5a');
+    dot(g, x + 1, y - 8, '#ac5559');
+  }
+}
+
 function buildStatic(sg, room) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
-  const width = potion ? POTION_COLUMNS * TILE_SIZE : N;
-  const depth = potion ? POTION_ROWS * TILE_SIZE : N;
-  const floor = potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  const stockroom = room === rooms.stockroom;
+  const width = stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
+  const depth = stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
+  const floor = stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
   wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
@@ -976,9 +1225,14 @@ function buildStatic(sg, room) {
     drawLibraryShelves(sg);
   }
   if (potion) drawPotionWorkshop(sg);
-  if (!potion) drawPassage(sg, library);
+  if (stockroom) {
+    drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
+    drawStockShelves(sg);
+  }
+  if (room === rooms.tower || library) drawPassage(sg, library);
   for (const exit of room.exits) {
     if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
+    if (exit.wallB !== undefined) drawStockPassage(sg, exit);
   }
 }
 
@@ -1718,11 +1972,24 @@ rooms.potion.floor = [
   'X..XX...',
   'X.......'
 ];
+rooms.stockroom.floor = Array.from({ length: STOCK_ROWS }, (_, row) =>
+  Array(STOCK_COLUMNS).fill(row === 0 ? 'X' : '.'));
+for (const [first, limit] of stockBookcases) {
+  for (let row = first; row < limit; row++) rooms.stockroom.floor[row][0] = 'X';
+}
+for (const [a, b] of stockLayout) rooms.stockroom.floor[b][a] = 'X';
+const stockFurnishings = stockLayout.map(([column, row, kind]) => {
+  const canvas = mk();
+  const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
+  drawStockContainer(canvas.getContext('2d'), a, b, kind);
+  return { canvas, depth: a + b };
+});
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
 const skeletonMage = new Image();
 skeletonMage.src = 'assets/sprites/skeleton-mage.png';
-const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
+const skeletonMageTile = [4, 5];
+const [skeletonMageA, skeletonMageB] = skeletonMageTile.map(tile => (tile + .5) * TILE_SIZE);
 
 function drawSkeletonMage(t) {
   if (!skeletonMage.naturalWidth) return;
@@ -1781,6 +2048,111 @@ let route = [];
 let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
+const questDialogue = document.getElementById('quest-dialogue');
+const questObjective = document.getElementById('quest-objective');
+const questStorageKey = 'spellbound.quest.cauldron.v1';
+const questStages = ['available', 'active', 'ready', 'complete'];
+let questStage = 'available';
+let cauldronHeat = 0;
+try {
+  if (!preview) {
+    const saved = localStorage.getItem(questStorageKey);
+    if (questStages.includes(saved)) questStage = saved;
+  }
+} catch {
+  // De quest werkt ook wanneer lokale opslag is uitgeschakeld.
+}
+
+let cauldronWarmup = questStage === 'ready' || questStage === 'complete' ? 1 : 0;
+
+function hasQuestWand() {
+  return document.getElementById('hotbar')?.dataset.hasWand === 'true';
+}
+
+function renderQuestObjective() {
+  if (!questObjective) return;
+  const objectives = {
+    active: hasQuestWand() ? 'Equip your wand and hold Q to heat the cauldron.' : 'Retrieve your wand from the chest in the main room.',
+    ready: 'Speak to the Skeleton Mage.',
+    complete: 'Quest complete.'
+  };
+  const objective = objectives[questStage];
+  questObjective.hidden = !objective;
+  if (objective && questObjective.textContent !== `Fire Beneath the Cauldron · ${objective}`) {
+    questObjective.textContent = `Fire Beneath the Cauldron · ${objective}`;
+  }
+}
+
+function advanceCauldronQuest(stage) {
+  questStage = stage;
+  try { localStorage.setItem(questStorageKey, stage); } catch { /* Alleen deze sessie. */ }
+  renderQuestObjective();
+}
+
+function talkToSkeletonMage() {
+  if (!questDialogue || questDialogue.open || chestInventory?.open) return;
+  const messages = {
+    available: 'The cauldron has gone cold. Retrieve your wand from the chest in the main room, then use your fire spell to heat it.',
+    active: hasQuestWand() ? 'Equip your wand, face the cauldron and hold Q until the flames catch.' : 'Your wand is in the chest in the main room. Move it into your hotbar.',
+    ready: 'The fire has caught! Now I can finish the brew. Thank you, wizard.',
+    complete: 'The cauldron is warm and the brew is coming along nicely.'
+  };
+  document.getElementById('quest-message').textContent = messages[questStage];
+  const action = document.getElementById('quest-action');
+  action.hidden = questStage !== 'available' && questStage !== 'ready';
+  action.textContent = questStage === 'ready' ? 'Complete quest' : 'Accept';
+  document.getElementById('quest-dismiss').textContent = questStage === 'available' ? 'Decline' : 'Close';
+  clearRoute();
+  heldKeys.clear();
+  fireHeld = false;
+  questDialogue.returnValue = '';
+  questDialogue.showModal();
+}
+
+document.getElementById('reset-quest')?.addEventListener('click', () => {
+  cauldronHeat = 0;
+  cauldronWarmup = 0;
+  advanceCauldronQuest('available');
+  cv.focus({ preventScroll: true });
+});
+
+questDialogue?.addEventListener('close', () => {
+  if (questDialogue.returnValue === 'advance') {
+    if (questStage === 'available') advanceCauldronQuest('active');
+    else if (questStage === 'ready') advanceCauldronQuest('complete');
+  }
+  cv.focus({ preventScroll: true });
+});
+new MutationObserver(renderQuestObjective).observe(document.getElementById('hotbar') ?? cv,
+  { attributes: true, attributeFilter: ['data-has-wand'] });
+renderQuestObjective();
+
+function warmCauldron(hit, dt) {
+  if (questStage !== 'active') return;
+  cauldronHeat = hit ? cauldronHeat + dt : 0;
+  if (cauldronHeat >= 1) advanceCauldronQuest('ready');
+}
+
+function drawQuestMarker(t) {
+  if (preview || questStage === 'complete' || !skeletonMage.naturalWidth) return;
+  const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
+  const top = Math.round(y - 8 + Math.sin(t * 3));
+  const color = { available: '#ffe15b', active: '#c4cfde', ready: '#f6b844' }[questStage];
+  const rows = questStage === 'available'
+    ? ['..##..', '..##..', '..##..', '..##..', '..##..', '......', '..##..', '..##..']
+    : ['.####.', '##..##', '....##', '...##.', '..##..', '......', '..##..', '..##..'];
+  for (const [dy, row] of rows.entries()) {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] === '#') rect(ctx, x + dx - 4, top + dy - 1, 3, 3, '#21192a');
+    }
+  }
+  for (const [dy, row] of rows.entries()) {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] === '#') dot(ctx, x + dx - 3, top + dy, color);
+    }
+  }
+}
+
 const iceBalls = [];
 let iceCooldown = 0;
 let castTime = 0;
@@ -1789,15 +2161,18 @@ const castStrength = () => Math.max(fireCharge,
 
 function canBreatheFire() {
   return fireHeld && WIZARD.staffEquipped && !seatProgress &&
-    !chestInventory?.open && librarianDialogue.hidden;
+    !chestInventory?.open && !questDialogue?.open && librarianDialogue.hidden;
 }
 
 const fireSprite = new Image();
 fireSprite.src = 'assets/sprites/fire-breath.png';
 const fireFrameWidth = 88, fireFrameHeight = 38, fireFrameCount = 16;
 
-function fireBreathLayers(t, a, b) {
-  if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) return [];
+function fireBreathLayers(t, a, b, dt) {
+  if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) {
+    warmCauldron(false, dt);
+    return [];
+  }
   const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
   const hand = WIZARD.castingHand(wizard.direction, castStrength());
   const z = 13;
@@ -1806,14 +2181,23 @@ function fireBreathLayers(t, a, b) {
   const startA = Math.floor(originA / TILE_SIZE), startB = Math.floor(originB / TILE_SIZE);
   const reach = 22 * fireCharge;
   let visibleReach = reach;
+  let hitsCauldron = false;
   for (let distance = 0; distance < reach; distance += .5) {
     const column = Math.floor((originA + distance * da) / TILE_SIZE);
     const row = Math.floor((originB + distance * db) / TILE_SIZE);
+    if (currentRoom === rooms.potion && (cauldronA - a) * da + (cauldronB - b) * db > 0 &&
+        Math.abs(column + .5 - cauldronA / TILE_SIZE) < 1 &&
+        Math.abs(row + .5 - cauldronB / TILE_SIZE) < 1) {
+      hitsCauldron = true;
+      visibleReach = distance + 2;
+      break;
+    }
     if ((column !== startA || row !== startB) && !isWalkable(column, row)) {
       visibleReach = distance;
       break;
     }
   }
+  warmCauldron(hitsCauldron, dt);
   if (!visibleReach) return [];
   const [x, y] = P(originA, originB, z);
   const dx = 2 * (da - db), dy = da + db;
@@ -1970,6 +2354,13 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (questDialogue?.open) return;
+    if (key === 'e' && !event.repeat && currentRoom === rooms.potion &&
+        Math.abs(wizard.a - skeletonMageTile[0]) + Math.abs(wizard.b - skeletonMageTile[1]) <= 1) {
+      event.preventDefault();
+      talkToSkeletonMage();
+      return;
+    }
     if (key === 'q') {
       event.preventDefault();
       fireHeld = true;
@@ -2029,6 +2420,12 @@ if (!preview) {
   });
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
+    const floorTile = tileAtPointer(event);
+    if (currentRoom === rooms.potion && floorTile &&
+        floorTile[0] === skeletonMageTile[0] && floorTile[1] === skeletonMageTile[1]) {
+      talkToSkeletonMage();
+      return;
+    }
     if (currentRoom === rooms.tower && chestInventory) {
       const [x, y] = P(52, 4, 8);
       if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
@@ -2057,13 +2454,18 @@ if (!preview) {
       clearRoute();
       return;
     }
-    const clickedExit = currentRoom.exits.find(({ wallA, tile }) => {
+    const clickedExit = currentRoom.exits.find(({ wallA, wallB, tile }) => {
+      if (wallB !== undefined) {
+        const u = px + 2 * wallB;
+        const z = wallB + Math.floor(u / 2) - 1 - py;
+        return z >= 0 && z < 49 && stockArchColor(u - 2 * (tile[0] + .5) * TILE_SIZE, z);
+      }
       if (wallA === undefined) return false;
       const u = 2 * wallA - px - 1;
       const z = wallA + Math.floor(u / 2) - 1 - py;
       return z >= 0 && passageColor(2 * (tile[1] + .5) * TILE_SIZE - u, z);
     });
-    const tile = clickedExit?.tile ?? (seat ? seat.approach : tileAtPointer(event));
+    const tile = clickedExit?.tile ?? (seat ? seat.approach : floorTile);
     if (!tile || !isWalkable(...tile)) return;
     const start = wizard.step ?? wizard;
     const nextRoute = findRoute(start, ...tile);
@@ -2121,10 +2523,10 @@ function drawTileBorder(tile, color) {
 }
 
 const movementHint = document.getElementById('movement-hint');
-const defaultHint = movementHint ? movementHint.textContent + ' Houd Q ingedrukt voor een vuurstraal.' : undefined;
-if (movementHint) movementHint.textContent = defaultHint;
+const defaultHint = movementHint ? movementHint.textContent : undefined;
 
 function updateWizard(dt) {
+  if (questDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
@@ -2164,7 +2566,9 @@ function updateWizard(dt) {
       wizard.b = wizard.step.b;
       const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
       if (exit) {
+        const wasStockroom = currentRoom === rooms.stockroom;
         currentRoom = rooms[exit.target];
+        if (wasStockroom !== (currentRoom === rooms.stockroom)) fit();
         iceBalls.length = 0;
         castTime = 0;
         fireCharge = 0;
@@ -2176,8 +2580,9 @@ function updateWizard(dt) {
         clearHover();
         heldKeys.clear();
         const hints = {
-          library: 'Bibliotheek · De boog achterin leidt naar de hoofdkamer. De boog rechtsvoor leidt naar de drankenkamer.',
-          potion: 'Drankenkamer · Klik op de boog of loop ernaartoe om terug te gaan.'
+          library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
+          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
+          stockroom: 'Potion stockroom · Use the left arch to return to the potion room.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
@@ -2548,8 +2953,9 @@ function drawRoomOccupants(t, dt) {
   const [x, y] = P(a, b, 0);
   const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
-    : currentRoom === rooms.tower ? furnishings : potionFurnishings;
-  const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b)].sort((left, right) => left.depth - right.depth);
+    : currentRoom === rooms.tower ? furnishings
+      : currentRoom === rooms.potion ? potionFurnishings : stockFurnishings;
+  const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b, dt)].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
@@ -2635,12 +3041,15 @@ function frame(ms) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
       drawLibraryPortrait(t);
       drawLibraryLights(t);
-    } else {
+    } else if (currentRoom === rooms.potion) {
       drawPotionLight(t);
+    } else {
+      drawStockLanterns(t);
     }
     drawRoomOccupants(t, dt);
     // De voorste muur staat vóór de meubels en personages op de vloer.
     if (currentRoom.foreground) ctx.drawImage(currentRoom.foreground, 0, 0);
+    if (currentRoom === rooms.potion) drawQuestMarker(t);
     requestAnimationFrame(frame);
     return;
   }
@@ -2676,7 +3085,10 @@ function fit() {
   const x = center(sceneView.scrollLeft, sceneView.scrollWidth, sceneView.clientWidth);
   const y = center(sceneView.scrollTop, sceneView.scrollHeight, sceneView.clientHeight);
   const availableHeight = Math.min(innerHeight * .7, Math.max(140, innerHeight - 230));
-  const scale = Math.min(sceneView.offsetWidth / W, availableHeight / H) * zoom / 100;
+  const stockroom = currentRoom === rooms.stockroom;
+  const viewWidth = stockroom ? W : 4 * (N + T) + 10;
+  const viewHeight = stockroom ? H : CY + 2 * N + F + 12;
+  const scale = Math.min(sceneView.offsetWidth / viewWidth, availableHeight / viewHeight) * zoom / 100;
   cv.style.width = W * scale + 'px';
   cv.style.height = H * scale + 'px';
   sceneView.scrollLeft = sceneView.scrollWidth * x - sceneView.clientWidth / 2;
@@ -2684,7 +3096,7 @@ function fit() {
   zoomOut.disabled = zoom === MIN_ZOOM;
   zoomIn.disabled = zoom === MAX_ZOOM;
   zoomReset.textContent = zoom + '%';
-  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' procent. Zet terug naar 100 procent.');
+  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' percent. Reset to 100 percent.');
 }
 function setZoom(value) {
   zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
