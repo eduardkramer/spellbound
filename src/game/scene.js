@@ -2040,6 +2040,7 @@ const moves = new Map([
 ]);
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
+let wandLight = false;
 let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
@@ -2182,8 +2183,46 @@ function findMissingPage() {
 }
 searchBookStack?.addEventListener('click', findMissingPage);
 
+const stockDarkness = mk();
+
+function drawStockDarkness(x, y, wandTip, t) {
+  const mask = stockDarkness.getContext('2d');
+  mask.clearRect(0, 0, W, H);
+  mask.fillStyle = 'rgba(13, 12, 31, .81)';
+  mask.fillRect(0, 0, W, H);
+  mask.globalCompositeOperation = 'destination-out';
+
+  function reveal(cx, cy, radius, strength) {
+    const hole = mask.createRadialGradient(cx, cy, 5, cx, cy, radius);
+    hole.addColorStop(0, `rgba(0, 0, 0, ${strength})`);
+    hole.addColorStop(.45, `rgba(0, 0, 0, ${strength * .75})`);
+    hole.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    mask.fillStyle = hole;
+    mask.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+
+  reveal(...P(5, (STOCK_DOOR_ROW + .5) * TILE_SIZE, 14), 45, .7);
+  if (wandLight && wandTip) {
+    const [tipX, tipY] = wandTip;
+    reveal(tipX, tipY, 64 + Math.sin(t * 3) * 2, 1);
+    reveal(x, y - 4, 52, .82);
+  }
+  mask.globalCompositeOperation = 'source-over';
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.drawImage(stockDarkness, 0, 0);
+  ctx.restore();
+  if (wandLight && wandTip) {
+    glow(...wandTip, 11, 10, '158,225,255', .16);
+    dot(ctx, wandTip[0], wandTip[1], '#f2fbff');
+  }
+}
+
 function drawMissingPage(t) {
   if (questManager?.status(pageQuest) !== 'active') return;
+  const distance = Math.hypot(wizard.a - pageStackTile[0], wizard.b - pageStackTile[1]);
+  if (distance > (wandLight && WIZARD.staffEquipped ? 4 : 2)) return;
   const [a, b] = pageStackTile.map(tile => (tile + .5) * TILE_SIZE);
   const [x, y] = P(a + 1, b + 1.7, 11);
   const pulse = .5 + .5 * Math.sin(t * 2.3);
@@ -2458,6 +2497,12 @@ if (!preview) {
       talkToSkeletonMage();
       return;
     }
+    if (key === 'e' && currentRoom === rooms.stockroom) {
+      event.preventDefault();
+      if (!event.repeat && WIZARD.staffEquipped) wandLight = !wandLight;
+      if (!event.repeat) updateStockroomHint();
+      return;
+    }
     if (key === 'q') {
       event.preventDefault();
       fireHeld = true;
@@ -2626,6 +2671,13 @@ function drawTileBorder(tile, color) {
 const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint ? movementHint.textContent : undefined;
 
+function updateStockroomHint() {
+  if (currentRoom !== rooms.stockroom) return;
+  const hint = !WIZARD.staffEquipped ? 'Equip your wand, then press E to cast Wand Light.'
+    : wandLight ? 'Wand Light is on. Press E to turn it off.' : 'Press E to cast Wand Light.';
+  if (movementHint.textContent !== hint) movementHint.textContent = hint;
+}
+
 function updateWizard(dt) {
   if (questDialogue?.open || resetQuestDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
@@ -2683,7 +2735,7 @@ function updateWizard(dt) {
         const hints = {
           library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
           potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
-          stockroom: 'Potion stockroom · Use the left arch to return to the potion room.'
+          stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
@@ -3061,8 +3113,11 @@ function drawRoomOccupants(t, dt) {
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
   }
-  if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y, castStrength());
+  const wandTip = !preview && !seatProgress
+    ? WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y, castStrength())
+    : undefined;
   for (; index < occupants.length; index++) drawFurnishing(occupants[index], t, dt);
+  if (currentRoom === rooms.stockroom) drawStockDarkness(x, y, wandTip, t);
 }
 
 function drawSeatedWizard(t, seat) {
@@ -3126,6 +3181,8 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
+  if (!WIZARD.staffEquipped) wandLight = false;
+  updateStockroomHint();
   if (searchBookStack) searchBookStack.hidden = !canSearchBookStack();
   fireCharge = canBreatheFire() ? Math.min(1, fireCharge + dt * 7) : 0;
   ctx.clearRect(0, 0, W, H);
