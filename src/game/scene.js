@@ -474,13 +474,13 @@ const potionRackImage = new Image();
 
 function drawPotionRackSprite(g) {
   // Lijn de voorrand uit met de vloer onder de ramen.
-  const [x, y] = P(14, 4, 0);
-  const width = 76;
+  const [x, y] = P(15.5, 4, 0);
+  const width = 70;
   const scale = width / potionRackImage.naturalWidth;
   g.save();
   g.imageSmoothingEnabled = false;
-  g.translate(x, y - 39);
-  g.transform(1, .35, 0, 1, 0, 0);
+  g.translate(x, y - 36);
+  g.transform(1, .32, 0, 1, 0, 0);
   g.drawImage(potionRackImage, 0, 0, width, potionRackImage.naturalHeight * scale);
   g.restore();
 }
