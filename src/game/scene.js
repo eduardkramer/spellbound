@@ -17,7 +17,7 @@ const POTION_DOOR_ROW = 3;
 const LIBRARY_POTION_DOOR_ROW = 4;
 const STOCK_COLUMNS = 12, STOCK_ROWS = 10;
 const STOCK_WIDTH = STOCK_COLUMNS * TILE_SIZE, STOCK_DEPTH = STOCK_ROWS * TILE_SIZE;
-const POTION_STOCK_DOOR_ROW = 1, STOCK_DOOR_ROW = 4;
+const POTION_STOCK_DOOR_COLUMN = POTION_COLUMNS - 1, STOCK_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
@@ -41,12 +41,12 @@ const rooms = {
   ] },
   potion: { canvas: potionC, exits: [
     { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
-    { tile: [POTION_COLUMNS - 1, POTION_STOCK_DOOR_ROW], wallA: (POTION_COLUMNS - .5) * TILE_SIZE,
+    { tile: [POTION_STOCK_DOOR_COLUMN, 0], wallB: 0,
       target: 'stockroom', arrival: [1, STOCK_DOOR_ROW], direction: 'se' }
   ] },
   stockroom: { canvas: stockC, exits: [
     { tile: [0, STOCK_DOOR_ROW], wallA: 0, target: 'potion',
-      arrival: [POTION_COLUMNS - 2, POTION_STOCK_DOOR_ROW], direction: 'nw' }
+      arrival: [POTION_STOCK_DOOR_COLUMN, 1], direction: 'nw' }
   ] }
 };
 
@@ -384,26 +384,22 @@ function drawPassage(g, rear) {
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
 }
 
-function drawSidePassage(g, { wallA, tile, target }, foreground) {
+const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
+
+function drawStockPassage(g, { tile, wallB }) {
+  const center = (tile[0] + .5) * TILE_SIZE;
+  box(g, center - 6, wallB, 0, 12, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
+    (u, z) => stockArchColor(u - 2 * center, z));
+}
+
+function drawSidePassage(g, { wallA, tile }, foreground) {
   const center = (tile[1] + .5) * TILE_SIZE;
-  if (target === 'stockroom' && !foreground) {
-    // De doorlopende stenen drempel draagt beide voeten van de boog.
-    box(g, wallA - 5, center - 8.5, 0, 9, 17, 1,
-      flat('#777991', '#51536a', '#555971'));
-    return;
-  }
   if (!foreground) {
     box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
     if (wallA !== 0) return;
   }
-  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => {
-    const dx = 2 * center - u;
-    if (target === 'stockroom' && z < 3) {
-      if (Math.abs(dx) > 11) return z === 2 ? '#7d85a4' : '#5c6384';
-      return z === 2 ? '#a58b69' : '#777991';
-    }
-    return passageColor(dx, z);
-  });
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
 }
 
 /* ---------- bibliotheek ---------- */
@@ -1103,6 +1099,7 @@ function buildStatic(sg, room) {
   if (room === rooms.tower || library) drawPassage(sg, library);
   for (const exit of room.exits) {
     if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
+    if (exit.wallB !== undefined) drawStockPassage(sg, exit);
   }
 }
 
@@ -2321,7 +2318,12 @@ if (!preview) {
       clearRoute();
       return;
     }
-    const clickedExit = currentRoom.exits.find(({ wallA, tile }) => {
+    const clickedExit = currentRoom.exits.find(({ wallA, wallB, tile }) => {
+      if (wallB !== undefined) {
+        const u = px + 2 * wallB;
+        const z = wallB + Math.floor(u / 2) - 1 - py;
+        return z >= 0 && z < 49 && stockArchColor(u - 2 * (tile[0] + .5) * TILE_SIZE, z);
+      }
       if (wallA === undefined) return false;
       const u = 2 * wallA - px - 1;
       const z = wallA + Math.floor(u / 2) - 1 - py;
@@ -2443,7 +2445,7 @@ function updateWizard(dt) {
         heldKeys.clear();
         const hints = {
           library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
-          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The front-right arch leads to the stockroom.',
+          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
           stockroom: 'Potion stockroom · Use the left arch to return to the potion room.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
