@@ -1988,7 +1988,7 @@ rooms.tower.floor = towerFloor;
 rooms.library.floor = libraryFloorMap;
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
-  'X.XXXX..',
+  'X.XXXXX.',
   'X.......',
   '........',
   '.....XX.',
@@ -2049,7 +2049,36 @@ function drawSkeletonMage(t) {
   }
 }
 
+const pumpkinA = 6.5 * TILE_SIZE, pumpkinB = .5 * TILE_SIZE;
+
+function drawPotionPumpkin(t) {
+  const [x, y] = P(pumpkinA, pumpkinB, 0);
+  const pulse = Math.sin(t * 8) + .4 * Math.sin(t * 19);
+  ell(ctx, x, y, 8, 3, '#332938');
+  glow(x, y - 2, 16, 8, '255,149,59', .05 + pulse * .012);
+  ell(ctx, x, y - 6, 8, 6, '#663044');
+  ell(ctx, x - 1, y - 7, 7, 5, '#c26035');
+  ell(ctx, x - 3, y - 7, 4, 5, '#df793c');
+  ell(ctx, x + 2, y - 7, 4, 5, '#ac4d32');
+  ell(ctx, x, y - 7, 4, 5, '#db6b36');
+  rect(ctx, x, y - 14, 2, 3, '#46573d');
+  dot(ctx, x + 1, y - 14, '#87965c');
+  const candle = pulse > -.15 ? '#ffe293' : '#edac56';
+  for (const side of [-1, 1]) {
+    const eyeX = x + side * 3;
+    rect(ctx, eyeX - 1, y - 9, 3, 2, '#6f332b');
+    dot(ctx, eyeX, y - 9, candle);
+    rect(ctx, eyeX - 1, y - 8, 2, 1, candle);
+  }
+  line(ctx, x - 4, y - 5, x - 2, y - 3, '#683029');
+  line(ctx, x - 2, y - 3, x + 2, y - 3, '#683029');
+  line(ctx, x + 2, y - 3, x + 4, y - 5, '#683029');
+  rect(ctx, x - 2, y - 4, 5, 1, candle);
+  dot(ctx, x, y - 4, '#683029');
+}
+
 const potionFurnishings = [
+  { depth: pumpkinA + pumpkinB, animate: drawPotionPumpkin },
   { depth: skeletonMageA + skeletonMageB, animate: drawSkeletonMage },
   { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: drawReturnedPage },
   { depth: cauldronA + cauldronB, animate: drawCauldron }
