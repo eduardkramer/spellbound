@@ -1578,44 +1578,52 @@ function canBreatheFire() {
     !chestInventory?.open && librarianDialogue.hidden;
 }
 
-// Een smalle kern bij de handen waaiert uit in golvende vlammen en vonken.
+const fireSprite = new Image();
+fireSprite.src = 'assets/sprites/fire-breath.png';
+const fireFrameWidth = 88, fireFrameHeight = 38, fireFrameCount = 16;
+
 function fireBreathLayers(t, a, b) {
-  if (!canBreatheFire() || !fireCharge) return [];
+  if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) return [];
   const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
   const hand = WIZARD.castingHand(wizard.direction, castStrength());
   const z = 13;
   const originA = a + (hand.y + z + hand.x / 2) / 2;
   const originB = b + (hand.y + z - hand.x / 2) / 2;
   const startA = Math.floor(originA / TILE_SIZE), startB = Math.floor(originB / TILE_SIZE);
-  const dx = 2 * (da - db), dy = da + db;
-  const layers = [];
   const reach = 22 * fireCharge;
-  for (let distance = 0; distance < reach; distance += 1.15) {
-    const fa = originA + distance * da, fb = originB + distance * db;
-    const column = Math.floor(fa / TILE_SIZE), row = Math.floor(fb / TILE_SIZE);
-    if ((column !== startA || row !== startB) && !isWalkable(column, row)) break;
-    const [x, y] = P(fa, fb, z);
-    const span = distance / 22;
-    const beat = t * 22 - distance * .7;
-    const flicker = Math.sin(beat) + .45 * Math.sin(beat * 1.8);
-    const lift = span * span * (5 + flicker * 3);
-    const width = 1 + span * (4.5 + flicker * 2.1);
-    layers.push({
-      depth: fa + fb,
-      animate() {
-        for (let edge = -Math.floor(width); edge <= width; edge++) {
-          const intensity = 1 - Math.abs(edge) / (width + .5);
-          const color = intensity > .74 && span < .62 ? '#fff3b5'
-            : intensity > .54 ? '#ffd15d' : intensity > .27 ? '#ff922f' : '#c6442a';
-          rect(ctx, x - dy * edge * .45, y + dx * edge * .45 - lift, 2, 2, color);
-        }
-        if (span > .45 && Math.sin(beat * 1.6) > .77) {
-          dot(ctx, x + Math.sign(dx) * 2, y - lift - width - 2, '#ffae46');
-        }
-      }
-    });
+  let visibleReach = reach;
+  for (let distance = 0; distance < reach; distance += .5) {
+    const column = Math.floor((originA + distance * da) / TILE_SIZE);
+    const row = Math.floor((originB + distance * db) / TILE_SIZE);
+    if ((column !== startA || row !== startB) && !isWalkable(column, row)) {
+      visibleReach = distance;
+      break;
+    }
   }
-  return layers;
+  if (!visibleReach) return [];
+  const [x, y] = P(originA, originB, z);
+  const dx = 2 * (da - db), dy = da + db;
+  const projected = Math.hypot(dx, dy);
+  const ux = dx / projected, uy = dy / projected;
+  const side = Math.sign(dx);
+  const scale = .73;
+  const frame = Math.floor(t / .06) % fireFrameCount;
+  return [{
+    depth: originA + originB,
+    animate() {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(x, y);
+      ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
+      ctx.beginPath();
+      ctx.rect(0, -fireFrameHeight * scale, visibleReach * projected, fireFrameHeight * scale * 2);
+      ctx.clip();
+      ctx.drawImage(fireSprite, frame % 4 * fireFrameWidth, Math.floor(frame / 4) * fireFrameHeight,
+        fireFrameWidth, fireFrameHeight, -5 * scale, -24 * scale,
+        fireFrameWidth * scale, fireFrameHeight * scale);
+      ctx.restore();
+    }
+  }];
 }
 
 function castIceBall() {
