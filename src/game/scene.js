@@ -473,15 +473,18 @@ const [potionLampX, potionLampY] = P(32, 1, 78);
 const potionRackImage = new Image();
 
 function drawPotionRackSprite(g) {
-  // Lijn de voorrand uit met de vloer onder de ramen.
-  const [x, y] = P(20, 4, 0);
-  const width = 3 * TILE_SIZE * 2 + 4;
-  const scale = width / potionRackImage.naturalWidth;
+  // De voetpunten van de voorste poten in de sprite van 230 × 150.
+  const leftFoot = [4, 119], rightFoot = [215, 149];
+  const [leftX, leftY] = P(2 * TILE_SIZE, 4, 0);
+  const [rightX, rightY] = P(6 * TILE_SIZE, 4, 0);
+  const scale = (rightX - leftX) / (rightFoot[0] - leftFoot[0]);
+  const slopeCorrection = (rightY - leftY) / (rightX - leftX)
+    - (rightFoot[1] - leftFoot[1]) / (rightFoot[0] - leftFoot[0]);
   g.save();
   g.imageSmoothingEnabled = false;
-  g.translate(x, y - 27);
-  g.transform(1, .32, 0, 1, 0, 0);
-  g.drawImage(potionRackImage, 0, 0, width, potionRackImage.naturalHeight * scale);
+  g.translate(leftX, leftY);
+  g.transform(scale, scale * slopeCorrection, 0, scale, 0, 0);
+  g.drawImage(potionRackImage, -leftFoot[0], -leftFoot[1]);
   g.restore();
 }
 
