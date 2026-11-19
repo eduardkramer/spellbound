@@ -536,10 +536,10 @@ const rackLiquid = [[20, 42], [37, 45], [70, 49], [120, 53], [161, 62],
   [42, 76], [79, 87], [95, 88], [161, 96],
   [20, 108], [36, 109], [73, 115], [113, 118], [131, 123], [175, 130]];
 const rackTopFlasks = [
-  [33, '#46d6e8', 'round'],
-  [79, '#ffbd50', 'jar'],
-  [133, '#bf85f5', 'tube'],
-  [182, '#75e78a', 'diamond']
+  [35, '#559d9d', 'round', .58],
+  [56, '#bd8d46', 'jar', .48],
+  [154, '#a979bd', 'tube', .5],
+  [177, '#719b62', 'diamond', .58]
 ];
 
 function drawPotionRackSprite(g, t) {
@@ -581,13 +581,26 @@ function drawPotionRackSprite(g, t) {
     leftX + (u - leftFoot[0]) * scale,
     leftY + (v - leftFoot[1] + (u - leftFoot[0]) * slopeCorrection) * scale
   ];
-  rackLiquid.forEach(([u, v], i) => drawFlaskGlint(g, ...rackPoint(u, v), t, i, .55));
-  rackTopFlasks.forEach(([u, color, shape], i) => {
-    const [x, y] = rackPoint(u, 8 + u * .16);
+  // Kleine reflecties blijven op de vloeistof, binnen het glas op de planken.
+  g.save();
+  rackLiquid.forEach(([u, v], i) => {
+    const [x, y] = rackPoint(u, v);
+    const phase = (t * 1.25 + i * .37) % 1;
+    g.globalAlpha = .18 + Math.sin(phase * Math.PI) * .44;
+    g.fillStyle = '#fff0cc';
+    g.fillRect(Math.round(x * 2) / 2, Math.round((y - phase) * 2) / 2, .5, .5);
+  });
+  g.restore();
+
+  // Zet de flesvoeten in twee kleine groepjes op het bovenblad.
+  rackTopFlasks.forEach(([u, color, shape, bottleScale], i) => {
+    const [x, y] = rackPoint(u, 9 + u * .16);
     g.save();
-    g.translate(Math.round(x), Math.round(y));
-    g.scale(.75, .75);
+    g.translate(Math.round(x * 2) / 2, Math.round(y * 2) / 2);
+    ell(g, 0, 0, 3, 1, 'rgba(53,29,24,.32)');
+    g.scale(bottleScale, bottleScale);
     flask(g, 0, 0, color, shape, null);
+    g.globalAlpha = .56;
     drawFlaskGlint(g, 0, 0, t, i);
     g.restore();
   });
