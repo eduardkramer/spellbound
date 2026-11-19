@@ -1724,48 +1724,6 @@ const skeletonMage = new Image();
 skeletonMage.src = 'assets/sprites/skeleton-mage.png';
 const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
 
-let skeletonInspectBody;
-
-// Schouder, elleboog en hand zijn per pose op het pixelraster gezet.
-const alchemistPoses = [
-  { elbow: [6, 27], hand: [3, 32], tilt: 0 },
-  { elbow: [6, 27], hand: [0, 28], tilt: 0 },
-  { elbow: [6, 27], hand: [3, 22], tilt: 1 }
-];
-
-function drawAlchemistGrip(left, top, pose) {
-  const [ex, ey] = pose.elbow;
-  const [hx, hy] = pose.hand;
-  const handX = left + hx, handY = top + hy;
-  line(ctx, left + 11, top + 23, left + ex, top + ey, '#b6977b');
-  line(ctx, left + ex, top + ey, handX, handY, '#e2ccaa');
-  dot(ctx, left + ex, top + ey, '#f0d9b7');
-
-  // In de kijkpose kantelt de fles om de hals die de vingers vasthouden.
-  const bottleX = handX - (pose.tilt ? 4 : 2);
-  const bottleY = handY + (pose.tilt ? -3 : 3);
-  line(ctx, handX - 1, handY, bottleX, bottleY, '#aacac0');
-  ell(ctx, bottleX, bottleY, 3, 2, '#709a91');
-  ell(ctx, bottleX, bottleY + 1, 2, 1, '#85c960');
-  dot(ctx, bottleX - 1, bottleY - 1, '#e3f4c9');
-  dot(ctx, handX + (pose.tilt ? 1 : -2), handY - (pose.tilt ? 0 : 2), '#d2a474');
-  rect(ctx, handX - 1, handY, 2, 1, '#f0d9b7');
-  dot(ctx, handX, handY + 1, '#b6977b');
-}
-
-function drawAlchemistInspectionFace(left, top) {
-  // Een links gericht profiel onder de bestaande hoed.
-  const rows = ['....bbbb...', '..bbhhhbb..', '.bhhbhhbb..',
-    'bhobhhbb...', 'bbobhbb....', '.bbhhb.....', '...bbbb....'];
-  const palette = { b: '#b6977b', h: '#e9d3af', o: '#822b3c' };
-  rows.forEach((row, dy) => {
-    for (let dx = 0; dx < row.length; dx++) {
-      if (row[dx] !== '.') dot(ctx, left + 9 + dx, top + 14 + dy, palette[row[dx]]);
-    }
-  });
-  dot(ctx, left + 11, top + 17, '#ff5159');
-}
-
 function drawSkeletonMage(t) {
   if (!skeletonMage.naturalWidth) return;
   const [x, y] = P(skeletonMageA, skeletonMageB, 0);
@@ -1774,39 +1732,18 @@ function drawSkeletonMage(t) {
   ell(ctx, x, y, 7, 2, 'rgba(25,20,34,.42)');
 
   const headWidth = 23, headHeight = 21;
-  const cycle = (t + 3) % 12;
-  const inspecting = cycle < 4;
-  const phase = Math.min(cycle, 4 - cycle);
-  const poseIndex = phase < .3 ? 0 : phase < .64 ? 1 : 2;
-  const looking = inspecting && poseIndex === 2;
-  const nod = inspecting ? 0 : Math.sin(t * 2.4) > .62 ? -1 : 0;
-  if (inspecting && !skeletonInspectBody) {
-    skeletonInspectBody = document.createElement('canvas');
-    skeletonInspectBody.width = width;
-    skeletonInspectBody.height = height;
-    const body = skeletonInspectBody.getContext('2d');
-    body.drawImage(skeletonMage, 0, 0);
-    // Wis alleen de botpixels van de rustarm uit het originele frame.
-    for (const [px, py, w] of [[11, 23, 1], [10, 24, 1], [9, 25, 1], [8, 26, 1],
-      [8, 27, 1], [6, 28, 2], [8, 29, 1], [5, 30, 1]]) {
-      body.clearRect(px, py, w, 1);
-    }
-  }
-  ctx.drawImage(inspecting ? skeletonInspectBody : skeletonMage, 0, headHeight, width, height - headHeight,
+  const nod = Math.sin(t * 2.4) > .62 ? -1 : 0;
+  ctx.drawImage(skeletonMage, 0, headHeight, width, height - headHeight,
     left, top + headHeight, width, height - headHeight);
   ctx.drawImage(skeletonMage, headWidth, 0, width - headWidth, headHeight,
     left + headWidth, top, width - headWidth, headHeight);
-  if (looking) {
-    ctx.drawImage(skeletonMage, 0, 0, headWidth, 14, left, top, headWidth, 14);
-    drawAlchemistInspectionFace(left, top);
-  } else {
-    ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
-      left, top + nod, headWidth, headHeight);
-    dot(ctx, left + 14, top + nod + 16, '#8f263b');
-    dot(ctx, left + 15, top + nod + 16, '#ff5159');
-    dot(ctx, left + 18, top + nod + 14, '#ff5159');
-  }
-  if (inspecting) drawAlchemistGrip(left, top, alchemistPoses[poseIndex]);
+  ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
+    left, top + nod, headWidth, headHeight);
+
+  const eyeY = top + nod;
+  dot(ctx, left + 14, eyeY + 16, '#8f263b');
+  dot(ctx, left + 15, eyeY + 16, '#ff5159');
+  dot(ctx, left + 18, eyeY + 14, '#ff5159');
 
   const flicker = Math.sin(t * 11) + .45 * Math.sin(t * 18);
   dot(ctx, left + 27, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
