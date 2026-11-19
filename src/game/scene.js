@@ -528,11 +528,13 @@ const potionBookcases = [[3, 31], [87, 109]];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
-const rackStart = 2 * TILE_SIZE;
-const rackWidth = 4 * TILE_SIZE;
+const rackStart = 2 * TILE_SIZE + 4;
+const rackEnd = 6 * TILE_SIZE;
+const rackWidth = rackEnd - rackStart;
 const rackDepth = 5;
 const rackHeight = 40;
 const rackBubbles = [];
+const rackGlass = mk();
 const rackBottleShapes = [
   ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
   ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
@@ -577,7 +579,7 @@ function drawPotionRack(g) {
     right: '#573b30'
   };
   const post = flat('#a87b53', (u, z) => {
-    const edge = (u - rackStart * 2) % (rackWidth * 2 - 4);
+    const edge = u >= (rackEnd - 2) * 2 ? u - (rackEnd - 2) * 2 : u - rackStart * 2;
     if (z < 2) return '#63432f';
     if (edge === 0) return '#69452f';
     if (edge === 3) return '#4b3228';
@@ -594,9 +596,9 @@ function drawPotionRack(g) {
   box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
   const stock = [
-    [[8, 1, 3], [12, 2, 0], [16, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
-    [[8, 0, 1], [12, 2, 3], [15.5, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
-    [[7.5, 3, 2], [12.5, 0, 3], [16, 2, 1], [19.5, 1, 0], [24, 0, 4], [29, 3, 1]]
+    [[6.5, 1, 3], [8, 2, 0], [12, 0, 2], [16, 3, 1], [21, 1, 2], [24.5, 2, 4]],
+    [[6.5, 0, 1], [8, 2, 3], [11.5, 1, 4], [14, 2, 2], [20, 3, 0], [24, 0, 3]],
+    [[6.5, 3, 2], [8.5, 0, 3], [12, 2, 1], [15.5, 1, 0], [20, 0, 4], [25, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
@@ -607,17 +609,42 @@ function drawPotionRack(g) {
     }
   });
 
-  const stileWidth = 2;
-  for (const a of [rackStart, rackStart + rackWidth - stileWidth]) {
+  // De linker stijl is slanker zodat de flessen dichter bij het hout staan.
+  for (const [a, stileWidth] of [[rackStart, 1], [rackEnd - 2, 2]]) {
     box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
     for (const z of [4, 16, 28, 36]) {
-      const [x, y] = P(a + 1, rackDepth, z);
+      const [x, y] = P(a + stileWidth / 2, rackDepth, z);
       dot(g, x, y, '#503a2c');
       dot(g, x, y - 1, '#bf9b69');
     }
   }
   box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
 }
+
+function drawRackDoors(g) {
+  const left = (rackStart + 1) * 2;
+  const right = (rackEnd - 2) * 2;
+  const middle = Math.floor((left + right) / 2);
+  const top = rackHeight - 2;
+  wallR(g, rackDepth, left, right, 2, top, (u, z) => {
+    if (z === 2 || z === top - 1) return '#bd9567';
+    if (u === left || u === right - 1 || u === middle || u === middle - 1) {
+      return u === middle - 1 ? '#bc9468' : '#765139';
+    }
+    if ((u === middle - 2 || u === middle + 1) && z >= 18 && z <= 20) {
+      return z === 20 ? '#ecd29a' : '#a47a4a';
+    }
+    const offset = u < middle ? u - left : u - middle;
+    if (offset > 2 && offset < 14 && z === 23 + (offset >> 1)) {
+      return 'rgba(205,236,230,.30)';
+    }
+    if (offset >= 4 && offset < 10 && z === 20 + (offset >> 1)) {
+      return 'rgba(205,236,230,.17)';
+    }
+    return 'rgba(131,194,181,.08)';
+  });
+}
+drawRackDoors(rackGlass.getContext('2d'));
 
 function drawRackBubbles(t) {
   rackBubbles.forEach(([x, y, color], index) => {
@@ -814,7 +841,7 @@ function potionFloor(a, b) {
   const contact = Math.min(
     contactShade(a, b, cauldronA, cauldronB, 9, 7),
     contactShade(a, b, workbenchA, workbenchB, 5, 5),
-    b < rackDepth + 2 && a >= rackStart && a < rackStart + rackWidth ? .74 : 1
+    b < rackDepth + 2 && a >= rackStart && a < rackEnd ? .74 : 1
   );
   const daylight = potionWindowLight(a, b);
 
@@ -2486,7 +2513,10 @@ function frame(ms) {
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
-  if (currentRoom === rooms.potion) drawRackBubbles(t);
+  if (currentRoom === rooms.potion) {
+    drawRackBubbles(t);
+    ctx.drawImage(rackGlass, 0, 0);
+  }
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (currentRoom !== rooms.tower) {
