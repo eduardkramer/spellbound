@@ -599,7 +599,37 @@ function drawRackBottle(g, a, z, shape, color, bubbles) {
   bubbles.push([left + rows[surface].indexOf('l'), top + surface, sh(color, 1.62)]);
 }
 
-function drawPotionRack(g, start = rackStart, end = rackEnd, bubbles = rackBubbles) {
+const rackSupplies = {
+  skull: ['.bbb.', 'bbhbb', 'bdhdb', '.bdb.', '.hbh.'],
+  herbs: ['....g', '.g.gg', 'ggg..', '..gn.', '.nnt.', 'nttn.', '.nn..'],
+  crystal: ['..h..', '.hbh.', 'hbddh', 'hbbdd', '.bdd.', '..d..'],
+  vial: ['..n..', '.nnn.', '..h..', '.h.d.', '.h.d.', '.h.d.', '..d..'],
+  mushroom: ['.ttt.', 'tbtbt', 'ddddd', '..h..', '.bh..'],
+  scroll: ['.n..n', 'nhhhn', 'nbbbn', 'nndnn']
+};
+
+const rackSupplyColors = {
+  skull: { b: '#cdbb99', h: '#f3dfb7', d: '#50414d' },
+  herbs: { g: '#8fa65d', n: '#836048', t: '#bf9c66' },
+  crystal: { b: '#ad84d4', h: '#e1c4ff', d: '#684d91' },
+  vial: { n: '#ad835d', h: '#c1dbd6', d: '#607f89' },
+  mushroom: { t: '#bd7658', b: '#efd4a0', d: '#754457', h: '#d6bc92' },
+  scroll: { n: '#926746', h: '#ecd2a0', b: '#bc9c70', d: '#9c4d58' }
+};
+
+function drawRackSupply(g, a, z, kind) {
+  const [x, y] = P(a, rackDepth - .5, z);
+  const rows = rackSupplies[kind];
+  const palette = rackSupplyColors[kind];
+  ell(g, x, y, 3, 1, '#4b3631');
+  for (const [dy, row] of rows.entries()) {
+    for (const [dx, pixel] of Array.from(row).entries()) {
+      if (pixel !== '.') dot(g, x + dx - 2, y - rows.length + dy + 1, palette[pixel]);
+    }
+  }
+}
+
+function drawPotionRack(g, start = rackStart, end = rackEnd, bubbles = rackBubbles, cabinet = 0) {
   const width = end - start;
   const trim = {
     top: (a, b) => {
@@ -632,6 +662,14 @@ function drawPotionRack(g, start = rackStart, end = rackEnd, bubbles = rackBubbl
   // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
   box(g, start, 0, 0, width, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
+  // Wissel per kast welke flesplekken ruimte maken voor brouwvoorraad.
+  const supplies = [
+    [[1, 'herbs'], [9, 'skull'], [14, 'vial']],
+    [[2, 'herbs'], [5, 'mushroom'], [11, 'vial'], [15, 'herbs']],
+    [[3, 'crystal'], [7, 'vial'], [10, 'crystal'], [15, 'mushroom']],
+    [[2, 'scroll'], [6, 'skull'], [12, 'herbs'], [15, 'scroll']]
+  ][cabinet];
+  let slot = 0;
   // Op de middelste plank blijft ruimte voor het flesje op de werkbank.
   const stock = [
     [[6.5, 1, 3], [8, 2, 0], [12, 0, 2], [16, 3, 1], [21, 1, 2], [24.5, 2, 4]],
@@ -643,7 +681,10 @@ function drawPotionRack(g, start = rackStart, end = rackEnd, bubbles = rackBubbl
     const z = 3 + index * 12;
     box(g, start, 0, z - 2, width, rackDepth, 2, trim);
     for (const [offset, shape, color] of row) {
-      drawRackBottle(g, start + offset, z, shape, palette[color], bubbles);
+      const supply = supplies.find(([index]) => index === slot);
+      if (supply) drawRackSupply(g, start + offset, z, supply[1]);
+      else drawRackBottle(g, start + offset, z, shape, palette[color], bubbles);
+      slot++;
     }
   });
 
@@ -1060,9 +1101,9 @@ function drawStockShelves(g) {
     wallL(g, 4, start * 2, end * 2, 0, 87, libraryShelf(start * 2, end * 2, null));
     box(g, 0, start - .5, 86, 4.5, end - start + 1, 2, timber);
   }
-  for (const start of stockShelfStarts) {
+  for (const [index, start] of stockShelfStarts.entries()) {
     const end = start + rackEnd - rackStart;
-    drawPotionRack(g, start, end, stockRackBubbles);
+    drawPotionRack(g, start, end, stockRackBubbles, index + 1);
     drawRackDoors(g, start, end, false);
   }
 }
