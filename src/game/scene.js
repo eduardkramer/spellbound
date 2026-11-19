@@ -792,10 +792,26 @@ function drawPotionWorkbench(g) {
   for (let row = 0; row < 3; row++) {
     line(g, ...P(a - 2, b - .4 + row * .7, 14), ...P(a + (row === 2 ? -.6 : .6), b - .4 + row * .7, 14), '#a47b58');
   }
+  const [stainX, stainY] = P(a + .4, b + 1.25, 14);
+  ell(g, stainX, stainY, 2, 1, '#b88e5c');
+  const [fx, fy] = P(a - 2.7, b + 2.8, 13);
+  // De open fles vangt het brouwsel uit een koperen trechter.
+  ell(g, fx, fy - 2, 3, 2, '#82aaa5');
+  rect(g, fx - 2, fy - 2, 5, 2, '#668b55');
+  dot(g, fx - 2, fy - 3, '#edf1ca');
+  rect(g, fx, fy - 6, 2, 3, '#9eaaa0');
+  rect(g, fx, fy - 7, 2, 2, '#976047');
+  rect(g, fx - 1, fy - 8, 4, 1, '#be8151');
+  rect(g, fx - 2, fy - 9, 6, 1, '#dfa26a');
+  rect(g, fx - 1, fy - 9, 4, 1, '#624338');
   const [mx, my] = P(a + 2, b - 2, 13);
   ell(g, mx, my - 1, 4, 3, '#514b5d');
   ell(g, mx, my - 3, 4, 2, '#8c8799');
   ell(g, mx, my - 3, 2, 1, '#3b3846');
+  for (const [dx, dy, color] of [[-3, 0, '#687746'], [-2, 1, '#a2a95d'],
+    [0, 1, '#78864a'], [1, 2, '#b39c61'], [3, 1, '#84954d']]) {
+    dot(g, mx + dx, my + dy, color);
+  }
   line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
 }
 
@@ -823,6 +839,15 @@ function drawCauldron(t) {
     ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
     ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
   }
+  // Open kruidenzak naast de ketel, binnen de schaduw van het brouwstation.
+  ell(ctx, x - 21, y - 1, 6, 2, '#322838');
+  ell(ctx, x - 21, y - 5, 5, 5, '#886343');
+  ell(ctx, x - 22, y - 5, 3, 4, '#ab8157');
+  ell(ctx, x - 21, y - 9, 4, 2, '#c19b70');
+  ell(ctx, x - 21, y - 9, 2, 1, '#5c6641');
+  dot(ctx, x - 22, y - 10, '#9dae64');
+  dot(ctx, x - 19, y - 8, '#889b54');
+
   ell(ctx, x, y - 26, 19, 8, '#242431');
   ell(ctx, x, y - 27, 18, 7, '#73757b');
   ell(ctx, x, y - 27, 16, 5, '#4f9e42');
@@ -839,10 +864,17 @@ function drawCauldron(t) {
       dot(ctx, bx + 1, by - 3 - 10 * (age - .8), '#d2f989');
     }
   }
+  // Roerlepel met de steel op de achterste rand.
+  line(ctx, x + 4, y - 28, x + 18, y - 40, '#593b30');
+  line(ctx, x + 5, y - 29, x + 18, y - 41, '#bd8959');
+  dot(ctx, x + 18, y - 41, '#e0ac75');
   for (let i = 0; i < 4; i++) {
     const age = (t * .39 + i / 4) % 1;
-    ctx.globalAlpha = Math.sin(age * Math.PI) * .34;
-    ell(ctx, x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3, y - 31 - 22 * age, 2 + Math.floor(age * 4), 2, '#bfe88e');
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .29;
+    const steamX = x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3 + age * 5;
+    const steamY = y - 31 - 25 * age;
+    ell(ctx, steamX, steamY, 2 + Math.floor(age * 4), 2, '#bfe88e');
+    ell(ctx, steamX - 2, steamY + 1, 2, 1, '#e9edbc');
   }
   ctx.globalAlpha = 1;
 }
