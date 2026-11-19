@@ -848,15 +848,33 @@ function drawPotionWorkbench(g) {
   line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
 }
 
-function drawCauldron(t) {
-  const [x, y] = P(cauldronA, cauldronB, 0);
-  ell(ctx, x, y, 19, 6, '#282339');
-  ell(ctx, x, y - 2, 11, 4, '#58363a');
-  for (let i = -2; i <= 2; i++) {
-    const heated = questStage === 'ready' || questStage === 'complete';
-    const flame = (heated ? 5 : cauldronHeat > 0 ? 3 : 1) + Math.round((heated ? 3 : 1) * (1 + Math.sin(t * 9 + i * 2)));
-    rect(ctx, x + i * 3, y - flame, 2, flame, i % 2 ? '#ed9252' : '#ffc771');
+function drawCauldronFire(x, y, t, intensity) {
+  if (intensity <= 0) return;
+  ell(ctx, x, y, 10, 3, '#68332b');
+  for (let i = 0; i < 5; i++) {
+    const dx = (i - 2) * 4;
+    const pulse = Math.sin(t * (9 + i) + i * 2) * .5 + .5;
+    const height = Math.max(1, Math.round(intensity * (4 + pulse * 5 - Math.abs(i - 2))));
+    const base = y + (i % 2);
+    line(ctx, x + dx - 1, base, x + dx + (pulse > .5 ? 1 : 0), base - height, '#b3452e');
+    line(ctx, x + dx, base, x + dx, base - Math.round(height * .75), '#f78938');
+    if (height >= 3) line(ctx, x + dx + 1, base, x + dx + 1, base - Math.floor(height / 2), '#ffcf68');
+    const age = (t * .9 + i * .37) % 1;
+    if (height >= 5 && age < .62) {
+      dot(ctx, x + dx + Math.sin(age * 4) * 2, base - height - age * 4, '#fcb358');
+    }
   }
+}
+
+function drawCauldron(t, dt) {
+  const [x, y] = P(cauldronA, cauldronB, 0);
+  const lit = questStage === 'ready' || questStage === 'complete';
+  const boiling = questStage === 'complete';
+  if (lit) cauldronIgnition = Math.min(1, cauldronIgnition + dt / 1.15);
+  ell(ctx, x, y, 19, 6, '#282339');
+  ell(ctx, x, y - 1, 10, 3, '#3e302f');
+  line(ctx, x - 7, y + 1, x + 6, y - 1, '#76573f');
+  line(ctx, x - 5, y - 2, x + 7, y + 1, '#5a4033');
   for (const offset of [-11, 11]) {
     rect(ctx, x + offset - 2, y - 7, 5, 8, '#242733');
     rect(ctx, x + offset - 1, y - 5, 2, 4, '#545561');
@@ -869,6 +887,7 @@ function drawCauldron(t) {
     dot(ctx, x + dx, y - 21 + Math.round((1 - Math.abs(dx) / 10) * 2), '#999485');
   }
   ell(ctx, x, y - 11, 12, 7, '#303440');
+  drawCauldronFire(x, y + 1, t, cauldronIgnition);
   for (const side of [-1, 1]) {
     ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
     ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
@@ -884,9 +903,9 @@ function drawCauldron(t) {
 
   ell(ctx, x, y - 26, 19, 8, '#242431');
   ell(ctx, x, y - 27, 18, 7, '#73757b');
-  ell(ctx, x, y - 27, 16, 5, '#4f9e42');
-  ell(ctx, x - 2, y - 27, 12, 4, '#76c951');
-  for (let i = 0; i < 7; i++) {
+  ell(ctx, x, y - 27, 16, 5, boiling ? '#4f9e42' : '#3d6646');
+  ell(ctx, x - 2, y - 27, 12, 4, boiling ? '#76c951' : '#547c51');
+  for (let i = 0; boiling && i < 7; i++) {
     const age = (t * (.55 + hash(i, 17) * .27) + hash(i, 8)) % 1;
     const bx = x + (hash(i, 13) - .5) * 22;
     const by = y - 27 + (hash(i, 15) - .5) * 6;
@@ -902,7 +921,7 @@ function drawCauldron(t) {
   line(ctx, x + 4, y - 28, x + 18, y - 40, '#593b30');
   line(ctx, x + 5, y - 29, x + 18, y - 41, '#bd8959');
   dot(ctx, x + 18, y - 41, '#e0ac75');
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; boiling && i < 4; i++) {
     const age = (t * .39 + i / 4) % 1;
     ctx.globalAlpha = Math.sin(age * Math.PI) * .29;
     const steamX = x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3 + age * 5;
@@ -1797,6 +1816,8 @@ try {
   // De quest werkt ook wanneer lokale opslag is uitgeschakeld.
 }
 
+let cauldronIgnition = questStage === 'ready' || questStage === 'complete' ? 1 : 0;
+
 function hasQuestWand() {
   return document.getElementById('hotbar')?.dataset.hasWand === 'true';
 }
@@ -1860,7 +1881,7 @@ function warmCauldron(hit, dt) {
 
 function drawQuestMarker(t) {
   if (preview || questStage === 'complete' || !skeletonMage.naturalWidth) return;
-  const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight + 7);
+  const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight + 2);
   const top = Math.round(y - 8 + Math.sin(t * 3));
   const color = { available: '#ffe15b', active: '#c4cfde', ready: '#f6b844' }[questStage];
   const rows = questStage === 'available'
