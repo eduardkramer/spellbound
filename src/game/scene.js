@@ -528,12 +528,13 @@ const potionBookcases = [[3, 31], [87, 109]];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
-const rackStart = 2 * TILE_SIZE + 2.5;
+const rackStart = 2 * TILE_SIZE + 4;
 const rackEnd = 6 * TILE_SIZE;
 const rackWidth = rackEnd - rackStart;
 const rackDepth = 5;
 const rackHeight = 40;
 const rackBubbles = [];
+const rackGlass = mk();
 const rackBottleShapes = [
   ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
   ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
@@ -595,9 +596,9 @@ function drawPotionRack(g) {
   box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
   const stock = [
-    [[6.5, 1, 3], [9.5, 2, 0], [13.5, 0, 2], [17.5, 3, 1], [22.5, 1, 2], [26.5, 2, 4]],
-    [[6.5, 0, 1], [9.5, 2, 3], [13, 1, 4], [15.5, 2, 2], [21.5, 3, 0], [25.5, 0, 3]],
-    [[6.5, 3, 2], [10, 0, 3], [13.5, 2, 1], [17, 1, 0], [21.5, 0, 4], [26.5, 3, 1]]
+    [[6.5, 1, 3], [8, 2, 0], [12, 0, 2], [16, 3, 1], [21, 1, 2], [24.5, 2, 4]],
+    [[6.5, 0, 1], [8, 2, 3], [11.5, 1, 4], [14, 2, 2], [20, 3, 0], [24, 0, 3]],
+    [[6.5, 3, 2], [8.5, 0, 3], [12, 2, 1], [15.5, 1, 0], [20, 0, 4], [25, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
@@ -619,6 +620,31 @@ function drawPotionRack(g) {
   }
   box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
 }
+
+function drawRackDoors(g) {
+  const left = (rackStart + 1) * 2;
+  const right = (rackEnd - 2) * 2;
+  const middle = Math.floor((left + right) / 2);
+  const top = rackHeight - 2;
+  wallR(g, rackDepth, left, right, 2, top, (u, z) => {
+    if (z === 2 || z === top - 1) return '#bd9567';
+    if (u === left || u === right - 1 || u === middle || u === middle - 1) {
+      return u === middle - 1 ? '#bc9468' : '#765139';
+    }
+    if ((u === middle - 2 || u === middle + 1) && z >= 18 && z <= 20) {
+      return z === 20 ? '#ecd29a' : '#a47a4a';
+    }
+    const offset = u < middle ? u - left : u - middle;
+    if (offset > 2 && offset < 14 && z === 23 + (offset >> 1)) {
+      return 'rgba(205,236,230,.30)';
+    }
+    if (offset >= 4 && offset < 10 && z === 20 + (offset >> 1)) {
+      return 'rgba(205,236,230,.17)';
+    }
+    return 'rgba(131,194,181,.08)';
+  });
+}
+drawRackDoors(rackGlass.getContext('2d'));
 
 function drawRackBubbles(t) {
   rackBubbles.forEach(([x, y, color], index) => {
@@ -2487,7 +2513,10 @@ function frame(ms) {
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
-  if (currentRoom === rooms.potion) drawRackBubbles(t);
+  if (currentRoom === rooms.potion) {
+    drawRackBubbles(t);
+    ctx.drawImage(rackGlass, 0, 0);
+  }
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (currentRoom !== rooms.tower) {
