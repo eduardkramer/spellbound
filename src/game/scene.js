@@ -528,7 +528,7 @@ const potionBookcases = [[3, 31], [87, 109]];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
-const rackStart = 2 * TILE_SIZE + 1;
+const rackStart = 2 * TILE_SIZE + 2.5;
 const rackEnd = 6 * TILE_SIZE;
 const rackWidth = rackEnd - rackStart;
 const rackDepth = 5;
@@ -578,7 +578,7 @@ function drawPotionRack(g) {
     right: '#573b30'
   };
   const post = flat('#a87b53', (u, z) => {
-    const edge = (u - rackStart * 2) % (rackWidth * 2 - 4);
+    const edge = u >= (rackEnd - 2) * 2 ? u - (rackEnd - 2) * 2 : u - rackStart * 2;
     if (z < 2) return '#63432f';
     if (edge === 0) return '#69452f';
     if (edge === 3) return '#4b3228';
@@ -595,9 +595,9 @@ function drawPotionRack(g) {
   box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
   const stock = [
-    [[7.5, 1, 3], [11, 2, 0], [15, 0, 2], [19, 3, 1], [24, 1, 2], [28, 2, 4]],
-    [[7.5, 0, 1], [11, 2, 3], [14.5, 1, 4], [17, 2, 2], [23, 3, 0], [27, 0, 3]],
-    [[7.5, 3, 2], [11.5, 0, 3], [15, 2, 1], [18.5, 1, 0], [23, 0, 4], [28, 3, 1]]
+    [[6.5, 1, 3], [9.5, 2, 0], [13.5, 0, 2], [17.5, 3, 1], [22.5, 1, 2], [26.5, 2, 4]],
+    [[6.5, 0, 1], [9.5, 2, 3], [13, 1, 4], [15.5, 2, 2], [21.5, 3, 0], [25.5, 0, 3]],
+    [[6.5, 3, 2], [10, 0, 3], [13.5, 2, 1], [17, 1, 0], [21.5, 0, 4], [26.5, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
@@ -608,11 +608,11 @@ function drawPotionRack(g) {
     }
   });
 
-  const stileWidth = 2;
-  for (const a of [rackStart, rackEnd - stileWidth]) {
+  // De linker stijl is slanker zodat de flessen dichter bij het hout staan.
+  for (const [a, stileWidth] of [[rackStart, 1], [rackEnd - 2, 2]]) {
     box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
     for (const z of [4, 16, 28, 36]) {
-      const [x, y] = P(a + 1, rackDepth, z);
+      const [x, y] = P(a + stileWidth / 2, rackDepth, z);
       dot(g, x, y, '#503a2c');
       dot(g, x, y - 1, '#bf9b69');
     }
