@@ -541,7 +541,7 @@ const rackBottleShapes = [
 ];
 
 function drawRackBottle(g, a, z, shape, color) {
-  const [x, y] = P(a, rackDepth - 1.5, z);
+  const [x, y] = P(a, rackDepth - .5, z);
   const rows = rackBottleShapes[shape];
   const colors = {
     c: '#b0875e', g: '#879ea8', h: '#f4eadd',
@@ -569,7 +569,7 @@ function drawPotionRack(g) {
       return hash(Math.floor(a / 5), Math.floor(b * 2)) > .72 ? '#b0885c' : '#9c714b';
     },
     left: (u, z) => {
-      if (z === 1 || z === 13 || z === 25 || z === rackHeight - 1) {
+      if (z === 2 || z === 14 || z === 26 || z === rackHeight - 1) {
         return hash(u, z) > .86 ? '#a7774e' : '#be9061';
       }
       return '#69452f';
@@ -578,6 +578,7 @@ function drawPotionRack(g) {
   };
   const post = flat('#a87b53', (u, z) => {
     const edge = (u - rackStart * 2) % (rackWidth * 2 - 4);
+    if (z < 2) return '#63432f';
     if (edge === 0) return '#69452f';
     if (edge === 3) return '#4b3228';
     if (edge === 1) return '#a67b56';
@@ -589,12 +590,13 @@ function drawPotionRack(g) {
   });
   const inner = flat('#49352f', '#332731', '#392a2c');
   box(g, rackStart, 0, 0, rackWidth, 1.5, rackHeight, inner);
-  box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, trim);
+  // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
+  box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
   const stock = [
-    [[4.5, 1, 3], [8, 2, 0], [14, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
-    [[4, 0, 1], [8, 2, 3], [13, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
-    [[4, 3, 2], [8, 0, 3], [13, 2, 1], [17, 1, 0], [24, 0, 4], [29, 3, 1]]
+    [[8.5, 1, 3], [12, 2, 0], [16, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
+    [[8.5, 0, 1], [12, 2, 3], [15.5, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
+    [[8.5, 3, 2], [12.5, 0, 3], [16, 2, 1], [19.5, 1, 0], [24, 0, 4], [29, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
@@ -608,7 +610,7 @@ function drawPotionRack(g) {
   const stileWidth = 2;
   for (const a of [rackStart, rackStart + rackWidth - stileWidth]) {
     box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
-    for (const z of [3, 15, 27, 36]) {
+    for (const z of [4, 16, 28, 36]) {
       const [x, y] = P(a + 1, rackDepth, z);
       dot(g, x, y, '#503a2c');
       dot(g, x, y - 1, '#bf9b69');
