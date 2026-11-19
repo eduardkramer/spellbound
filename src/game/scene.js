@@ -198,7 +198,13 @@ function shadedTowerFloor(a, b) {
   let shade = 1;
   for (const shadow of towerShadows) shade = Math.min(shade, contactShade(a, b, ...shadow));
   const color = floorFn(a, b);
-  return shade < 1 ? sh(color, 1 - (1 - shade) * .72) : color;
+  // Hetzelfde kruis als in het glas, geprojecteerd vanaf de linkerwand.
+  const u = 44 + 2 * (b - 24 + a * .33);
+  const z = 60 + (a - 4) * .85;
+  const inGlass = u >= 24 && u < 64 && z >= 60 && z < 90;
+  const frame = u >= 43 && u < 45 || z >= 74 && z < 76;
+  const sunset = inGlass && !frame ? .19 * (1 - a / 44) : 0;
+  return tintFloor(color, 1 - (1 - shade) * .72, sunset);
 }
 
 function floorFn(a, b) {
@@ -207,6 +213,8 @@ function floorFn(a, b) {
     if (b >= 38.8) return (Math.floor(la * 1.5) & 1) ? '#e8d9a0' : '#bda86a';      // franje
     if (la < 1.2 || la > 16.8) return '#5b1221';
     if (la < 2 || la > 16) return '#d6a83c';
+    if (la < 3 || la > 15) return lb % 4 < 1 ? '#c99054' : '#862333';
+    if (lb < 1.2 || lb >= 33.5) return '#a97643';
     const d = Math.abs(((lb % 8) + 8) % 8 - 4) + Math.abs(la - 9);
     if (d < 3.2) return '#c43a4a';
     if (d < 4.2) return '#7d1a28';
@@ -227,7 +235,8 @@ function floorFn(a, b) {
   const startB = row - (acrossA ? 0 : offset);
   const tone = .95 + hash(startA, startB) * .1;
   const edge = cross > width - .4 ? 1.035 : 1;
-  return sh('#6c4d3a', tone * edge);
+  const grain = hash(Math.floor(along / 3) + startA, Math.floor(cross * 2) + startB);
+  return sh('#6c4d3a', tone * edge * (grain > .87 ? 1.09 : grain < .12 ? .94 : 1));
 };
 
 /* ---------- onderbouw met bogen ---------- */
@@ -300,7 +309,7 @@ function leftFn(u, z) {
     return bookFn(u, z);
   }
   const h = hatFn(u, z); if (h) return h;
-  return brL(u, z);
+  return towerWallStone(brL, u, z);
 }
 
 /* ---------- haard / schoorsteen / portret ---------- */
@@ -337,7 +346,14 @@ function rightFn(u, z) {
     if (u < 28 || u >= 56) return '#8c86ac';
     return brC(u, z);
   }
-  return brR(u, z);
+  return towerWallStone(brR, u, z);
+}
+
+function towerWallStone(brick, u, z) {
+  const color = brick(u, z);
+  if (z < 5) return sh(color, .8 + z * .035);
+  const texture = hash(Math.floor(u / 2), z);
+  return texture > .91 ? sh(color, 1.12) : texture < .08 ? sh(color, .89) : color;
 }
 
 function passageColor(dx, z) {
@@ -830,12 +846,15 @@ function potionFloor(a, b) {
     else if (seam < 1.15) color = '#7c8081';
     else color = sh('#606674', .78 + variation * .35 + (grain > .91 ? .13 : 0));
   }
-  if (!daylight) return sh(color, contact);
+  return tintFloor(color, contact, daylight * .84);
+}
+
+function tintFloor(color, contact, amount) {
+  if (!amount) return contact === 1 ? color : sh(color, contact);
   const rgb = color.startsWith('#')
     ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
     : color.slice(4, -1).split(',').map(Number);
   const light = [241, 207, 158];
-  const amount = daylight * .84;
   return 'rgb(' + rgb.map((channel, index) =>
     Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
 }
@@ -920,6 +939,9 @@ function buildFront() {
   box(g, 10, 0, 0, 22, 6, 2, flat('#8d88b0', '#6c678f', '#58537a'));
   // schoorsteenmantel + consoles
   box(g, 9, 0, 52, 24, 4, 4, woodD);
+  box(g, 8.75, 0, 55, 24.5, 4.5, 1, wood);
+  wallR(g, 4, 18, 66, 52, 54, (u, z) =>
+    z === 53 && hash(u >> 1, z) > .32 ? '#a67448' : '#503123');
   box(g, 10.5, 0, 48, 1.6, 2.5, 4, woodD); box(g, 29.5, 0, 48, 1.6, 2.5, 4, woodD);
 
   // ijzeren haardscherm
@@ -971,13 +993,19 @@ function buildFront() {
     const curve = Math.hypot(column - 4.5, Math.max(0, z - 8));
     if (curve < 2.15 && z > 4) return '#3c2924';
     if (curve < 3 && z > 3) return '#9c7147';
-    return '#65432e';
+    if (z === 12 || (column === 1 && z > 4)) return '#805234';
+    return hash(u, z >> 1) > .8 ? '#704b34' : '#65432e';
   });
   box(g, 16, 24.5, 13, 24, 7, 2.5, deskWood);
   box(g, 16.25, 31, 14, 23.5, .4, 1, gilding);
   const pages = flat('#dbc79d', '#8c6c4c', '#ad9064');
   box(g, 26, 27, 15.5, 2.25, 2.5, .8, pages);
   box(g, 28.35, 27, 15.5, 2.25, 2.5, .8, pages);
+  for (const a of [26.5, 28.75]) {
+    line(g, ...P(a, 27.7, 16.3), ...P(a + 1.25, 27.7, 16.3), '#987b57');
+    line(g, ...P(a, 28.4, 16.3), ...P(a + 1, 28.4, 16.3), '#ae8d60');
+  }
+  line(g, ...P(28.25, 27, 16.3), ...P(28.25, 29.5, 16.3), '#7e5c45');
   for (const [z, color] of [[15.5, '#723e42'], [16.3, '#486659'], [17.1, '#846041']]) {
     box(g, 22.8, 26, z, 2.8, 2.2, .8, flat(color, '#5d3c2d', '#aa8e66'));
   }
