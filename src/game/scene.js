@@ -384,7 +384,7 @@ const libraryLayout = [
   [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant'],
   [1, 5, 'reading chair'], [0, 4, 'tea table']
 ];
-const leftShelfRanges = [[4, 64], [108, 124]];
+const leftShelfRanges = [[4, 64], [115, 126]];
 const rightShelfRanges = [[8, 48], [98, 126]];
 
 function shadedLibraryFloor(a, b) {
@@ -503,10 +503,11 @@ function drawLibraryShelves(g) {
   const depth = 3, height = 87;
   const timber = woodC('#926348');
   for (const [start, end] of leftShelfRanges) {
-    box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
     const narrow = end - start < 24;
+    const shelfDepth = narrow ? 2 : depth;
+    box(g, 0, start / 2, 0, shelfDepth, (end - start) / 2, height, timber);
     const shelf = libraryShelf(start, end, narrow ? null : 37);
-    wallL(g, depth, start, end, 0, height, (u, z) => {
+    wallL(g, shelfDepth, start, end, 0, height, (u, z) => {
       if (narrow && (z < 7 || z >= 83)) {
         if (z === 6 || z === 85) return '#ba895d';
         return z % 4 === 0 ? '#51362b' : '#785037';
@@ -514,7 +515,7 @@ function drawLibraryShelves(g) {
       return shelf(u, z);
     });
     if (narrow) {
-      box(g, 0, start / 2 - .5, height, 3.5, (end - start) / 2 + 1, 1.5, timber);
+      box(g, 0, start / 2 - .5, height, shelfDepth + .5, (end - start) / 2 + 1, 1.5, timber);
     }
   }
   for (const [start, end] of rightShelfRanges) {
@@ -523,7 +524,7 @@ function drawLibraryShelves(g) {
   }
 }
 
-const potionBookcases = [[3, 31], [80, 109]];
+const potionBookcases = [[3, 31], [87, 109]];
 const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
