@@ -1564,6 +1564,11 @@ function drawSkeletonMage(t) {
   ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
     left, top + nod, headWidth, headHeight);
 
+  const eyeY = top + nod;
+  dot(ctx, left + 14, eyeY + 16, '#8f263b');
+  dot(ctx, left + 15, eyeY + 16, '#ff5159');
+  dot(ctx, left + 18, eyeY + 14, '#ff5159');
+
   const flicker = Math.sin(t * 11) + .45 * Math.sin(t * 18);
   dot(ctx, left + 27, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
   dot(ctx, left + 6, top + 35, flicker > -.3 ? '#c5f8b1' : '#81ba75');
