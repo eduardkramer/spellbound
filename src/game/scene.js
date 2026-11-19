@@ -474,14 +474,14 @@ const potionRackImage = new Image();
 
 function drawPotionRackSprite(g) {
   if (!potionRackImage.naturalWidth) return false;
-  // Koppel de voorrand van de sprite aan dezelfde isometrische as als de muur.
-  const [x, y] = P(15, 5, 37);
-  const scale = .33;
+  // Deze kast staat schuin onder de ramen. Behoud de ingebouwde kijkhoek.
+  const [x, y] = P(19, 14, 0);
+  const width = 76;
+  const scale = width / potionRackImage.naturalWidth;
   g.save();
-  g.imageSmoothingEnabled = false;
-  g.translate(x, y);
-  g.transform(scale, .097, 0, scale, 0, 0);
-  g.drawImage(potionRackImage, -1, -13);
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(potionRackImage, x, y - 39, width, potionRackImage.naturalHeight * scale);
   g.restore();
   return true;
 }
@@ -1436,7 +1436,7 @@ rooms.library.floor = libraryFloorMap;
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
   'XXXXXXX.',
-  'X.......',
+  'X.XX....',
   '........',
   '.....XX.',
   '.....XX.',
