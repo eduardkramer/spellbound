@@ -1086,7 +1086,8 @@ function drawStockShelves(g) {
 
 function drawStockContainer(g, a, b, kind) {
   const [x, y] = P(a, b, 0);
-  ell(g, x, y, 8, 3, '#38313c');
+  ell(g, x, y, 9, 4, '#4b434d');
+  ell(g, x, y, 6, 2, '#353039');
   const furnitureWood = woodC('#9b6345'), darkWood = woodC('#673f2c');
   if (kind === 'chair' || kind === 'table') {
     const chair = kind === 'chair';
@@ -1096,12 +1097,18 @@ function drawStockContainer(g, a, b, kind) {
       for (const db of [-size / 2, size / 2 - 1]) box(g, a + da, b + db, 0, 1, 1, height, darkWood);
     }
     box(g, a - size / 2, b - size / 2, height, size, size, 1.5, furnitureWood);
+    const surface = height + 1.5;
+    line(g, ...P(a - size / 2 + .5, b + size / 2 - .5, surface),
+      ...P(a + size / 2 - .5, b + size / 2 - .5, surface), '#c18d64');
+    line(g, ...P(a - 1.5, b + .55, surface), ...P(a + 1.5, b + .55, surface), '#85563d');
     if (chair) {
       box(g, a - 2, b - 2, height, 4, 1, 8, darkWood);
       box(g, a - 2.2, b - 2.3, height + 6, 4.4, 1.5, 2, furnitureWood);
+      for (const da of [-1.4, 1.4]) dot(g, ...P(a + da, b - .8, height + 7), '#d0a47a');
     } else {
       box(g, a - 2.2, b - 1.75, height + 1.5, 3.5, 2.5, .75,
         flat('#c1ad82', '#8a7559', '#a48a61'));
+      line(g, ...P(a - 1.7, b - .9, surface + .75), ...P(a + .5, b - .9, surface + .75), '#8f765d');
     }
     return;
   }
@@ -1115,6 +1122,11 @@ function drawStockContainer(g, a, b, kind) {
     const [lx, ly] = P(a, b + 2.25, 4);
     rect(g, lx - 1, ly - 1, 3, 2, '#d7b572');
     dot(g, lx, ly, '#49312e');
+    line(g, ...P(a - 2.6, b + 2.25, 5), ...P(a + 2.6, b + 2.25, 5), '#59372b');
+    for (const da of [-2, 2]) {
+      dot(g, ...P(a + da, b + 2.25, 2), '#e2bb79');
+      dot(g, ...P(a + da, b + 2.25, 6), '#e2bb79');
+    }
     return;
   }
   if (kind === 'barrel') {
@@ -1124,6 +1136,11 @@ function drawStockContainer(g, a, b, kind) {
     for (const dy of [-9, -4]) rect(g, x - 6, y + dy, 13, 2, '#4c454d');
     ell(g, x, y - 12, 7, 3, '#a47850');
     ell(g, x, y - 12, 5, 2, '#634b3e');
+    line(g, x - 4, y - 12, x + 3, y - 11, '#8c6a4e');
+    for (const dy of [-8, -3]) {
+      dot(g, x - 4, y + dy, '#aaa0a1');
+      dot(g, x + 4, y + dy, '#81787e');
+    }
     return;
   }
   if (kind === 'herbs') {
@@ -1134,7 +1151,9 @@ function drawStockContainer(g, a, b, kind) {
     for (const [dx, dy] of [[-2,-10],[1,-11],[2,-10],[6,0],[8,1],[5,2]]) {
       dot(g, x + dx, y + dy, dy < 0 ? '#a6ad65' : '#788c57');
     }
-    dot(g, x - 2, y - 5, '#e0b78b');
+    for (const [dx, dy] of [[-3,-5],[-2,-4],[-3,-3]]) dot(g, x + dx, y + dy, '#d8b287');
+    line(g, x + 2, y - 6, x + 3, y - 3, '#76543e');
+    rect(g, x + 1, y - 5, 2, 2, '#c7a27b');
     return;
   }
   const timber = woodC('#9b6b43');
@@ -1142,6 +1161,12 @@ function drawStockContainer(g, a, b, kind) {
   box(g, a - 2.8, b - 2.8, 7, 5.6, 5.6, 1, woodC('#ae8156'));
   line(g, ...P(a - 2, b + 2.6, 1), ...P(a + 2, b + 2.6, 7), '#bd8b5c');
   line(g, ...P(a + 2.6, b - 2, 7), ...P(a + 2.6, b + 2, 1), '#81573d');
+  for (const z of [2, 5]) {
+    line(g, ...P(a - 2.5, b + 2.65, z), ...P(a + 2.5, b + 2.65, z), '#785339');
+  }
+  for (const da of [-2, 2]) for (const z of [1, 6]) {
+    dot(g, ...P(a + da, b + 2.7, z), '#c0a28a');
+  }
   if (kind === 'crates') {
     box(g, a - 1.6, b - 1.2, 8, 3.6, 3.2, 5, furnitureWood);
     box(g, a - 1.8, b - 1.4, 12.5, 4, 3.6, .75, darkWood);
@@ -1151,6 +1176,9 @@ function drawStockContainer(g, a, b, kind) {
       const offset = index % 2 ? -.5 : 0;
       box(g, a - 2 + offset, b - 1.5, 8 + index * 1.4, 4, 3, 1.4,
         flat(cover, '#bda781', '#8d7359'));
+      const spineZ = 8.6 + index * 1.4;
+      dot(g, ...P(a - 1.3 + offset, b + 1.55, spineZ), '#dbc18a');
+      dot(g, ...P(a + 1.2 + offset, b + 1.55, spineZ), '#ad9063');
       line(g, ...P(a - 2 + offset, b + 1.55, 9 + index * 1.4),
         ...P(a + 2 + offset, b + 1.55, 9 + index * 1.4), cover);
     }
@@ -1160,6 +1188,7 @@ function drawStockContainer(g, a, b, kind) {
   } else if (kind === 'crystals') {
     for (const [dx, dy, color] of [[-3, -7, '#b298db'], [0, -10, '#d2b6f5'], [3, -7, '#8975b6']]) {
       line(g, x + dx, y + dy - 4, x + dx - 1, y + dy, color);
+      line(g, x + dx, y + dy - 3, x + dx + 1, y + dy, '#614f81');
       dot(g, x + dx, y + dy - 4, '#ebd3fa');
     }
   } else {
