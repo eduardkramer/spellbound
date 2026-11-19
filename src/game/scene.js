@@ -474,7 +474,7 @@ function libraryShelf(start, end, ladderAt) {
 
 const sunsetSky = ['#ffce8f', '#f7a279', '#db7b83', '#ae6683', '#795778', '#584763'];
 
-function autumnSunset(x, y) {
+function autumnSunset(x, y, showSun = true) {
   const ridge = .24 + Math.sin(x * .085) * .045 + Math.cos(x * .16) * .028;
   const canopy = .14 + Math.sin(x * .24) * .045 + Math.cos(x * .68) * .026;
   const leaf = hash(Math.floor(x / 2), Math.floor(y * 23));
@@ -483,7 +483,7 @@ function autumnSunset(x, y) {
     return leaf > .7 ? '#a8674d' : '#774853';
   }
   if (y < ridge) return '#765773';
-  if (Math.hypot(x - 48, (y - .43) * 49) < 5) return '#ffe8a9';
+  if (showSun && Math.hypot(x - 48, (y - .43) * 49) < 5) return '#ffe8a9';
   if (y > .51 && y < .56 && Math.sin(x * .15) > .35) return '#ffc191';
   return sunsetSky[Math.max(0, Math.min(5, Math.floor((y - .23) * 7.7)))];
 }
@@ -656,7 +656,7 @@ function drawPotionWorkshop(g) {
       if (arch > 21) return null;
       if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
       if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
-      return autumnSunset(u - 21, y / 49);
+      return autumnSunset(u - 21, y / 49, false);
     });
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
