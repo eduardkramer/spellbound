@@ -1555,7 +1555,7 @@ function drawSkeletonMage(t) {
   const left = Math.round(x - width / 2), top = Math.round(y - height);
   ell(ctx, x, y, 7, 2, 'rgba(25,20,34,.42)');
 
-  const headWidth = 23, headHeight = 19;
+  const headWidth = 23, headHeight = 21;
   const nod = Math.sin(t * 2.4) > .62 ? -1 : 0;
   ctx.drawImage(skeletonMage, 0, headHeight, width, height - headHeight,
     left, top + headHeight, width, height - headHeight);
@@ -1564,26 +1564,14 @@ function drawSkeletonMage(t) {
   ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
     left, top + nod, headWidth, headHeight);
 
-  // Leesbare oogkassen en kaak op de kleine spelsprite.
-  const faceY = top + nod;
-  rect(ctx, left + 13, faceY + 14, 6, 3, '#e8cfaf');
-  rect(ctx, left + 14, faceY + 17, 5, 2, '#d8b994');
-  rect(ctx, left + 15, faceY + 19, 4, 1, '#a78168');
-  rect(ctx, left + 14, faceY + 15, 2, 2, '#282030');
-  dot(ctx, left + 18, faceY + 15, '#282030');
-  dot(ctx, left + 15, faceY + 16, '#78e6ba');
-  dot(ctx, left + 17, faceY + 17, '#59413f');
-  dot(ctx, left + 16, faceY + 18, '#78574d');
-  dot(ctx, left + 18, faceY + 18, '#78574d');
-
   const flicker = Math.sin(t * 11) + .45 * Math.sin(t * 18);
-  dot(ctx, left + 29, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
-  dot(ctx, left + 30, top + 9 - Math.round(flicker), '#60c18e');
+  dot(ctx, left + 27, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
+  dot(ctx, left + 6, top + 35, flicker > -.3 ? '#c5f8b1' : '#81ba75');
   const ember = (t * 1.3) % 1;
   if (ember < .72) {
     ctx.save();
     ctx.globalAlpha = 1 - ember;
-    dot(ctx, left + 29 + Math.sin(t * 6), top + 7 - ember * 5, '#9cf6bd');
+    dot(ctx, left + 28 + Math.sin(t * 6), top + 7 - ember * 5, '#9cf6bd');
     ctx.restore();
   }
 }
