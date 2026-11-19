@@ -1513,6 +1513,10 @@ function outline(g, hex) {
   for (let i = 0; i < pts.length; i += 2) g.fillRect(pts[i], pts[i + 1], 1, 1);
 }
 
+const loadingScreen = document.getElementById('game-loading');
+const loadingProgress = document.getElementById('game-loading-progress');
+if (loadingProgress) loadingProgress.value = 1;
+
 for (const room of Object.values(rooms)) {
   const background = room.canvas.getContext('2d');
   buildStatic(background, room);
@@ -1525,6 +1529,7 @@ for (const room of Object.values(rooms)) {
   }
 }
 buildFront();
+if (loadingProgress) loadingProgress.value = 2;
 
 const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   const canvas = mk(), g = canvas.getContext('2d');
@@ -3276,6 +3281,11 @@ function frame(ms) {
   const [gx, gy] = P(21, 6, 14);
   glow(gx, gy, 80, 56, '255,166,75', .052 + .015 * n);
   for (const [x, y] of cand) glow(x, y + 4, 22, 16, '255,200,120', .03);
+  if (loadingScreen && !loadingScreen.hidden) {
+    loadingProgress.value = loadingProgress.max;
+    document.getElementById('wrap').removeAttribute('aria-busy');
+    loadingScreen.hidden = true;
+  }
   if (preview && cv.hidden) {
     cv.hidden = false;
     cv.previousElementSibling.hidden = true;
