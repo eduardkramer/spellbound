@@ -564,10 +564,10 @@ const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
 const rackStart = 2 * TILE_SIZE + 4;
 const rackEnd = 6 * TILE_SIZE;
-const rackWidth = rackEnd - rackStart;
 const rackDepth = 5;
 const rackHeight = 40;
 const rackBubbles = [];
+const stockRackBubbles = [];
 const rackGlass = mk();
 const rackBottleShapes = [
   ['..ccc..', '..gsg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
@@ -576,7 +576,7 @@ const rackBottleShapes = [
   ['..ccc..', '..gsg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
 ];
 
-function drawRackBottle(g, a, z, shape, color) {
+function drawRackBottle(g, a, z, shape, color, bubbles) {
   const [x, y] = P(a, rackDepth - .5, z);
   const rows = rackBottleShapes[shape];
   const colors = {
@@ -596,10 +596,41 @@ function drawRackBottle(g, a, z, shape, color) {
     }
   });
   const surface = rows.findIndex(row => row.includes('l'));
-  rackBubbles.push([left + rows[surface].indexOf('l'), top + surface, sh(color, 1.62)]);
+  bubbles.push([left + rows[surface].indexOf('l'), top + surface, sh(color, 1.62)]);
 }
 
-function drawPotionRack(g) {
+const rackSupplies = {
+  skull: ['.bbb.', 'bbhbb', 'bdhdb', '.bdb.', '.hbh.'],
+  herbs: ['....g', '.g.gg', 'ggg..', '..gn.', '.nnt.', 'nttn.', '.nn..'],
+  crystal: ['..h..', '.hbh.', 'hbddh', 'hbbdd', '.bdd.', '..d..'],
+  vial: ['..n..', '.nnn.', '..h..', '.h.d.', '.h.d.', '.h.d.', '..d..'],
+  mushroom: ['.ttt.', 'tbtbt', 'ddddd', '..h..', '.bh..'],
+  scroll: ['.n..n', 'nhhhn', 'nbbbn', 'nndnn']
+};
+
+const rackSupplyColors = {
+  skull: { b: '#cdbb99', h: '#f3dfb7', d: '#50414d' },
+  herbs: { g: '#8fa65d', n: '#836048', t: '#bf9c66' },
+  crystal: { b: '#ad84d4', h: '#e1c4ff', d: '#684d91' },
+  vial: { n: '#ad835d', h: '#c1dbd6', d: '#607f89' },
+  mushroom: { t: '#bd7658', b: '#efd4a0', d: '#754457', h: '#d6bc92' },
+  scroll: { n: '#926746', h: '#ecd2a0', b: '#bc9c70', d: '#9c4d58' }
+};
+
+function drawRackSupply(g, a, z, kind) {
+  const [x, y] = P(a, rackDepth - .5, z);
+  const rows = rackSupplies[kind];
+  const palette = rackSupplyColors[kind];
+  ell(g, x, y, 3, 1, '#4b3631');
+  for (const [dy, row] of rows.entries()) {
+    for (const [dx, pixel] of Array.from(row).entries()) {
+      if (pixel !== '.') dot(g, x + dx - 2, y - rows.length + dy + 1, palette[pixel]);
+    }
+  }
+}
+
+function drawPotionRack(g, start = rackStart, end = rackEnd, bubbles = rackBubbles, cabinet = 0) {
+  const width = end - start;
   const trim = {
     top: (a, b) => {
       if (b >= rackDepth) return '#c19669';
@@ -615,7 +646,7 @@ function drawPotionRack(g) {
     right: '#573b30'
   };
   const post = flat('#a87b53', (u, z) => {
-    const edge = u >= (rackEnd - 2) * 2 ? u - (rackEnd - 2) * 2 : u - rackStart * 2;
+    const edge = u >= (end - 2) * 2 ? u - (end - 2) * 2 : u - start * 2;
     if (z < 2) return '#63432f';
     if (edge === 0) return '#69452f';
     if (edge === 3) return '#4b3228';
@@ -627,10 +658,18 @@ function drawPotionRack(g) {
     return hash(u, z >> 2) > .83 ? '#634735' : '#56402f';
   });
   const inner = flat('#49352f', '#332731', '#392a2c');
-  box(g, rackStart, 0, 0, rackWidth, 1.5, rackHeight, inner);
+  box(g, start, 0, 0, width, 1.5, rackHeight, inner);
   // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
-  box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
+  box(g, start, 0, 0, width, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
+  // Wissel per kast welke flesplekken ruimte maken voor brouwvoorraad.
+  const supplies = [
+    [[1, 'herbs'], [9, 'skull'], [14, 'vial']],
+    [[2, 'herbs'], [5, 'mushroom'], [11, 'vial'], [15, 'herbs']],
+    [[3, 'crystal'], [7, 'vial'], [10, 'crystal'], [15, 'mushroom']],
+    [[2, 'scroll'], [6, 'skull'], [12, 'herbs'], [15, 'scroll']]
+  ][cabinet];
+  let slot = 0;
   // Op de middelste plank blijft ruimte voor het flesje op de werkbank.
   const stock = [
     [[6.5, 1, 3], [8, 2, 0], [12, 0, 2], [16, 3, 1], [21, 1, 2], [24.5, 2, 4]],
@@ -640,14 +679,17 @@ function drawPotionRack(g) {
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
     const z = 3 + index * 12;
-    box(g, rackStart, 0, z - 2, rackWidth, rackDepth, 2, trim);
+    box(g, start, 0, z - 2, width, rackDepth, 2, trim);
     for (const [offset, shape, color] of row) {
-      drawRackBottle(g, rackStart + offset, z, shape, palette[color]);
+      const supply = supplies.find(([index]) => index === slot);
+      if (supply) drawRackSupply(g, start + offset, z, supply[1]);
+      else drawRackBottle(g, start + offset, z, shape, palette[color], bubbles);
+      slot++;
     }
   });
 
   // De linker stijl is slanker zodat de flessen dichter bij het hout staan.
-  for (const [a, stileWidth] of [[rackStart, 1], [rackEnd - 2, 2]]) {
+  for (const [a, stileWidth] of [[start, 1], [end - 2, 2]]) {
     box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
     for (const z of [4, 16, 28, 36]) {
       const [x, y] = P(a + stileWidth / 2, rackDepth, z);
@@ -655,12 +697,12 @@ function drawPotionRack(g) {
       dot(g, x, y - 1, '#bf9b69');
     }
   }
-  box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
+  box(g, start - .5, 0, rackHeight - 2, width + 1, rackDepth + .5, 2, trim);
 }
 
-function drawRackDoors(g) {
-  const left = (rackStart + 1) * 2;
-  const right = (rackEnd - 2) * 2;
+function drawRackDoors(g, start = rackStart, end = rackEnd, reflections = true) {
+  const left = (start + 1) * 2;
+  const right = (end - 2) * 2;
   const middle = Math.floor((left + right) / 2);
   const top = rackHeight - 2;
   wallR(g, rackDepth, left, right, 2, top, (u, z) => {
@@ -671,6 +713,7 @@ function drawRackDoors(g) {
     if ((u === middle - 2 || u === middle + 1) && z >= 18 && z <= 20) {
       return z === 20 ? '#ecd29a' : '#a47a4a';
     }
+    if (!reflections) return 'rgba(131,194,181,.08)';
     const offset = u < middle ? u - left : u - middle;
     if (offset > 2 && offset < 14 && z === 23 + (offset >> 1)) {
       return 'rgba(205,236,230,.30)';
@@ -903,7 +946,7 @@ function drawCauldronFire(x, y, t, intensity) {
 
 function drawCauldron(t, dt) {
   const [x, y] = P(cauldronA, cauldronB, 0);
-  const lit = questStage === 'ready' || questStage === 'complete';
+  const lit = isCauldronLit();
   if (lit) cauldronWarmup = Math.min(1, cauldronWarmup + dt / 2.5);
   ell(ctx, x, y, 19, 6, '#282339');
   ell(ctx, x, y - 1, 10, 3, '#3e302f');
@@ -1026,14 +1069,15 @@ function stockroomFloor(a, b) {
   return sh('#66636a', .84 + hash(column, row) * .25 + beam * .3 + (grit > .91 ? .09 : 0));
 }
 
-const stockShelfRanges = [[6, 29], [34, 58], [64, 89]];
+const stockShelfStarts = [4, 34, 64];
 const stockBookcases = [[0, 3], [6, 9]];
+const pageStackTile = [5, 8];
 const stockLayout = [
   [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
   [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
   [1, 6, 'table'], [2, 6, 'chair'], [4, 5, 'crystals'], [5, 5, 'herbs'],
   [6, 5, 'crates'], [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
-  [2, 8, 'scrolls'], [3, 8, 'herbs'], [5, 8, 'books'], [6, 8, 'chair'],
+  [2, 8, 'scrolls'], [3, 8, 'herbs'], [...pageStackTile, 'books'], [6, 8, 'chair'],
   [7, 8, 'table'], [9, 8, 'crates'], [10, 8, 'barrel'], [11, 8, 'chest']
 ];
 const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
@@ -1057,30 +1101,10 @@ function drawStockShelves(g) {
     wallL(g, 4, start * 2, end * 2, 0, 87, libraryShelf(start * 2, end * 2, null));
     box(g, 0, start - .5, 86, 4.5, end - start + 1, 2, timber);
   }
-  for (const [start, end] of stockShelfRanges) {
-    box(g, start, 0, 0, end - start, 5, 57, timber);
-    wallR(g, 5, start * 2, end * 2, 2, 56, (u, z) => {
-      const column = u - start * 2;
-      const shelf = (z - 2) % 14;
-      if (column < 3 || u >= end * 2 - 3 || shelf < 2) return shelf === 1 ? '#ac7b52' : '#745039';
-      const group = Math.floor(column / 9);
-      const tier = Math.floor((z - 2) / 14);
-      const item = column % 9;
-      const kind = (group + tier + start) % 5;
-      if (kind !== 4 && item >= 1 && item <= 6) {
-        const palette = ['#6e8ba0', '#9477ab', '#778951', '#ad7b4c'];
-        const narrow = kind < 2;
-        if (shelf === 10 && item >= 3 && item <= 4) return '#c39c73';
-        if (shelf >= 8 && shelf < 10 && item >= 3 && item <= 4) return '#a5b9b2';
-        if (shelf >= 2 && shelf < 8 && (!narrow || (item >= 2 && item <= 5))) {
-          if (item === (narrow ? 2 : 1)) return '#a9c1b6';
-          if (shelf === 5 && item >= 3 && item <= 4 && !narrow) return '#dac198';
-          return sh(palette[kind], shelf > 4 ? 1 : .75);
-        }
-      }
-      return '#352b35';
-    });
-    box(g, start - .5, 0, 56, end - start + 1, 5.5, 2, timber);
+  for (const [index, start] of stockShelfStarts.entries()) {
+    const end = start + rackEnd - rackStart;
+    drawPotionRack(g, start, end, stockRackBubbles, index + 1);
+    drawRackDoors(g, start, end, false);
   }
 }
 
@@ -1982,7 +2006,8 @@ const stockFurnishings = stockLayout.map(([column, row, kind]) => {
   const canvas = mk();
   const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
   drawStockContainer(canvas.getContext('2d'), a, b, kind);
-  return { canvas, depth: a + b };
+  const isPageStack = column === pageStackTile[0] && row === pageStackTile[1];
+  return { canvas, depth: a + b, animate: isPageStack ? drawMissingPage : undefined };
 });
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
@@ -2026,7 +2051,7 @@ function drawSkeletonMage(t) {
 
 const potionFurnishings = [
   { depth: skeletonMageA + skeletonMageB, animate: drawSkeletonMage },
-  { depth: workbenchA + workbenchB, canvas: workbenchCanvas },
+  { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: drawReturnedPage },
   { depth: cauldronA + cauldronB, animate: drawCauldron }
 ];
 let currentRoom = rooms.tower;
@@ -2038,6 +2063,8 @@ const moves = new Map([
 ]);
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
+let wandLight = false;
+let wandLightFade = 0;
 let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
@@ -2049,59 +2076,68 @@ let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
 const questDialogue = document.getElementById('quest-dialogue');
+const resetQuestDialogue = document.getElementById('reset-quest-dialogue');
+const resetQuestChoice = document.getElementById('reset-quest-choice');
 const questObjective = document.getElementById('quest-objective');
-const questStorageKey = 'spellbound.quest.cauldron.v1';
-const questStages = ['available', 'active', 'ready', 'complete'];
-let questStage = 'available';
+const questManager = preview ? null : createQuestManager(QUEST_DEFINITIONS, {
+  getItem: key => localStorage.getItem(key),
+  setItem: (key, value) => localStorage.setItem(key, value)
+});
+const cauldronQuest = preview ? null : QUEST_DEFINITIONS.find(quest => quest.id === CAULDRON_QUEST);
+const pageQuest = preview ? null : QUEST_DEFINITIONS.find(quest => quest.id === PAGE_QUEST);
+const searchBookStack = document.getElementById('search-book-stack');
 let cauldronHeat = 0;
-try {
-  if (!preview) {
-    const saved = localStorage.getItem(questStorageKey);
-    if (questStages.includes(saved)) questStage = saved;
-  }
-} catch {
-  // De quest werkt ook wanneer lokale opslag is uitgeschakeld.
+let cauldronWarmup = isCauldronLit() ? 1 : 0;
+let dialogueQuest = null;
+
+function isCauldronLit() {
+  const stage = questManager?.status(cauldronQuest);
+  return stage === 'ready' || stage === 'complete';
 }
 
-let cauldronWarmup = questStage === 'ready' || questStage === 'complete' ? 1 : 0;
+function questContext() {
+  return { hasWand: document.getElementById('hotbar')?.dataset.hasWand === 'true' };
+}
 
-function hasQuestWand() {
-  return document.getElementById('hotbar')?.dataset.hasWand === 'true';
+function trackedQuest() {
+  return QUEST_DEFINITIONS.find(quest => ['active', 'ready'].includes(questManager.status(quest)));
 }
 
 function renderQuestObjective() {
   if (!questObjective) return;
-  const objectives = {
-    active: hasQuestWand() ? 'Equip your wand and hold Q to heat the cauldron.' : 'Retrieve your wand from the chest in the main room.',
-    ready: 'Speak to the Skeleton Mage.',
-    complete: 'Quest complete.'
-  };
-  const objective = objectives[questStage];
+  const quest = trackedQuest();
+  const objective = quest && (questManager.status(quest) === 'ready' ? quest.returnTo : quest.objective(questContext()));
   questObjective.hidden = !objective;
-  if (objective && questObjective.textContent !== `Fire Beneath the Cauldron · ${objective}`) {
-    questObjective.textContent = `Fire Beneath the Cauldron · ${objective}`;
-  }
-}
-
-function advanceCauldronQuest(stage) {
-  questStage = stage;
-  try { localStorage.setItem(questStorageKey, stage); } catch { /* Alleen deze sessie. */ }
-  renderQuestObjective();
+  if (objective) questObjective.textContent = `${quest.title} · ${objective}`;
+  const labels = { available: 'Available', active: 'In progress', ready: 'Ready to turn in', complete: 'Completed' };
+  const entries = QUEST_DEFINITIONS.flatMap(item => {
+    const status = questManager.status(item);
+    if (status === 'locked') return [];
+    const row = document.createElement('li');
+    row.textContent = `${item.title} · ${labels[status]}`;
+    return [row];
+  });
+  document.getElementById('quest-log-entries').replaceChildren(...entries);
 }
 
 function talkToSkeletonMage() {
   if (!questDialogue || questDialogue.open || chestInventory?.open) return;
+  const quest = questManager.forGiver('skeleton-mage');
+  if (!quest) return;
+  dialogueQuest = quest;
+  const stage = questManager.status(quest);
   const messages = {
-    available: 'The cauldron has gone cold. Retrieve your wand from the chest in the main room, then use your fire spell to heat it.',
-    active: hasQuestWand() ? 'Equip your wand, face the cauldron and hold Q until the flames catch.' : 'Your wand is in the chest in the main room. Move it into your hotbar.',
-    ready: 'The fire has caught! Now I can finish the brew. Thank you, wizard.',
-    complete: 'The cauldron is warm and the brew is coming along nicely.'
+    available: quest.offer,
+    active: quest.remind(questContext()),
+    ready: quest.turnIn,
+    complete: 'Thanks for your help, wizard.'
   };
-  document.getElementById('quest-message').textContent = messages[questStage];
+  document.getElementById('quest-title').textContent = quest.title;
+  document.getElementById('quest-message').textContent = messages[stage];
   const action = document.getElementById('quest-action');
-  action.hidden = questStage !== 'available' && questStage !== 'ready';
-  action.textContent = questStage === 'ready' ? 'Complete quest' : 'Accept';
-  document.getElementById('quest-dismiss').textContent = questStage === 'available' ? 'Decline' : 'Close';
+  action.hidden = stage !== 'available' && stage !== 'ready';
+  action.textContent = stage === 'ready' ? 'Complete quest' : 'Accept';
+  document.getElementById('quest-dismiss').textContent = stage === 'available' ? 'Decline' : 'Close';
   clearRoute();
   heldKeys.clear();
   fireHeld = false;
@@ -2109,32 +2145,183 @@ function talkToSkeletonMage() {
   questDialogue.showModal();
 }
 
+function canResetQuest(quest) {
+  return ['active', 'ready', 'complete'].includes(questManager.status(quest));
+}
+
 document.getElementById('reset-quest')?.addEventListener('click', () => {
-  cauldronHeat = 0;
-  cauldronWarmup = 0;
-  advanceCauldronQuest('available');
-  cv.focus({ preventScroll: true });
+  const quests = QUEST_DEFINITIONS.filter(canResetQuest);
+  const placeholder = quests.length ? 'Select a quest' : 'No quests to reset yet';
+  resetQuestChoice.replaceChildren(new Option(placeholder, ''),
+    ...quests.map(quest => new Option(quest.title, quest.id)));
+  document.getElementById('confirm-quest-reset').disabled = !quests.length;
+  clearRoute();
+  heldKeys.clear();
+  fireHeld = false;
+  resetQuestDialogue.showModal();
 });
+
+document.getElementById('reset-quest-form')?.addEventListener('submit', event => {
+  if (event.submitter?.value !== 'reset') return;
+  event.preventDefault();
+  const quest = QUEST_DEFINITIONS.find(item => item.id === resetQuestChoice.value);
+  if (!quest || !canResetQuest(quest)) return;
+  questManager.reset(quest);
+  if (quest === cauldronQuest) {
+    cauldronHeat = 0;
+    cauldronWarmup = 0;
+  }
+  renderQuestObjective();
+  resetQuestDialogue.close();
+});
+
+resetQuestDialogue?.addEventListener('close', () => cv.focus({ preventScroll: true }));
 
 questDialogue?.addEventListener('close', () => {
-  if (questDialogue.returnValue === 'advance') {
-    if (questStage === 'available') advanceCauldronQuest('active');
-    else if (questStage === 'ready') advanceCauldronQuest('complete');
+  if (questDialogue.returnValue === 'advance' && dialogueQuest) {
+    const stage = questManager.status(dialogueQuest);
+    if (stage === 'available') questManager.accept(dialogueQuest);
+    else if (stage === 'ready') questManager.complete(dialogueQuest);
+    renderQuestObjective();
   }
+  dialogueQuest = null;
   cv.focus({ preventScroll: true });
 });
-new MutationObserver(renderQuestObjective).observe(document.getElementById('hotbar') ?? cv,
-  { attributes: true, attributeFilter: ['data-has-wand'] });
-renderQuestObjective();
+if (!preview) {
+  new MutationObserver(renderQuestObjective).observe(document.getElementById('hotbar'),
+    { attributes: true, attributeFilter: ['data-has-wand'] });
+  renderQuestObjective();
+}
+
+function canSearchBookStack() {
+  return currentRoom === rooms.stockroom && questManager?.status(pageQuest) === 'active' &&
+    !questDialogue?.open && !resetQuestDialogue?.open && !wizard.step &&
+    Math.abs(wizard.a - pageStackTile[0]) + Math.abs(wizard.b - pageStackTile[1]) === 1;
+}
+
+function findMissingPage() {
+  if (!canSearchBookStack() || !questManager.record('missing-page-found')) return;
+  clearRoute();
+  renderQuestObjective();
+  cv.focus({ preventScroll: true });
+}
+searchBookStack?.addEventListener('click', findMissingPage);
+
+const stockDarkness = mk();
+
+function updateWandLight(dt) {
+  if (!WIZARD.staffEquipped) wandLight = false;
+  const step = dt / .45;
+  wandLightFade = wandLight ? Math.min(1, wandLightFade + step) : Math.max(0, wandLightFade - step);
+}
+
+function wandLightIntensity() {
+  return wandLightFade * wandLightFade * (3 - 2 * wandLightFade);
+}
+
+function drawStockDarkness(x, y, wandTip, t) {
+  const light = wandTip ? wandLightIntensity() : 0;
+  const tipRadius = 38 + 26 * light + Math.sin(t * 3) * 2;
+  const floorRadius = 33 + 19 * light;
+  const mask = stockDarkness.getContext('2d');
+  mask.clearRect(0, 0, W, H);
+  mask.fillStyle = 'rgba(13, 12, 31, .81)';
+  mask.fillRect(0, 0, W, H);
+  mask.globalCompositeOperation = 'destination-out';
+
+  function reveal(cx, cy, radius, strength) {
+    const hole = mask.createRadialGradient(cx, cy, 5, cx, cy, radius);
+    hole.addColorStop(0, `rgba(0, 0, 0, ${strength})`);
+    hole.addColorStop(.45, `rgba(0, 0, 0, ${strength * .75})`);
+    hole.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    mask.fillStyle = hole;
+    mask.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+
+  reveal(...P(5, (STOCK_DOOR_ROW + .5) * TILE_SIZE, 14), 45, .7);
+  if (light > 0) {
+    const [tipX, tipY] = wandTip;
+    reveal(tipX, tipY, tipRadius, light);
+    reveal(x, y - 4, floorRadius, .82 * light);
+  }
+  mask.globalCompositeOperation = 'source-over';
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.drawImage(stockDarkness, 0, 0);
+  ctx.restore();
+  if (light > 0) {
+    ctx.save();
+    for (const [index, [px, py, color]] of stockRackBubbles.entries()) {
+      const phase = (t * .85 + index * .381) % 1;
+      if (phase >= .34) continue;
+      const tipExposure = 1 - Math.hypot(px - wandTip[0], py - wandTip[1]) / tipRadius;
+      const floorExposure = 1 - Math.hypot(px - x, py - (y - 4)) / floorRadius;
+      const exposure = Math.max(0, tipExposure, .82 * floorExposure);
+      if (exposure <= 0) continue;
+      ctx.globalAlpha = light * Math.min(1, exposure * 2) * Math.sin(phase / .34 * Math.PI);
+      dot(ctx, px, py, color);
+    }
+    ctx.restore();
+    glow(...wandTip, 11, 10, '158,225,255', .16 * light);
+    ctx.save();
+    ctx.globalAlpha = light;
+    dot(ctx, wandTip[0], wandTip[1], '#f2fbff');
+    ctx.restore();
+  }
+}
+
+function drawMissingPage(t) {
+  if (questManager?.status(pageQuest) !== 'active') return;
+  const distance = Math.hypot(wizard.a - pageStackTile[0], wizard.b - pageStackTile[1]);
+  const light = WIZARD.staffEquipped ? wandLightIntensity() : 0;
+  const visibility = Math.max(0, Math.min(1, 3 + 2 * light - distance));
+  if (!visibility) return;
+  const [a, b] = pageStackTile.map(tile => (tile + .5) * TILE_SIZE);
+  const [x, y] = P(a + 1, b + 1.7, 11);
+  const pulse = .5 + .5 * Math.sin(t * 2.3);
+  ctx.save();
+  const halo = ctx.createRadialGradient(x - 2, y, 1, x - 2, y, 20);
+  halo.addColorStop(0, `rgba(255, 219, 137, ${.34 + pulse * .11})`);
+  halo.addColorStop(.5, 'rgba(241, 178, 81, .19)');
+  halo.addColorStop(1, 'rgba(241, 178, 81, 0)');
+  ctx.globalAlpha = visibility;
+  ctx.fillStyle = halo;
+  ctx.fillRect(x - 22, y - 20, 40, 40);
+  for (const [offset, delay] of [[-9, 0], [4, .31], [10, .65], [-3, .83]]) {
+    const age = (t * .7 + delay) % 1;
+    const sx = x + offset + Math.sin(age * 4 + offset) * 2;
+    const sy = y - 3 - age * 19;
+    ctx.globalAlpha = visibility * Math.sin(age * Math.PI);
+    rect(ctx, sx - 1, sy, 3, 1, '#f5c769');
+    rect(ctx, sx, sy - 1, 1, 3, '#f5c769');
+    dot(ctx, sx, sy, '#fff4cb');
+  }
+  ctx.globalAlpha = visibility;
+  rect(ctx, x - 1, y, 4, 2, '#efd79f');
+  dot(ctx, x + 2, y, '#fff2c6');
+  ctx.restore();
+}
+
+function drawReturnedPage() {
+  if (questManager?.status(pageQuest) !== 'complete') return;
+  const [x, y] = P(workbenchA + .7, workbenchB + 1.25, 14);
+  rect(ctx, x - 1, y - 1, 3, 2, '#f4dba4');
+  dot(ctx, x, y, '#ac865c');
+}
 
 function warmCauldron(hit, dt) {
-  if (questStage !== 'active') return;
+  if (questManager?.status(cauldronQuest) !== 'active') return;
   cauldronHeat = hit ? cauldronHeat + dt : 0;
-  if (cauldronHeat >= 1) advanceCauldronQuest('ready');
+  if (cauldronHeat >= 1 && questManager.record('cauldron-heated')) renderQuestObjective();
 }
 
 function drawQuestMarker(t) {
-  if (preview || questStage === 'complete' || !skeletonMage.naturalWidth) return;
+  if (preview || !skeletonMage.naturalWidth) return;
+  const quest = questManager.forGiver('skeleton-mage');
+  if (!quest) return;
+  const questStage = questManager.status(quest);
+  if (questStage === 'complete') return;
   const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
   const top = Math.round(y - 8 + Math.sin(t * 3));
   const color = { available: '#ffe15b', active: '#c4cfde', ready: '#f6b844' }[questStage];
@@ -2161,7 +2348,7 @@ const castStrength = () => Math.max(fireCharge,
 
 function canBreatheFire() {
   return fireHeld && WIZARD.staffEquipped && !seatProgress &&
-    !chestInventory?.open && !questDialogue?.open && librarianDialogue.hidden;
+    !chestInventory?.open && !questDialogue?.open && !resetQuestDialogue?.open && librarianDialogue.hidden;
 }
 
 const fireSprite = new Image();
@@ -2354,11 +2541,22 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    if (questDialogue?.open) return;
+    if (questDialogue?.open || resetQuestDialogue?.open) return;
+    if (key === 'e' && !event.repeat && canSearchBookStack()) {
+      event.preventDefault();
+      findMissingPage();
+      return;
+    }
     if (key === 'e' && !event.repeat && currentRoom === rooms.potion &&
         Math.abs(wizard.a - skeletonMageTile[0]) + Math.abs(wizard.b - skeletonMageTile[1]) <= 1) {
       event.preventDefault();
       talkToSkeletonMage();
+      return;
+    }
+    if (key === 'e' && currentRoom === rooms.stockroom) {
+      event.preventDefault();
+      if (!event.repeat && WIZARD.staffEquipped) wandLight = !wandLight;
+      if (!event.repeat) updateStockroomHint();
       return;
     }
     if (key === 'q') {
@@ -2421,6 +2619,10 @@ if (!preview) {
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
     const floorTile = tileAtPointer(event);
+    if (canSearchBookStack() && floorTile?.[0] === pageStackTile[0] && floorTile[1] === pageStackTile[1]) {
+      findMissingPage();
+      return;
+    }
     if (currentRoom === rooms.potion && floorTile &&
         floorTile[0] === skeletonMageTile[0] && floorTile[1] === skeletonMageTile[1]) {
       talkToSkeletonMage();
@@ -2525,8 +2727,15 @@ function drawTileBorder(tile, color) {
 const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint ? movementHint.textContent : undefined;
 
+function updateStockroomHint() {
+  if (currentRoom !== rooms.stockroom) return;
+  const hint = !WIZARD.staffEquipped ? 'Equip your wand, then press E to cast Wand Light.'
+    : wandLight ? 'Wand Light is on. Press E to turn it off.' : 'Press E to cast Wand Light.';
+  if (movementHint.textContent !== hint) movementHint.textContent = hint;
+}
+
 function updateWizard(dt) {
-  if (questDialogue?.open) return;
+  if (questDialogue?.open || resetQuestDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
@@ -2582,7 +2791,7 @@ function updateWizard(dt) {
         const hints = {
           library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
           potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
-          stockroom: 'Potion stockroom · Use the left arch to return to the potion room.'
+          stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
@@ -2960,8 +3169,11 @@ function drawRoomOccupants(t, dt) {
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
   }
-  if (!preview && !seatProgress) WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y, castStrength());
+  const wandTip = !preview && !seatProgress
+    ? WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y, castStrength())
+    : undefined;
   for (; index < occupants.length; index++) drawFurnishing(occupants[index], t, dt);
+  if (currentRoom === rooms.stockroom) drawStockDarkness(x, y, wandTip, t);
 }
 
 function drawSeatedWizard(t, seat) {
@@ -3025,6 +3237,9 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
+  updateWandLight(dt);
+  updateStockroomHint();
+  if (searchBookStack) searchBookStack.hidden = !canSearchBookStack();
   fireCharge = canBreatheFire() ? Math.min(1, fireCharge + dt * 7) : 0;
   ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);

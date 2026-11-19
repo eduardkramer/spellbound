@@ -305,6 +305,9 @@ window.WIZARD = {
     g.restore();
     drawCastingGrip(g, ...nearHand, side, true);
     if (strength > .45) drawStaffGlow(g, targetX, targetY, Date.now() / 1000);
+    const angle = side * reach * .12;
+    return [nearHand[0] + Math.cos(angle) + 24.5 * Math.sin(angle),
+      nearHand[1] + Math.sin(angle) - 24.5 * Math.cos(angle)];
   },
   drawStaffIcon(g) {
     g.clearRect(0, 0, 32, 32);
@@ -344,13 +347,14 @@ window.WIZARD = {
     const castingStaff = staffEquipped && casting > 0;
     ctx.drawImage(variants[castingStaff ? 'casting' : staffEquipped][dir][st][frameOf(st, t)], left, top);
     if (castingStaff) {
-      this.drawCastingPose(ctx, dir, x, y, casting);
-      return;
+      return this.drawCastingPose(ctx, dir, x, y, casting);
     }
     if (staffEquipped) {
       const bob = st === 'walk' && (frameOf(st, t) & 1) ? -1 : 0;
       const orbX = dir[1] === 'w' ? CW - 24.5 : 24.5;
-      drawStaffGlow(ctx, left + orbX, top + 5.5 + bob, Date.now() / 1000);
+      const tip = [left + orbX, top + 5.5 + bob];
+      drawStaffGlow(ctx, ...tip, Date.now() / 1000);
+      return tip;
     }
   },
   /* spritesheet: per richting een rij: 2 idle-frames + 4 walk-frames */
