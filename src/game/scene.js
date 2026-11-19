@@ -531,13 +531,13 @@ const [potionLampX, potionLampY] = P(32, 1, 78);
 const rackStart = 2 * TILE_SIZE;
 const rackWidth = 4 * TILE_SIZE;
 const rackDepth = 5;
-const rackHeight = 43;
+const rackHeight = 40;
 const rackBubbles = [];
 const rackBottleShapes = [
-  ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'glllldg', 'glllldg', '.ddddd.', '..ggg..'],
-  ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glpppdg', 'glpppdg', 'gdddddg', '.ggggg.'],
-  ['ccc', 'ggg', 'g.g', 'ghg', 'g.g', 'glg', 'glg', 'glg', 'gdg', '.g.'],
-  ['..ccc..', '..ggg..', '...g...', '..g.g..', '.gh..g.', 'glllldg', '.glldg.', '..gdg..', '...g...']
+  ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
+  ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
+  ['ccc', 'ggg', 'g.g', 'ghg', 'g.g', 'glg', 'gbg', 'glg', 'gdg', '.g.'],
+  ['..ccc..', '..ggg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
 ];
 
 function drawRackBottle(g, a, z, shape, color) {
@@ -545,7 +545,8 @@ function drawRackBottle(g, a, z, shape, color) {
   const rows = rackBottleShapes[shape];
   const colors = {
     c: '#b0875e', g: '#879ea8', h: '#f4eadd',
-    l: color, d: sh(color, .58), p: '#c7ac82'
+    l: color, d: sh(color, .58), b: sh(color, 1.28),
+    k: color === '#78a655' ? '#cadc83' : sh(color, 1.53)
   };
   const left = Math.round(x) - (rows[0].length >> 1);
   const top = Math.round(y) - rows.length + 1;
@@ -567,13 +568,13 @@ function drawPotionRack(g) {
   box(g, rackStart, 0, 0, rackWidth, 1.5, rackHeight, inner);
 
   const stock = [
-    [[3, 1, 3], [7, 2, 0], [14, 0, 2], [20, 3, 1], [25, 1, 4], [29, 2, 2]],
+    [[3, 1, 3], [7, 2, 0], [14, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
     [[4, 0, 1], [8, 2, 3], [13, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
     [[4, 3, 2], [8, 0, 3], [13, 2, 1], [17, 1, 0], [24, 0, 4], [29, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
-    const z = 3 + index * 13;
+    const z = 3 + index * 12;
     box(g, rackStart, 0, z - 2, rackWidth, rackDepth, 2, index ? wood : trim);
     for (const [offset, shape, color] of row) {
       drawRackBottle(g, rackStart + offset, z, shape, palette[color]);
@@ -582,7 +583,7 @@ function drawPotionRack(g) {
 
   for (const a of [rackStart, rackStart + rackWidth - 1.5]) {
     box(g, a, 0, 0, 1.5, rackDepth, rackHeight, wood);
-    for (const z of [4, 17, 30, 40]) dot(g, ...P(a + .75, rackDepth, z), '#bc9768');
+    for (const z of [4, 16, 28, 37]) dot(g, ...P(a + .75, rackDepth, z), '#bc9768');
   }
   box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
 }
