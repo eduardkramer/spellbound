@@ -11,6 +11,10 @@ const ROOM_TILES = 8;
 const N = ROOM_TILES * TILE_SIZE;
 const EXIT_COLUMN = 4;
 const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
+const POTION_COLUMNS = 8;
+const POTION_ROWS = 7;
+const POTION_DOOR_ROW = 3;
+const LIBRARY_POTION_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
@@ -23,7 +27,19 @@ if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk(), secondC = mk();
+const statC = mk(), secondC = mk(), potionC = mk();
+const rooms = {
+  tower: { canvas: statC, exits: [
+    { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' }
+  ] },
+  library: { canvas: secondC, exits: [
+    { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' },
+    { tile: [ROOM_TILES - 1, LIBRARY_POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
+  ] },
+  potion: { canvas: potionC, exits: [
+    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' }
+  ] }
+};
 
 const P = (a, b, z) => [CX + 2 * (a - b), CY + a + b - z];
 
@@ -224,13 +240,13 @@ function arch(adu, z) {
   const inner = adu <= w2 && (z <= zs ? true : ((adu + c) * (adu + c) + (z - zs) * (z - zs) <= R2 * R2));
   return inner ? 2 : 1;
 }
-function facadeFn(br) {
+function facadeFn(br, span) {
   return (u, z) => {
     if (u >= 0 && z >= 0) return null;
     if (u >= 0) {
-      const r = arch(Math.abs(u - N + .5), z + .5);
+      const r = arch(Math.abs(u - span + .5), z + .5);
       if (r === 2) return z > -22 ? '#10132b' : '#171b38';
-      if (r === 1) return ((Math.floor(Math.abs(u - N) / 3) + Math.floor((z + 60) / 3)) & 1) ? '#7a9cca' : '#6684b6';
+      if (r === 1) return ((Math.floor(Math.abs(u - span) / 3) + Math.floor((z + 60) / 3)) & 1) ? '#7a9cca' : '#6684b6';
     }
     return br(u, z);
   };
@@ -324,22 +340,32 @@ function rightFn(u, z) {
   return brR(u, z);
 }
 
+function passageColor(dx, z) {
+  const curve = Math.hypot(dx, Math.max(0, z - 31));
+  if (curve > 17) return null;
+  if (curve > 12) {
+    const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
+    return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
+  }
+  if (curve > 11) return '#242849';
+  if (z < 3) return '#d6af67';
+  if (z < 9) return '#4d4261';
+  return '#171933';
+}
+
 function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
   box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
-  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => {
-    const dx = u - center;
-    const curve = Math.hypot(dx, Math.max(0, z - 31));
-    if (curve > 17) return null;
-    if (curve > 12) {
-      const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
-      return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
-    }
-    if (curve > 11) return '#242849';
-    if (z < 3) return '#d6af67';
-    if (z < 9) return '#4d4261';
-    return '#171933';
-  });
+  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+}
+
+function drawSidePassage(g, { wallA, tile }, foreground) {
+  const center = (tile[1] + .5) * TILE_SIZE;
+  if (!foreground) {
+    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+    if (wallA !== 0) return;
+  }
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
 }
 
 /* ---------- bibliotheek ---------- */
@@ -439,20 +465,288 @@ function drawLibraryShelves(g) {
   }
 }
 
-function buildStatic(sg, library = false) {
-  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : shadedTowerFloor);
-  wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
-  wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
-  topFace(sg, WH, -T, N, -T, 0, copingFn);
-  topFace(sg, WH, -T, 0, 0, N, copingFn);
-  const mer = { top: copingFn, left: (u, z) => brOutL(u, z), right: (u, z) => brOutR(u, z) };
+const potionBookcases = [[3, 31], [80, 109]];
+const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
+const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
+const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
+const [potionLampX, potionLampY] = P(32, 1, 78);
+// Silhouetten met afzonderlijke pixels voor glas, vloeistof en etiketten.
+const potionShelfSlots = [
+  [0, 1, 2, 4, 5, 7, 9, 10],
+  [0, 2, 3, 5, 6, 8, 10, 11],
+  [1, 2, 4, 6, 7, 9, 11]
+];
+const potionSprites = [
+  ['..ccc..', '..ggg..', '..g.g..', '.g...g.', 'gh...sg', 'ghlllsG', 'gllplsG', 'gllplsG', '.GsssG.', '..GGG..'],
+  ['...c...', '..ggg..', '...g...', '..g.g..', '..ghg..', '.glhsg.', '.gllsG.', 'glpplsG', 'gllsssG', '.GGGGG.'],
+  ['..ccc..', '..ggg..', '.ggggg.', 'gg...gG', 'ghlllsG', 'glpppsG', 'glpppsG', 'glsssGG', '.GGGGG.'],
+  ['...c...', '..ggg..', '..g.g..', '..ghg..', '..glg..', '..glg..', '..gsg..', '..gsg..', '...G...']
+];
+
+function potionRackColor(u, z) {
+  const x = u - 16;
+  const grain = hash(Math.floor(u / 4), z);
+  const trim = x < 3 || x > 92 || x % 32 < 2;
+  if (trim || z < 5 || z > 43) {
+    if ((z === 3 || z === 42) && x % 32 === 1) return '#dfb879';
+    if (x % 32 === 1 || z === 44) return grain > .72 ? '#c69967' : '#ac774f';
+    return grain > .75 ? '#78513b' : '#64412f';
+  }
+  const row = Math.floor((z - 5) / 13), y = (z - 5) % 13;
+  if (y < 2) return y === 1 ? (grain > .72 ? '#bc895c' : '#9e6b49') : '#4e322c';
+
+  const slot = Math.floor(x / 8);
+  const sprite = potionSprites[(slot + row * 3) % potionSprites.length];
+  const pixel = potionShelfSlots[row].includes(slot)
+    ? sprite[sprite.length - 1 - (y - 2)]?.[x % 8 - 1]
+    : undefined;
+  const liquid = potionColors[(slot + 2 * row) % potionColors.length];
+  switch (pixel) {
+    case 'c': return y % 2 ? '#ccaa76' : '#9f754d';
+    case 'g': return '#9cbdc7';
+    case 'G': return '#4e6578';
+    case 'h': return '#effbdf';
+    case 'l': return liquid;
+    case 's': return sh(liquid, .61);
+    case 'p': return x % 2 ? '#eed6a7' : '#b4926d';
+    default: return y >= 10 ? '#241e2a' : grain > .8 ? '#3a2933' : '#32252f';
+  }
+}
+
+const workshopStone = brickFn({
+  mortar: '#232934', c: ['#414b59', '#4d5963', '#586470'],
+  hi: '#697783', lo: '#343d49'
+}, 22, 10);
+
+function drawWorkshopIvy(g) {
+  // Getekend vóór de meubels, zodat de ranken tegen het metselwerk blijven.
+  for (const [a, b, length] of [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]) {
+    let previous = P(a, b, 103);
+    for (let drop = 3; drop <= length; drop += 3) {
+      const sway = Math.sin(drop * .25 + a + b) * 3;
+      const [x, y] = P(a ? a + sway : a, b ? b + sway : b, 103 - drop);
+      line(g, ...previous, x, y, '#394936');
+      previous = [x, y];
+      const side = drop % 2 ? -1 : 1;
+      const size = drop < length * .65 ? 3 : 2;
+      const color = hash(a + b, drop) > .45 ? '#789c60' : '#56794e';
+      ell(g, x + side * 3, y + 2, size + 1, 2, '#2e4b3d');
+      ell(g, x + side * 3, y + 1, size, 2, color);
+      dot(g, x + side * 4, y, '#a5bd74');
+    }
+  }
+}
+
+function drawPotionWorkshop(g) {
+  const timber = {
+    top: (a, b) => {
+      const board = Math.floor(b * 2);
+      if (b * 2 - board < .22) return '#745139';
+      return sh('#ad8054', .9 + hash(Math.floor(a / 4), board) * .24);
+    },
+    left: (u, z) => sh('#805337', .82 + hash(u, Math.floor(z / 7)) * .26),
+    right: (u, z) => sh('#63402f', .82 + hash(u, Math.floor(z / 7)) * .22)
+  };
+  drawWorkshopIvy(g);
+  for (const [start, end] of potionBookcases) {
+    box(g, 0, start / 2, 0, 4, (end - start) / 2, 87, timber);
+    wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
+  }
+
+  for (const center of [39, 88]) {
+    wallR(g, 0, center - 21, center + 22, 48, 101, (u, z) => {
+      const x = u - center, y = z - 48;
+      const arch = Math.hypot(x, Math.max(0, y - 31));
+      if (arch > 21) return null;
+      if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
+      if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
+      const distantRidge = 19 + 6 * Math.sin(u * .17) + 4 * Math.cos(u * .32);
+      const nearRidge = 11 + 5 * Math.sin(u * .24 + 1);
+      const crown = nearRidge + 3 * Math.sin(u * .81) + 2 * Math.cos(u * 1.3);
+      if (y < crown) {
+        const leaves = hash(Math.floor(u / 2), Math.floor(y / 2));
+        if (y > crown - 3) return leaves > .46 ? '#8db680' : '#6e9d71';
+        return leaves > .72 ? '#619a76' : '#447d66';
+      }
+      if (y < distantRidge) return '#789f91';
+      if (Math.hypot(u - 86, (y - 36) * 1.4) < 5) return '#fff0bf';
+      if (y >= 32 && y < 35 && Math.sin(u * .19) > .68) return '#dde7dc';
+      return y > 33 ? '#9cc2c6' : '#bcd7cc';
+    });
+    box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
+  }
+
+  // Gedroogde kruiden hangen naast het recept boven de doorgang.
+  wallL(g, 0, 48, 66, 59, 82, (u, z) => {
+    const x = u - 48, y = z - 59;
+    if (y > 20 || y < 2) return '#78523e';
+    if (y === 18 && x >= 6 && x <= 11) return '#a06a43';
+    if (y > 4 && y < 15 && x > 3 && x < 14 && (y % 4 === 0 || x === 8)) return '#a27754';
+    return '#dfbb80';
+  });
+  for (const [b, color] of [[17.5, '#758854'], [37.5, '#b182b1']]) {
+    const [x, y] = P(0, b, 75);
+    line(g, x, y - 5, x, y + 7, '#bc9466');
+    for (let i = 0; i < 5; i++) {
+      const side = i % 2 ? 1 : -1;
+      line(g, x, y + i, x + side * 4, y + i + 5, '#4a583c');
+      ell(g, x + side * 4, y + i + 5, 2, 1, i % 3 ? color : sh(color, 1.3));
+    }
+    rect(g, x - 1, y, 3, 2, '#d3a86b');
+  }
+
+  // Teken het rek en de flessen op hetzelfde pixelraster als de muur.
+  box(g, 8, 0, 0, 48, 5, 46, timber);
+  wallR(g, 5, 16, 112, 0, 46, potionRackColor);
+  for (const [a, color] of [[11, '#77b9c6'], [32, '#aa85c0'], [53, '#d1a266']]) {
+    const glass = flat(sh(color, 1.25), color, sh(color, .65));
+    box(g, a - 1.4, 1, 46, 2.8, 3, 5, glass);
+    box(g, a - .75, 1.6, 51, 1.5, 1.8, 2, glass);
+    box(g, a - .85, 1.5, 53, 1.7, 2, 1, timber);
+    dot(g, ...P(a - .8, 4, 49), '#e5ead3');
+  }
+}
+
+function drawPotionLight(t) {
+  const x = potionLampX, y = potionLampY;
+  glow(x, y, 34, 31, '255,181,85', .047 + Math.sin(t * 4) * .009);
+  line(ctx, x, y - 13, x, y - 6, '#a7774a');
+  ell(ctx, x, y, 5, 7, '#5b3a35');
+  ell(ctx, x, y + 1, 4, 5, '#d58c46');
+  ell(ctx, x, y + 1, 2, 3, Math.sin(t * 7) > 0 ? '#ffe9a6' : '#ffd080');
+  rect(ctx, x - 3, y + 5, 7, 2, '#815237');
+}
+
+function drawPotionWorkbench(g) {
+  const a = workbenchA, b = workbenchB;
+  const wood = woodC('#815334'), trim = woodC('#b78252');
+  for (const da of [-3, 2]) for (const db of [-3, 2]) {
+    box(g, a + da, b + db, 0, 1, 1, 12, wood);
+  }
+  box(g, a - 3.8, b - 3.8, 11, 7.6, 7.6, 2, trim);
+  const paper = flat('#edcf94', '#ae8053', '#b88c62');
+  box(g, a - 2.7, b - 1, 13, 4, 3, 1, paper);
+  for (let row = 0; row < 3; row++) {
+    line(g, ...P(a - 2, b - .4 + row * .7, 14), ...P(a + (row === 2 ? -.6 : .6), b - .4 + row * .7, 14), '#a47b58');
+  }
+  const [mx, my] = P(a + 2, b - 2, 13);
+  ell(g, mx, my - 1, 4, 3, '#514b5d');
+  ell(g, mx, my - 3, 4, 2, '#8c8799');
+  ell(g, mx, my - 3, 2, 1, '#3b3846');
+  line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
+}
+
+function drawCauldron(t) {
+  const [x, y] = P(cauldronA, cauldronB, 0);
+  ell(ctx, x, y, 19, 6, '#282339');
+  ell(ctx, x, y - 2, 11, 4, '#58363a');
+  for (let i = -2; i <= 2; i++) {
+    const flame = 2 + Math.round(2 * (1 + Math.sin(t * 9 + i * 2)));
+    rect(ctx, x + i * 3, y - flame, 2, flame, i % 2 ? '#ed9252' : '#ffc771');
+  }
+  for (const offset of [-11, 11]) {
+    rect(ctx, x + offset - 2, y - 7, 5, 8, '#242733');
+    rect(ctx, x + offset - 1, y - 5, 2, 4, '#545561');
+  }
+  ell(ctx, x, y - 15, 17, 15, '#252632');
+  ell(ctx, x - 2, y - 15, 14, 13, '#3b3e4b');
+  ell(ctx, x - 9, y - 16, 4, 8, '#4d5662');
+  ell(ctx, x - 11, y - 17, 2, 6, '#646a70');
+  for (const dx of [-10, -5, 0, 5, 10]) {
+    dot(ctx, x + dx, y - 21 + Math.round((1 - Math.abs(dx) / 10) * 2), '#999485');
+  }
+  ell(ctx, x, y - 11, 12, 7, '#303440');
+  for (const side of [-1, 1]) {
+    ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
+    ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
+  }
+  ell(ctx, x, y - 26, 19, 8, '#242431');
+  ell(ctx, x, y - 27, 18, 7, '#73757b');
+  ell(ctx, x, y - 27, 16, 5, '#4f9e42');
+  ell(ctx, x - 2, y - 27, 12, 4, '#76c951');
+  for (let i = 0; i < 7; i++) {
+    const age = (t * (.55 + hash(i, 17) * .27) + hash(i, 8)) % 1;
+    const bx = x + (hash(i, 13) - .5) * 22;
+    const by = y - 27 + (hash(i, 15) - .5) * 6;
+    const radius = age < .45 ? 1 : 2;
+    if (age < .8) {
+      ell(ctx, bx, by, radius, 1, '#abe86e');
+      dot(ctx, bx - 1, by - 1, '#e1ff9c');
+    } else {
+      dot(ctx, bx + 1, by - 3 - 10 * (age - .8), '#d2f989');
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    const age = (t * .39 + i / 4) % 1;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .34;
+    ell(ctx, x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3, y - 31 - 22 * age, 2 + Math.floor(age * 4), 2, '#bfe88e');
+  }
+  ctx.globalAlpha = 1;
+}
+
+function potionFloor(a, b) {
+  const row = Math.floor(b / 8);
+  const stagger = row % 2 ? 4 : 0;
+  const column = Math.floor((a + stagger) / 10);
+  const variation = hash(column, row);
+  const grain = hash(Math.floor(a * 2), Math.floor(b * 2));
+  const edge = Math.min(a - 11, 39 - a, b - 15, 35 - b);
+  const contact = Math.min(
+    contactShade(a, b, cauldronA, cauldronB, 9, 7),
+    contactShade(a, b, workbenchA, workbenchB, 5, 5),
+    b < 8 && a >= 8 && a < 56 ? .74 : 1
+  );
+  // De twee ramen werpen schuine lichtbanen met de schaduw van hun stijlen.
+  const ray = a - b * .47;
+  const pane = Math.min(Math.abs(ray - 13), Math.abs(ray - 36));
+  const daylight = b >= 7 && b < 51 && pane >= .85 && pane < 6.4
+    ? (1 - b / 58) * (pane < 5.8 ? 1 : .43) : 0;
+
+  let color;
+  if (edge >= 0) {
+    const diamond = Math.abs(a - 25) + Math.abs(b - 25);
+    if (edge < 1) color = '#442d47';
+    else if (edge < 2 || (diamond >= 5 && diamond < 6)) color = '#b78a63';
+    else color = grain > .8 ? '#775369' : '#69475e';
+  } else {
+    const seam = Math.min((a + stagger) % 10, b % 8);
+    if (seam < .55) color = '#343843';
+    else if (seam < 1.15) color = '#7c8081';
+    else color = sh('#606674', .78 + variation * .35 + (grain > .91 ? .13 : 0));
+  }
+  if (!daylight) return sh(color, contact);
+  const rgb = color.startsWith('#')
+    ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
+    : color.slice(4, -1).split(',').map(Number);
+  const light = [213, 225, 199];
+  const amount = daylight * .84;
+  return 'rgb(' + rgb.map((channel, index) =>
+    Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
+}
+
+function buildStatic(sg, room) {
+  const library = room === rooms.library;
+  const potion = room === rooms.potion;
+  const width = potion ? POTION_COLUMNS * TILE_SIZE : N;
+  const depth = potion ? POTION_ROWS * TILE_SIZE : N;
+  const floor = potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  topFace(sg, 0, 0, width, 0, depth, floor);
+  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : potion ? workshopStone : brL);
+  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : potion ? workshopStone : brR);
+  topFace(sg, WH, -T, width, -T, 0, copingFn);
+  topFace(sg, WH, -T, 0, 0, depth, copingFn);
+  const mer = { top: copingFn, left: brOutL, right: brOutR };
   box(sg, -T, -T, WH, T, T, 12, mer);
-  box(sg, -T, N - 8, WH, T, 8, 10, mer);
-  box(sg, N - 8, -T, WH, 8, T, 10, mer);
-  wallR(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutL));
-  wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
+  box(sg, -T, depth - 8, WH, T, 8, 10, mer);
+  box(sg, width - 8, -T, WH, 8, T, 10, mer);
+  wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
+  wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) drawLibraryShelves(sg);
-  drawPassage(sg, library);
+  if (potion) drawPotionWorkshop(sg);
+  if (!potion) drawPassage(sg, library);
+  for (const exit of room.exits) {
+    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
+  }
 }
 
 /* ---------- meubels ---------- */
@@ -667,10 +961,16 @@ function outline(g, hex) {
   for (let i = 0; i < pts.length; i += 2) g.fillRect(pts[i], pts[i + 1], 1, 1);
 }
 
-for (const [canvas, empty] of [[statC, false], [secondC, true]]) {
-  const background = canvas.getContext('2d');
-  buildStatic(background, empty);
+for (const room of Object.values(rooms)) {
+  const background = room.canvas.getContext('2d');
+  buildStatic(background, room);
   outline(background, '#14183a');
+  const frontExits = room.exits.filter(({ wallA }) => wallA > 0);
+  if (frontExits.length) {
+    room.foreground = mk();
+    const foreground = room.foreground.getContext('2d');
+    for (const exit of frontExits) drawSidePassage(foreground, exit, true);
+  }
 }
 buildFront();
 
@@ -1106,8 +1406,26 @@ const towerFloor = [
 ];
 const libraryFloorMap = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILES).fill('.'));
 for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
-let inSecondRoom = false;
-const currentFloor = () => inSecondRoom ? libraryFloorMap : towerFloor;
+rooms.tower.floor = towerFloor;
+rooms.library.floor = libraryFloorMap;
+// De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
+rooms.potion.floor = [
+  'XXXXXXX.',
+  'X.......',
+  '........',
+  '.....XX.',
+  '.....XX.',
+  'X..X....',
+  'X.......'
+];
+const workbenchCanvas = mk();
+drawPotionWorkbench(workbenchCanvas.getContext('2d'));
+const potionFurnishings = [
+  { depth: workbenchA + workbenchB, canvas: workbenchCanvas },
+  { depth: cauldronA + cauldronB, animate: drawCauldron }
+];
+let currentRoom = rooms.tower;
+const currentFloor = () => currentRoom.floor;
 const wizard = { a: 4, b: 4, direction: 'se', step: null };
 const moves = new Map([
   ['arrowup', [0, -1, 'ne']], ['arrowright', [1, 0, 'se']],
@@ -1174,7 +1492,7 @@ function updateIceBalls(dt) {
       const a = ball.a + ball.da * dt * 36 / steps;
       const b = ball.b + ball.db * dt * 36 / steps;
       const tileA = Math.floor(a / TILE_SIZE), tileB = Math.floor(b / TILE_SIZE);
-      const outside = a < 0 || b < 0 || a >= N || b >= N;
+      const outside = a < 0 || b < 0 || tileA >= currentFloor()[0].length || tileB >= currentFloor().length;
       const blocked = (tileA !== ball.startA || tileB !== ball.startB) && !isWalkable(tileA, tileB);
       if (outside || blocked || ball.age > 2) {
         ball.impact = .001;
@@ -1232,7 +1550,7 @@ function clearRoute() {
 }
 
 function nextToChest(a = wizard.a, b = wizard.b) {
-  return !inSecondRoom && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
+  return currentRoom === rooms.tower && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
 }
 
 function requestChest() {
@@ -1303,14 +1621,14 @@ if (!preview) {
   });
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
-    if (!inSecondRoom && chestInventory) {
+    if (currentRoom === rooms.tower && chestInventory) {
       const [x, y] = P(52, 4, 8);
       if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
         requestChest();
         return;
       }
     }
-    if (inSecondRoom && librarianHit) {
+    if (currentRoom === rooms.library && librarianHit) {
       const [x, y] = librarianHit;
       if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
         librarianDialogue.hidden = !librarianDialogue.hidden;
@@ -1321,7 +1639,7 @@ if (!preview) {
       }
     }
     librarianDialogue.hidden = true;
-    const seats = inSecondRoom ? librarySeats : [armchairSeat];
+    const seats = currentRoom === rooms.library ? librarySeats : currentRoom === rooms.tower ? [armchairSeat] : [];
     const seat = seats.find(({ tile, hit }) => {
       const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
       return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
@@ -1331,13 +1649,19 @@ if (!preview) {
       clearRoute();
       return;
     }
-    const tile = seat ? seat.approach : tileAtPointer(event);
+    const clickedExit = currentRoom.exits.find(({ wallA, tile }) => {
+      if (wallA === undefined) return false;
+      const u = 2 * wallA - px - 1;
+      const z = wallA + Math.floor(u / 2) - 1 - py;
+      return z >= 0 && passageColor(2 * (tile[1] + .5) * TILE_SIZE - u, z);
+    });
+    const tile = clickedExit?.tile ?? (seat ? seat.approach : tileAtPointer(event));
     if (!tile || !isWalkable(...tile)) return;
     const start = wizard.step ?? wizard;
     const nextRoute = findRoute(start, ...tile);
     if (!nextRoute) return;
     heldKeys.clear();
-    requestedSeat = seat ?? null;
+    requestedSeat = clickedExit ? null : seat ?? null;
     requestedChest = false;
     route = nextRoute;
     destination = route.length ? tile : null;
@@ -1347,7 +1671,8 @@ if (!preview) {
 // Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
 function findRoute(start, targetA, targetB) {
   const queue = [{ a: start.a, b: start.b, previous: null }];
-  const tileId = (a, b) => b * ROOM_TILES + a;
+  const columns = currentFloor()[0].length;
+  const tileId = (a, b) => b * columns + a;
   const visited = new Set([tileId(start.a, start.b)]);
   for (let index = 0; index < queue.length; index++) {
     const tile = queue[index];
@@ -1428,20 +1753,23 @@ function updateWizard(dt) {
     if (wizard.step.elapsed >= STEP_TIME) {
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
-      if (wizard.a === EXIT_COLUMN && wizard.b === (inSecondRoom ? 0 : ROOM_TILES - 1)) {
-        inSecondRoom = !inSecondRoom;
+      const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
+      if (exit) {
+        currentRoom = rooms[exit.target];
         iceBalls.length = 0;
         castTime = 0;
         librarianDialogue.hidden = true;
-        wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
-        wizard.direction = inSecondRoom ? 'sw' : 'ne';
+        [wizard.a, wizard.b] = exit.arrival;
+        wizard.direction = exit.direction;
         requestedSeat = null;
         clearRoute();
         clearHover();
         heldKeys.clear();
-        movementHint.textContent = inSecondRoom
-          ? 'Bibliotheek · Klik op een stoel om te zitten of loop naar de boog om terug te gaan.'
-          : defaultHint;
+        const hints = {
+          library: 'Bibliotheek · De boog achterin leidt naar de hoofdkamer. De boog rechtsvoor leidt naar de drankenkamer.',
+          potion: 'Drankenkamer · Klik op de boog of loop ernaartoe om terug te gaan.'
+        };
+        movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
       wizard.step = null;
       if (!route.length) destination = null;
@@ -1799,9 +2127,9 @@ function drawRoomOccupants(t, dt) {
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
-  const roomFurnishings = inSecondRoom
+  const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
-    : furnishings;
+    : currentRoom === rooms.tower ? furnishings : potionFurnishings;
   const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
@@ -1874,15 +2202,21 @@ function frame(ms) {
   ctx.clearRect(0, 0, W, H);
   updateWizard(dt);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
-  if (!inSecondRoom) drawSky(t);
-  ctx.drawImage(inSecondRoom ? secondC : statC, 0, 0);
+  if (currentRoom === rooms.tower) drawSky(t);
+  ctx.drawImage(currentRoom.canvas, 0, 0);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
-  if (inSecondRoom) {
-    if (librarianDialogue.hidden) updateLibrarian(dt);
-    drawLibraryPortrait(t);
-    drawLibraryLights(t);
+  if (currentRoom !== rooms.tower) {
+    if (currentRoom === rooms.library) {
+      if (librarianDialogue.hidden) updateLibrarian(dt);
+      drawLibraryPortrait(t);
+      drawLibraryLights(t);
+    } else {
+      drawPotionLight(t);
+    }
     drawRoomOccupants(t, dt);
+    // De voorste muur staat vóór de meubels en personages op de vloer.
+    if (currentRoom.foreground) ctx.drawImage(currentRoom.foreground, 0, 0);
     requestAnimationFrame(frame);
     return;
   }
