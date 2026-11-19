@@ -24,7 +24,7 @@ const QUEST_DEFINITIONS = [
     title: 'The Missing Page',
     requires: [CAULDRON_QUEST],
     goals: ['missing-page-found'],
-    offer: 'The cauldron is warm, but the last page of my recipe is missing. Look for a stack of books beside an old chair near the far end of the stockroom.',
+    offer: 'The cauldron is warm, but the last page of my recipe is missing. Look for a stack of books beside an old chair near the far end of the stockroom. It is dark in there. Equip your wand and press E to light the way.',
     remind: () => 'Look for a stack of books beside an old chair near the far end of the stockroom. Search the stack for a loose page.',
     objective: () => 'Search the book stack beside the old chair in the stockroom.',
     turnIn: 'There it is! I can put this page back in the recipe book and finish the brew.',
