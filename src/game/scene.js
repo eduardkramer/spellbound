@@ -1680,15 +1680,17 @@ function drawSky() {
   wallL(ctx, 0, 24, 64, 60, 90, (u, z) => autumnSunset(u + 1, (z - 60) / 29));
 }
 
-function drawWindowLife(t, paint, start, width, bottom, height, inGlass, seed) {
-  function pixel(column, level, color) {
+function windowPixels(paint, start, bottom, inGlass) {
+  return (column, level, color) => {
     const u = start + Math.round(column), z = bottom + Math.round(level);
     if (inGlass(u, z)) paint(ctx, 0, u, u + 1, z, z + 1, () => color);
-  }
+  };
+}
 
+function drawWindowBirds(t, pixel, width, height, seed) {
   const clock = t + seed * 2.7;
   const cycle = Math.floor(clock / 13);
-  const flight = (clock % 13 - 2 - 4 * hash(cycle, seed)) / 3.4;
+  const flight = (clock % 13 - 2 - 4 * hash(cycle, seed)) / ((width + 16) / 16.5);
   if (flight >= 0 && flight <= 1) {
     const direction = hash(cycle, seed + 1) > .5 ? 1 : -1;
     const x = (direction > 0 ? flight : 1 - flight) * (width + 16) - 8;
@@ -1703,6 +1705,10 @@ function drawWindowLife(t, paint, start, width, bottom, height, inGlass, seed) {
     }
   }
 
+}
+
+function drawWindowLeaves(t, pixel, width, height, seed) {
+  const clock = t + seed * 2.7;
   const colors = ['#d88a45', '#eeae62', '#b95743'];
   for (let leaf = 0; leaf < 3; leaf++) {
     const time = clock + leaf * 2.19;
@@ -1719,17 +1725,31 @@ function drawWindowLife(t, paint, start, width, bottom, height, inGlass, seed) {
 
 function drawRoomWindowLife(t) {
   if (currentRoom === rooms.tower) {
-    drawWindowLife(t, wallL, 24, 40, 60, 29, (u, z) =>
+    const pixel = windowPixels(wallL, 24, 60, (u, z) =>
       u >= 24 && u < 64 && z >= 60 && z < 90 &&
-      !(u >= 43 && u < 45) && !(z >= 74 && z < 76), 1);
+      !(u >= 43 && u < 45) && !(z >= 74 && z < 76));
+    drawWindowBirds(t, pixel, 40, 29, 1);
+    drawWindowLeaves(t, pixel, 40, 29, 1);
   } else if (currentRoom === rooms.library) {
-    drawWindowLife(t, wallL, 70, 35, 31, 53, readingWindowGlass, 2);
+    const pixel = windowPixels(wallL, 70, 31, readingWindowGlass);
+    drawWindowBirds(t, pixel, 35, 53, 2);
+    drawWindowLeaves(t, pixel, 35, 53, 2);
   } else if (currentRoom === rooms.potion) {
-    for (const center of potionWindowCenters) {
-      drawWindowLife(t, wallR, center - 18, 37, potionWindowBase + 3, 46, (u, z) => {
-        const x = u - center, y = z - potionWindowBase;
-        return y >= 3 && potionWindowArch(x, y) <= potionGlassRadius && !potionWindowCross(x, y);
-      }, center === potionWindowCenters[0] ? 3 : 4);
+    const [left, right] = potionWindowCenters;
+    const bottom = potionWindowBase + 3;
+    const inPane = (u, z, center) => {
+      const x = u - center, y = z - potionWindowBase;
+      return y >= 3 && potionWindowArch(x, y) <= potionGlassRadius && !potionWindowCross(x, y);
+    };
+    // Eén vlucht in muurcoördinaten. Het metselwerk tussen de ramen verbergt de vogels.
+    const birdPixel = windowPixels(wallR, left - potionGlassRadius, bottom,
+      (u, z) => potionWindowCenters.some(center => inPane(u, z, center)));
+    drawWindowBirds(t, birdPixel, right - left + 2 * potionGlassRadius + 1, 46, 3);
+
+    for (const [index, center] of potionWindowCenters.entries()) {
+      const leafPixel = windowPixels(wallR, center - potionGlassRadius, bottom,
+        (u, z) => inPane(u, z, center));
+      drawWindowLeaves(t, leafPixel, 2 * potionGlassRadius + 1, 46, 3 + index);
     }
   }
 }
