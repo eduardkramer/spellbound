@@ -1539,12 +1539,25 @@ rooms.potion.floor = [
   '........',
   '.....XX.',
   '.....XX.',
-  'X..X....',
+  'X..XX...',
   'X.......'
 ];
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
+const skeletonMage = new Image();
+skeletonMage.src = 'assets/sprites/skeleton-mage.png';
+const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
+
+function drawSkeletonMage() {
+  if (!skeletonMage.naturalWidth) return;
+  const [x, y] = P(skeletonMageA, skeletonMageB, 0);
+  ell(ctx, x, y, 7, 2, 'rgba(25,20,34,.42)');
+  ctx.drawImage(skeletonMage, Math.round(x - skeletonMage.naturalWidth / 2),
+    Math.round(y - skeletonMage.naturalHeight));
+}
+
 const potionFurnishings = [
+  { depth: skeletonMageA + skeletonMageB, animate: drawSkeletonMage },
   { depth: workbenchA + workbenchB, canvas: workbenchCanvas },
   { depth: cauldronA + cauldronB, animate: drawCauldron }
 ];
