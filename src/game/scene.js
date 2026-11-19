@@ -14,6 +14,7 @@ const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
 const POTION_COLUMNS = 7;
 const POTION_ROWS = 5;
 const POTION_DOOR_ROW = 3;
+const LIBRARY_POTION_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
@@ -29,14 +30,14 @@ const mk = () => { const c = document.createElement('canvas'); c.width = W; c.he
 const statC = mk(), secondC = mk(), potionC = mk();
 const rooms = {
   tower: { canvas: statC, exits: [
-    { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' },
-    { tile: [ROOM_TILES - 1, POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
+    { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' }
   ] },
   library: { canvas: secondC, exits: [
-    { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' }
+    { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' },
+    { tile: [ROOM_TILES - 1, LIBRARY_POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
   ] },
   potion: { canvas: potionC, exits: [
-    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'tower', arrival: [ROOM_TILES - 2, POTION_DOOR_ROW], direction: 'nw' }
+    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' }
   ] }
 };
 
@@ -1487,7 +1488,7 @@ function updateWizard(dt) {
         clearHover();
         heldKeys.clear();
         const hints = {
-          library: 'Bibliotheek · Klik op een stoel om te zitten of loop naar de boog om terug te gaan.',
+          library: 'Bibliotheek · De boog achterin leidt naar de hoofdkamer. De boog rechtsvoor leidt naar de drankenkamer.',
           potion: 'Drankenkamer · Klik op de boog of loop ernaartoe om terug te gaan.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
