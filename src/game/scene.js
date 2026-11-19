@@ -869,7 +869,6 @@ function drawCauldronFire(x, y, t, intensity) {
 function drawCauldron(t, dt) {
   const [x, y] = P(cauldronA, cauldronB, 0);
   const lit = questStage === 'ready' || questStage === 'complete';
-  const boiling = questStage === 'complete';
   if (lit) cauldronIgnition = Math.min(1, cauldronIgnition + dt / 1.15);
   ell(ctx, x, y, 19, 6, '#282339');
   ell(ctx, x, y - 1, 10, 3, '#3e302f');
@@ -903,9 +902,9 @@ function drawCauldron(t, dt) {
 
   ell(ctx, x, y - 26, 19, 8, '#242431');
   ell(ctx, x, y - 27, 18, 7, '#73757b');
-  ell(ctx, x, y - 27, 16, 5, boiling ? '#4f9e42' : '#3d6646');
-  ell(ctx, x - 2, y - 27, 12, 4, boiling ? '#76c951' : '#547c51');
-  for (let i = 0; boiling && i < 7; i++) {
+  ell(ctx, x, y - 27, 16, 5, lit ? '#4f9e42' : '#3d6646');
+  ell(ctx, x - 2, y - 27, 12, 4, lit ? '#76c951' : '#547c51');
+  for (let i = 0; lit && i < 7; i++) {
     const age = (t * (.55 + hash(i, 17) * .27) + hash(i, 8)) % 1;
     const bx = x + (hash(i, 13) - .5) * 22;
     const by = y - 27 + (hash(i, 15) - .5) * 6;
@@ -921,7 +920,7 @@ function drawCauldron(t, dt) {
   line(ctx, x + 4, y - 28, x + 18, y - 40, '#593b30');
   line(ctx, x + 5, y - 29, x + 18, y - 41, '#bd8959');
   dot(ctx, x + 18, y - 41, '#e0ac75');
-  for (let i = 0; boiling && i < 4; i++) {
+  for (let i = 0; lit && i < 4; i++) {
     const age = (t * .39 + i / 4) % 1;
     ctx.globalAlpha = Math.sin(age * Math.PI) * .29;
     const steamX = x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3 + age * 5;
@@ -1742,7 +1741,8 @@ const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
 const skeletonMage = new Image();
 skeletonMage.src = 'assets/sprites/skeleton-mage.png';
-const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
+const skeletonMageTile = [4, 5];
+const [skeletonMageA, skeletonMageB] = skeletonMageTile.map(tile => (tile + .5) * TILE_SIZE);
 
 function drawSkeletonMage(t) {
   if (!skeletonMage.naturalWidth) return;
@@ -2102,7 +2102,7 @@ if (!preview) {
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
     if (questDialogue?.open) return;
     if (key === 'e' && !event.repeat && currentRoom === rooms.potion &&
-        Math.abs(wizard.a - 4) + Math.abs(wizard.b - 5) <= 1) {
+        Math.abs(wizard.a - skeletonMageTile[0]) + Math.abs(wizard.b - skeletonMageTile[1]) <= 1) {
       event.preventDefault();
       talkToSkeletonMage();
       return;
@@ -2166,13 +2166,11 @@ if (!preview) {
   });
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
-    if (currentRoom === rooms.potion && skeletonMage.naturalWidth) {
-      const [x, y] = P(skeletonMageA, skeletonMageB, 0);
-      if (Math.abs(px + CX - x) <= skeletonMage.naturalWidth / 2 &&
-          py + CY >= y - skeletonMage.naturalHeight - 18 && py + CY <= y) {
-        talkToSkeletonMage();
-        return;
-      }
+    const floorTile = tileAtPointer(event);
+    if (currentRoom === rooms.potion && floorTile &&
+        floorTile[0] === skeletonMageTile[0] && floorTile[1] === skeletonMageTile[1]) {
+      talkToSkeletonMage();
+      return;
     }
     if (currentRoom === rooms.tower && chestInventory) {
       const [x, y] = P(52, 4, 8);
@@ -2208,7 +2206,7 @@ if (!preview) {
       const z = wallA + Math.floor(u / 2) - 1 - py;
       return z >= 0 && passageColor(2 * (tile[1] + .5) * TILE_SIZE - u, z);
     });
-    const tile = clickedExit?.tile ?? (seat ? seat.approach : tileAtPointer(event));
+    const tile = clickedExit?.tile ?? (seat ? seat.approach : floorTile);
     if (!tile || !isWalkable(...tile)) return;
     const start = wizard.step ?? wizard;
     const nextRoute = findRoute(start, ...tile);
@@ -2322,7 +2320,7 @@ function updateWizard(dt) {
         heldKeys.clear();
         const hints = {
           library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
-          potion: 'Potion room · Click the Skeleton Mage to talk, or press E when beside him. Use the arch to return.'
+          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. Use the arch to return.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
