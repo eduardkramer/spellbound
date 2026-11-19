@@ -552,17 +552,17 @@ const rackHeight = 40;
 const rackBubbles = [];
 const rackGlass = mk();
 const rackBottleShapes = [
-  ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
-  ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
-  ['ccc', 'ggg', 'g.g', 'ghg', 'g.g', 'glg', 'gbg', 'glg', 'gdg', '.g.'],
-  ['..ccc..', '..ggg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
+  ['..ccc..', '..gsg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
+  ['.ccccc.', '.gsssg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
+  ['ccc', 'gsg', 'g.g', 'ghg', 'g.g', 'glg', 'gbg', 'glg', 'gdg', '.g.'],
+  ['..ccc..', '..gsg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
 ];
 
 function drawRackBottle(g, a, z, shape, color) {
   const [x, y] = P(a, rackDepth - .5, z);
   const rows = rackBottleShapes[shape];
   const colors = {
-    c: '#b0875e', g: '#879ea8', h: '#f4eadd',
+    c: '#b0875e', s: sh(color, 1.18), g: '#879ea8', h: '#f4eadd',
     l: color, d: sh(color, .58), b: sh(color, 1.28),
     k: color === '#78a655' ? '#cadc83' : sh(color, 1.53)
   };
@@ -572,7 +572,9 @@ function drawRackBottle(g, a, z, shape, color) {
   rows.forEach((row, dy) => {
     for (let dx = 0; dx < row.length; dx++) {
       if (row[dx] === '.') continue;
-      dot(g, left + dx, top + dy, colors[row[dx]]);
+      const pixel = row[dx];
+      const pigment = pixel === 'c' && dx === (row.length >> 1) ? '#d7af7e' : colors[pixel];
+      dot(g, left + dx, top + dy, pigment);
     }
   });
   const surface = rows.findIndex(row => row.includes('l'));
@@ -611,9 +613,10 @@ function drawPotionRack(g) {
   // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
   box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
+  // Op de middelste plank blijft ruimte voor het flesje op de werkbank.
   const stock = [
     [[6.5, 1, 3], [8, 2, 0], [12, 0, 2], [16, 3, 1], [21, 1, 2], [24.5, 2, 4]],
-    [[6.5, 0, 1], [8, 2, 3], [11.5, 1, 4], [14, 2, 2], [20, 3, 0], [24, 0, 3]],
+    [[6.5, 0, 1], [8, 2, 3], [11.5, 1, 4], [14, 2, 2], [24, 0, 3]],
     [[6.5, 3, 2], [8.5, 0, 3], [12, 2, 1], [15.5, 1, 0], [20, 0, 4], [25, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
@@ -719,6 +722,46 @@ function potionWindowLight(a, b) {
   return 0;
 }
 
+function drawPotionDryingRack(g, timber) {
+  const railZ = 94;
+  box(g, 0, 17, railZ - 2, 2, 25, 2, timber);
+  for (const b of [17.75, 29, 41.25]) {
+    const [x, y] = P(2, b, railZ - 1);
+    dot(g, x, y, '#49342c');
+    dot(g, x, y - 1, '#d9ad77');
+  }
+
+  const bundles = [
+    [19.5, 'herb', '#819354'],
+    [23, 'flower', '#a87b9c'],
+    [35.5, 'mushroom', '#b76d4a'],
+    [39.5, 'mushroom', '#94705d']
+  ];
+  for (const [b, kind, color] of bundles) {
+    const [x, y] = P(2, b, railZ - 1);
+    line(g, x, y, x, y + 6, '#c29a69');
+    if (kind === 'mushroom') {
+      line(g, x, y + 6, x - 2, y + 14, '#cbb090');
+      line(g, x, y + 6, x + 2, y + 16, '#d6bc99');
+      ell(g, x - 2, y + 14, 2, 1, color);
+      ell(g, x + 2, y + 16, 3, 2, color);
+      dot(g, x + 1, y + 15, '#dab184');
+    } else {
+      for (const [dx, dy] of [[-3, 9], [2, 11], [-2, 14], [1, 16]]) {
+        line(g, x, y + 6, x + dx, y + dy, '#48513b');
+        ell(g, x + dx, y + dy, 2, 1, color);
+        dot(g, x + dx - 1, y + dy, sh(color, 1.28));
+      }
+    }
+    // Een kort touwtje met een beschreven perkamentlabel.
+    dot(g, x + 2, y + 4, '#dbb987');
+    rect(g, x + 2, y + 5, 4, 4, '#be925f');
+    rect(g, x + 2, y + 5, 3, 3, '#e2bf83');
+    dot(g, x + 3, y + 6, '#765340');
+    dot(g, x + 4, y + 7, '#96744e');
+  }
+}
+
 function drawPotionWorkshop(g) {
   const timber = {
     top: (a, b) => {
@@ -747,7 +790,7 @@ function drawPotionWorkshop(g) {
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
 
-  // Gedroogde kruiden hangen naast het recept boven de doorgang.
+  // Het recept hangt onder het droogrek, boven de doorgang.
   wallL(g, 0, 48, 66, 59, 82, (u, z) => {
     const x = u - 48, y = z - 59;
     if (y > 20 || y < 2) return '#78523e';
@@ -755,17 +798,7 @@ function drawPotionWorkshop(g) {
     if (y > 4 && y < 15 && x > 3 && x < 14 && (y % 4 === 0 || x === 8)) return '#a27754';
     return '#dfbb80';
   });
-  for (const [b, color] of [[17.5, '#758854'], [37.5, '#b182b1']]) {
-    const [x, y] = P(0, b, 75);
-    line(g, x, y - 5, x, y + 7, '#bc9466');
-    for (let i = 0; i < 5; i++) {
-      const side = i % 2 ? 1 : -1;
-      line(g, x, y + i, x + side * 4, y + i + 5, '#4a583c');
-      ell(g, x + side * 4, y + i + 5, 2, 1, i % 3 ? color : sh(color, 1.3));
-    }
-    rect(g, x - 1, y, 3, 2, '#d3a86b');
-  }
-
+  drawPotionDryingRack(g, timber);
   drawPotionRack(g);
 
 }
@@ -792,10 +825,26 @@ function drawPotionWorkbench(g) {
   for (let row = 0; row < 3; row++) {
     line(g, ...P(a - 2, b - .4 + row * .7, 14), ...P(a + (row === 2 ? -.6 : .6), b - .4 + row * .7, 14), '#a47b58');
   }
+  const [stainX, stainY] = P(a + .4, b + 1.25, 14);
+  ell(g, stainX, stainY, 2, 1, '#b88e5c');
+  const [fx, fy] = P(a - 2.7, b + 2.8, 13);
+  // De open fles vangt het brouwsel uit een koperen trechter.
+  ell(g, fx, fy - 2, 3, 2, '#82aaa5');
+  rect(g, fx - 2, fy - 2, 5, 2, '#668b55');
+  dot(g, fx - 2, fy - 3, '#edf1ca');
+  rect(g, fx, fy - 6, 2, 3, '#9eaaa0');
+  rect(g, fx, fy - 7, 2, 2, '#976047');
+  rect(g, fx - 1, fy - 8, 4, 1, '#be8151');
+  rect(g, fx - 2, fy - 9, 6, 1, '#dfa26a');
+  rect(g, fx - 1, fy - 9, 4, 1, '#624338');
   const [mx, my] = P(a + 2, b - 2, 13);
   ell(g, mx, my - 1, 4, 3, '#514b5d');
   ell(g, mx, my - 3, 4, 2, '#8c8799');
   ell(g, mx, my - 3, 2, 1, '#3b3846');
+  for (const [dx, dy, color] of [[-3, 0, '#687746'], [-2, 1, '#a2a95d'],
+    [0, 1, '#78864a'], [1, 2, '#b39c61'], [3, 1, '#84954d']]) {
+    dot(g, mx + dx, my + dy, color);
+  }
   line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
 }
 
@@ -823,6 +872,15 @@ function drawCauldron(t) {
     ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
     ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
   }
+  // Open kruidenzak naast de ketel, binnen de schaduw van het brouwstation.
+  ell(ctx, x - 21, y - 1, 6, 2, '#322838');
+  ell(ctx, x - 21, y - 5, 5, 5, '#886343');
+  ell(ctx, x - 22, y - 5, 3, 4, '#ab8157');
+  ell(ctx, x - 21, y - 9, 4, 2, '#c19b70');
+  ell(ctx, x - 21, y - 9, 2, 1, '#5c6641');
+  dot(ctx, x - 22, y - 10, '#9dae64');
+  dot(ctx, x - 19, y - 8, '#889b54');
+
   ell(ctx, x, y - 26, 19, 8, '#242431');
   ell(ctx, x, y - 27, 18, 7, '#73757b');
   ell(ctx, x, y - 27, 16, 5, '#4f9e42');
@@ -839,10 +897,17 @@ function drawCauldron(t) {
       dot(ctx, bx + 1, by - 3 - 10 * (age - .8), '#d2f989');
     }
   }
+  // Roerlepel met de steel op de achterste rand.
+  line(ctx, x + 4, y - 28, x + 18, y - 40, '#593b30');
+  line(ctx, x + 5, y - 29, x + 18, y - 41, '#bd8959');
+  dot(ctx, x + 18, y - 41, '#e0ac75');
   for (let i = 0; i < 4; i++) {
     const age = (t * .39 + i / 4) % 1;
-    ctx.globalAlpha = Math.sin(age * Math.PI) * .34;
-    ell(ctx, x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3, y - 31 - 22 * age, 2 + Math.floor(age * 4), 2, '#bfe88e');
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .29;
+    const steamX = x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3 + age * 5;
+    const steamY = y - 31 - 25 * age;
+    ell(ctx, steamX, steamY, 2 + Math.floor(age * 4), 2, '#bfe88e');
+    ell(ctx, steamX - 2, steamY + 1, 2, 1, '#e9edbc');
   }
   ctx.globalAlpha = 1;
 }
