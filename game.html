@@ -21,6 +21,11 @@
   #librarian-dialogue p{margin:6px 0 10px}
   #close-librarian-dialogue{width:auto;padding:0 10px}
   #reset-quest{width:auto;padding:0 10px;font-size:12px}
+  #quest-log{max-width:95%;color:var(--txt);font-size:12px}
+  #quest-log summary{cursor:pointer;color:var(--gold)}
+  #quest-log ul{margin:6px 0;padding-left:20px}
+  #search-book-stack{width:auto;padding:0 10px;font-size:12px}
+  #search-book-stack[hidden],#quest-action[hidden]{display:none}
   #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
   #quest-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
   #quest-dialogue::backdrop{background:#12102599}
@@ -124,6 +129,11 @@
     <button type="button" class="hotbar-slot" data-slot="6" aria-label="Slot 6, empty" aria-keyshortcuts="6" aria-pressed="false"><span class="slot-key" aria-hidden="true">6</span></button>
   </div>
   <p id="quest-objective" role="status" hidden></p>
+  <button type="button" id="search-book-stack" hidden>Search book stack (E)</button>
+  <details id="quest-log">
+    <summary>Quest log</summary>
+    <ul id="quest-log-entries"></ul>
+  </details>
   <p id="movement-hint">Click to move or sit. Use WASD or the arrow keys to walk. Click the chest to open it, or press E when beside it. With your wand equipped, press F for ice or hold Q for fire.</p>
 
   <div id="player">
@@ -169,6 +179,8 @@
 <script src="src/audio/tracks.js"></script>
 <script src="src/game/wizard.js"></script>
 <script src="src/game/inventory.js"></script>
+<script src="src/game/quests/definitions.js"></script>
+<script src="src/game/quests/manager.js"></script>
 <script src="src/game/scene.js"></script>
 <script src="src/audio/player.js"></script>
 </body>
