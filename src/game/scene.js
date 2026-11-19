@@ -650,6 +650,32 @@ function drawWallIvy(g, vines) {
   }
 }
 
+const potionWindowCenters = [39, 88];
+const potionWindowBase = 48;
+const potionGlassRadius = 18;
+
+function potionWindowArch(x, y) {
+  return Math.hypot(x, Math.max(0, y - 31));
+}
+
+function potionWindowCross(x, y) {
+  return x >= -1 && x < 1 || y >= 27 && y < 29;
+}
+
+function potionWindowLight(a, b) {
+  // Licht door de bovenste ruit valt verder de kamer in.
+  const y = (b - 5) * 1.3;
+  if (y < 3 || y >= 49) return 0;
+  const u = 2 * (a - (b - 18) * .36);
+  for (const center of potionWindowCenters) {
+    const x = u - center;
+    const arch = potionWindowArch(x, y);
+    if (arch > potionGlassRadius || potionWindowCross(x, y)) continue;
+    return (1 - b / 65) * (arch > potionGlassRadius - 1 ? .55 : 1);
+  }
+  return 0;
+}
+
 function drawPotionWorkshop(g) {
   const timber = {
     top: (a, b) => {
@@ -666,13 +692,13 @@ function drawPotionWorkshop(g) {
     wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
   }
 
-  for (const center of [39, 88]) {
-    wallR(g, 0, center - 21, center + 22, 48, 101, (u, z) => {
-      const x = u - center, y = z - 48;
-      const arch = Math.hypot(x, Math.max(0, y - 31));
+  for (const center of potionWindowCenters) {
+    wallR(g, 0, center - 21, center + 22, potionWindowBase, potionWindowBase + 53, (u, z) => {
+      const x = u - center, y = z - potionWindowBase;
+      const arch = potionWindowArch(x, y);
       if (arch > 21) return null;
-      if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
-      if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
+      if (arch > potionGlassRadius || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
+      if (potionWindowCross(x, y)) return '#77513e';
       return autumnSunset(u - 21, y / 49, false);
     });
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
@@ -790,11 +816,7 @@ function potionFloor(a, b) {
     contactShade(a, b, workbenchA, workbenchB, 5, 5),
     b < rackDepth + 2 && a >= rackStart && a < rackStart + rackWidth ? .74 : 1
   );
-  // De twee ramen werpen schuine lichtbanen met de schaduw van hun stijlen.
-  const ray = a - b * .47;
-  const pane = Math.min(Math.abs(ray - 13), Math.abs(ray - 36));
-  const daylight = b >= 7 && b < 51 && pane >= .85 && pane < 6.4
-    ? (1 - b / 58) * (pane < 5.8 ? 1 : .43) : 0;
+  const daylight = potionWindowLight(a, b);
 
   let color;
   if (edge >= 0) {
@@ -812,7 +834,7 @@ function potionFloor(a, b) {
   const rgb = color.startsWith('#')
     ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
     : color.slice(4, -1).split(',').map(Number);
-  const light = [213, 225, 199];
+  const light = [241, 207, 158];
   const amount = daylight * .84;
   return 'rgb(' + rgb.map((channel, index) =>
     Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
