@@ -1022,15 +1022,28 @@ function stockroomFloor(a, b) {
   const column = Math.floor(a / 8), row = Math.floor(b / 8);
   if (a % 8 < .55 || b % 8 < .55) return '#34343e';
   const beam = Math.max(0, 1 - Math.abs(a - 35) / 24) * Math.max(0, 1 - Math.abs(b - 23) / 27);
-  return sh('#66636a', .84 + hash(column, row) * .25 + beam * .3);
+  const grit = hash(Math.floor(a * 2), Math.floor(b * 2));
+  return sh('#66636a', .84 + hash(column, row) * .25 + beam * .3 + (grit > .91 ? .09 : 0));
 }
 
 const stockShelfRanges = [[6, 29], [34, 58], [64, 89]];
 const stockLayout = [
-  [2, 1, false], [7, 1, true], [10, 2, false], [10, 3, true],
-  [4, 5, false], [5, 5, true], [8, 6, true], [9, 6, false],
-  [2, 8, false], [3, 8, true], [10, 8, false]
+  [2, 1, 'glass'], [7, 1, 'herbs'], [10, 2, 'barrel'], [10, 3, 'herbs'],
+  [4, 5, 'crystals'], [5, 5, 'herbs'], [8, 6, 'herbs'], [9, 6, 'glass'],
+  [2, 8, 'scrolls'], [3, 8, 'herbs'], [10, 8, 'barrel']
 ];
+const stockLanterns = [[0, 18], [0, 61], [49, 0]].map(([a, b]) => P(a, b, 75));
+
+function drawStockLanterns(t) {
+  for (const [x, y] of stockLanterns) {
+    glow(x, y, 36, 29, '255,170,92', .062 + .012 * Math.sin(t * 4 + x));
+    line(ctx, x, y - 12, x, y - 5, '#8c654e');
+    ell(ctx, x, y, 4, 5, '#503637');
+    ell(ctx, x, y, 3, 3, '#d39051');
+    dot(ctx, x, y - 1, '#fff1ad');
+    rect(ctx, x - 2, y + 4, 5, 1, '#976442');
+  }
+}
 
 function drawStockShelves(g) {
   const timber = woodC('#83583c');
@@ -1040,11 +1053,20 @@ function drawStockShelves(g) {
       const column = u - start * 2;
       const shelf = (z - 2) % 14;
       if (column < 3 || u >= end * 2 - 3 || shelf < 2) return shelf === 1 ? '#ac7b52' : '#745039';
+      const group = Math.floor(column / 9);
+      const tier = Math.floor((z - 2) / 14);
       const item = column % 9;
-      if (item >= 1 && item <= 6 && shelf < 10) {
-        if (shelf === 9) return '#b68e61';
-        if (item === 1) return '#a38b73';
-        return ['#817452', '#82647d', '#527c72'][Math.floor(column / 9 + z / 14) % 3];
+      const kind = (group + tier + start) % 5;
+      if (kind !== 4 && item >= 1 && item <= 6) {
+        const palette = ['#6e8ba0', '#9477ab', '#778951', '#ad7b4c'];
+        const narrow = kind < 2;
+        if (shelf === 10 && item >= 3 && item <= 4) return '#c39c73';
+        if (shelf >= 8 && shelf < 10 && item >= 3 && item <= 4) return '#a5b9b2';
+        if (shelf >= 2 && shelf < 8 && (!narrow || (item >= 2 && item <= 5))) {
+          if (item === (narrow ? 2 : 1)) return '#a9c1b6';
+          if (shelf === 5 && item >= 3 && item <= 4 && !narrow) return '#dac198';
+          return sh(palette[kind], shelf > 4 ? 1 : .75);
+        }
       }
       return '#352b35';
     });
@@ -1052,14 +1074,27 @@ function drawStockShelves(g) {
   }
 }
 
-function drawStockContainer(g, a, b, sack) {
+function drawStockContainer(g, a, b, kind) {
   const [x, y] = P(a, b, 0);
   ell(g, x, y, 8, 3, '#38313c');
-  if (sack) {
+  if (kind === 'barrel') {
+    ell(g, x, y - 5, 7, 6, '#72503d');
+    rect(g, x - 6, y - 12, 13, 9, '#876046');
+    for (const dx of [-4, 0, 4]) line(g, x + dx, y - 12, x + dx, y - 2, '#a77950');
+    for (const dy of [-9, -4]) rect(g, x - 6, y + dy, 13, 2, '#4c454d');
+    ell(g, x, y - 12, 7, 3, '#a47850');
+    ell(g, x, y - 12, 5, 2, '#634b3e');
+    return;
+  }
+  if (kind === 'herbs') {
     ell(g, x, y - 4, 6, 6, '#8f6c4f');
     ell(g, x - 1, y - 5, 4, 5, '#b28e65');
     ell(g, x, y - 10, 3, 2, '#79573f');
     line(g, x - 3, y - 9, x + 2, y - 9, '#d8b986');
+    for (const [dx, dy] of [[-2,-10],[1,-11],[2,-10],[6,0],[8,1],[5,2]]) {
+      dot(g, x + dx, y + dy, dy < 0 ? '#a6ad65' : '#788c57');
+    }
+    dot(g, x - 2, y - 5, '#e0b78b');
     return;
   }
   const timber = woodC('#9b6b43');
@@ -1067,6 +1102,20 @@ function drawStockContainer(g, a, b, sack) {
   box(g, a - 2.8, b - 2.8, 7, 5.6, 5.6, 1, woodC('#ae8156'));
   line(g, ...P(a - 2, b + 2.6, 1), ...P(a + 2, b + 2.6, 7), '#bd8b5c');
   line(g, ...P(a + 2.6, b - 2, 7), ...P(a + 2.6, b + 2, 1), '#81573d');
+  if (kind === 'glass') {
+    flask(g, x - 3, y - 7, '#89aaa0', 'tube', null);
+    flask(g, x + 3, y - 9, '#628c91', 'round', null);
+  } else if (kind === 'crystals') {
+    for (const [dx, dy, color] of [[-3, -7, '#b298db'], [0, -10, '#d2b6f5'], [3, -7, '#8975b6']]) {
+      line(g, x + dx, y + dy - 4, x + dx - 1, y + dy, color);
+      dot(g, x + dx, y + dy - 4, '#ebd3fa');
+    }
+  } else {
+    ell(g, x - 4, y - 8, 2, 2, '#d7b87b');
+    line(g, x - 4, y - 10, x + 4, y - 9, '#ead095');
+    line(g, x - 4, y - 7, x + 4, y - 6, '#b58a5a');
+    dot(g, x + 1, y - 8, '#ac5559');
+  }
 }
 
 function buildStatic(sg, room) {
@@ -1095,7 +1144,10 @@ function buildStatic(sg, room) {
     drawLibraryShelves(sg);
   }
   if (potion) drawPotionWorkshop(sg);
-  if (stockroom) drawStockShelves(sg);
+  if (stockroom) {
+    drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
+    drawStockShelves(sg);
+  }
   if (room === rooms.tower || library) drawPassage(sg, library);
   for (const exit of room.exits) {
     if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
@@ -1842,10 +1894,10 @@ rooms.potion.floor = [
 rooms.stockroom.floor = Array.from({ length: STOCK_ROWS }, (_, row) =>
   Array(STOCK_COLUMNS).fill(row === 0 ? 'X' : '.'));
 for (const [a, b] of stockLayout) rooms.stockroom.floor[b][a] = 'X';
-const stockFurnishings = stockLayout.map(([column, row, sack]) => {
+const stockFurnishings = stockLayout.map(([column, row, kind]) => {
   const canvas = mk();
   const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
-  drawStockContainer(canvas.getContext('2d'), a, b, sack);
+  drawStockContainer(canvas.getContext('2d'), a, b, kind);
   return { canvas, depth: a + b };
 });
 const workbenchCanvas = mk();
@@ -2907,6 +2959,8 @@ function frame(ms) {
       drawLibraryLights(t);
     } else if (currentRoom === rooms.potion) {
       drawPotionLight(t);
+    } else {
+      drawStockLanterns(t);
     }
     drawRoomOccupants(t, dt);
     // De voorste muur staat vóór de meubels en personages op de vloer.
