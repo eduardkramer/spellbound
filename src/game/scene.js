@@ -1993,7 +1993,7 @@ rooms.tower.floor = towerFloor;
 rooms.library.floor = libraryFloorMap;
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
-  'X.XXXX..',
+  'X.XXXXX.',
   'X.......',
   '........',
   '.....XX.',
@@ -2054,7 +2054,49 @@ function drawSkeletonMage(t) {
   }
 }
 
+const pumpkinA = 6.5 * TILE_SIZE, pumpkinB = .5 * TILE_SIZE;
+
+const pumpkinPixels = [
+  '............s......',
+  '...........sbg.....',
+  '..........sbg......',
+  '.........gbg.......',
+  '.........gg........',
+  '.....dddrggrdd.....',
+  '...ddrohhoorwrd....',
+  '..dohhohwwwowrrd...',
+  '.dohhroowwwowrrrd..',
+  '.dhhorodhwoodwrrd..',
+  'dohorodfddodfdwrrd.',
+  'dohorofffdoffdwrrd.',
+  'dohoowwwdfdwwwrrrd.',
+  '.dohodwwofowwdrrd..',
+  '.dorodfdfdfdfdrrd..',
+  '..drrrdfffffdrrd...',
+  '...ddrrdddddrrd....',
+  '.....dddddddd......'
+];
+const pumpkinPalette = {
+  s: '#c4cc82', b: '#829650', g: '#536043', d: '#572e39', r: '#a34830',
+  w: '#c45b30', o: '#e27636', h: '#f49a52'
+};
+
+function drawPotionPumpkin(t) {
+  const [x, y] = P(pumpkinA, pumpkinB, 0);
+  const pulse = .5 + .32 * Math.sin(t * 2.4) + .1 * Math.sin(t * 4.8);
+  ell(ctx, x, y, 9, 3, '#332938');
+  glow(x, y - 2, 17, 9, '255,149,59', .035 + pulse * .025);
+  const candle = `rgb(255,${Math.round(206 + 14 * pulse)},${Math.round(115 + 19 * pulse)})`;
+  for (const [dy, row] of pumpkinPixels.entries()) {
+    for (const [dx, pixel] of Array.from(row).entries()) {
+      if (pixel === '.') continue;
+      dot(ctx, x + dx - 9, y + dy - pumpkinPixels.length + 1, pixel === 'f' ? candle : pumpkinPalette[pixel]);
+    }
+  }
+}
+
 const potionFurnishings = [
+  { depth: pumpkinA + pumpkinB, animate: drawPotionPumpkin },
   { depth: skeletonMageA + skeletonMageB, animate: drawSkeletonMage },
   { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: drawReturnedPage },
   { depth: cauldronA + cauldronB, animate: drawCauldron }
