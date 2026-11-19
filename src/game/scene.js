@@ -853,7 +853,8 @@ function drawCauldron(t) {
   ell(ctx, x, y, 19, 6, '#282339');
   ell(ctx, x, y - 2, 11, 4, '#58363a');
   for (let i = -2; i <= 2; i++) {
-    const flame = 2 + Math.round(2 * (1 + Math.sin(t * 9 + i * 2)));
+    const heated = questStage === 'ready' || questStage === 'complete';
+    const flame = (heated ? 5 : cauldronHeat > 0 ? 3 : 1) + Math.round((heated ? 3 : 1) * (1 + Math.sin(t * 9 + i * 2)));
     rect(ctx, x + i * 3, y - flame, 2, flame, i % 2 ? '#ed9252' : '#ffc771');
   }
   for (const offset of [-11, 11]) {
@@ -1781,6 +1782,102 @@ let route = [];
 let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
+const questDialogue = document.getElementById('quest-dialogue');
+const questObjective = document.getElementById('quest-objective');
+const questStorageKey = 'spellbound.quest.cauldron.v1';
+const questStages = ['available', 'active', 'ready', 'complete'];
+let questStage = 'available';
+let cauldronHeat = 0;
+try {
+  if (!preview) {
+    const saved = localStorage.getItem(questStorageKey);
+    if (questStages.includes(saved)) questStage = saved;
+  }
+} catch {
+  // De quest werkt ook wanneer lokale opslag is uitgeschakeld.
+}
+
+function hasQuestWand() {
+  return document.getElementById('hotbar')?.dataset.hasWand === 'true';
+}
+
+function renderQuestObjective() {
+  if (!questObjective) return;
+  const objectives = {
+    active: hasQuestWand() ? 'Equip your wand and hold Q to heat the cauldron.' : 'Retrieve your wand from the chest in the main room.',
+    ready: 'Speak to the Skeleton Mage.',
+    complete: 'Quest complete.'
+  };
+  const objective = objectives[questStage];
+  questObjective.hidden = !objective;
+  if (objective && questObjective.textContent !== `Fire Beneath the Cauldron · ${objective}`) {
+    questObjective.textContent = `Fire Beneath the Cauldron · ${objective}`;
+  }
+}
+
+function advanceCauldronQuest(stage) {
+  questStage = stage;
+  try { localStorage.setItem(questStorageKey, stage); } catch { /* Alleen deze sessie. */ }
+  renderQuestObjective();
+}
+
+function talkToSkeletonMage() {
+  if (!questDialogue || questDialogue.open || chestInventory?.open) return;
+  const messages = {
+    available: 'The cauldron has gone cold. Retrieve your wand from the chest in the main room, then use your fire spell to heat it.',
+    active: hasQuestWand() ? 'Equip your wand, face the cauldron and hold Q until the flames catch.' : 'Your wand is in the chest in the main room. Move it into your hotbar.',
+    ready: 'The fire has caught! Now I can finish the brew. Thank you, wizard.',
+    complete: 'The cauldron is warm and the brew is coming along nicely.'
+  };
+  document.getElementById('quest-message').textContent = messages[questStage];
+  const action = document.getElementById('quest-action');
+  action.hidden = questStage !== 'available' && questStage !== 'ready';
+  action.textContent = questStage === 'ready' ? 'Complete quest' : 'Accept';
+  document.getElementById('quest-dismiss').textContent = questStage === 'available' ? 'Decline' : 'Close';
+  clearRoute();
+  heldKeys.clear();
+  fireHeld = false;
+  questDialogue.returnValue = '';
+  questDialogue.showModal();
+}
+
+questDialogue?.addEventListener('close', () => {
+  if (questDialogue.returnValue === 'advance') {
+    if (questStage === 'available') advanceCauldronQuest('active');
+    else if (questStage === 'ready') advanceCauldronQuest('complete');
+  }
+  cv.focus({ preventScroll: true });
+});
+new MutationObserver(renderQuestObjective).observe(document.getElementById('hotbar') ?? cv,
+  { attributes: true, attributeFilter: ['data-has-wand'] });
+renderQuestObjective();
+
+function warmCauldron(hit, dt) {
+  if (questStage !== 'active') return;
+  cauldronHeat = hit ? cauldronHeat + dt : 0;
+  if (cauldronHeat >= 1) advanceCauldronQuest('ready');
+}
+
+function drawQuestMarker(t) {
+  if (preview || questStage === 'complete' || !skeletonMage.naturalWidth) return;
+  const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight + 7);
+  const top = Math.round(y - 8 + Math.sin(t * 3));
+  const color = { available: '#ffe15b', active: '#c4cfde', ready: '#f6b844' }[questStage];
+  const rows = questStage === 'available'
+    ? ['..##..', '..##..', '..##..', '..##..', '..##..', '......', '..##..', '..##..']
+    : ['.####.', '##..##', '....##', '...##.', '..##..', '......', '..##..', '..##..'];
+  for (const [dy, row] of rows.entries()) {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] === '#') rect(ctx, x + dx - 4, top + dy - 1, 3, 3, '#21192a');
+    }
+  }
+  for (const [dy, row] of rows.entries()) {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] === '#') dot(ctx, x + dx - 3, top + dy, color);
+    }
+  }
+}
+
 const iceBalls = [];
 let iceCooldown = 0;
 let castTime = 0;
@@ -1789,15 +1886,18 @@ const castStrength = () => Math.max(fireCharge,
 
 function canBreatheFire() {
   return fireHeld && WIZARD.staffEquipped && !seatProgress &&
-    !chestInventory?.open && librarianDialogue.hidden;
+    !chestInventory?.open && !questDialogue?.open && librarianDialogue.hidden;
 }
 
 const fireSprite = new Image();
 fireSprite.src = 'assets/sprites/fire-breath.png';
 const fireFrameWidth = 88, fireFrameHeight = 38, fireFrameCount = 16;
 
-function fireBreathLayers(t, a, b) {
-  if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) return [];
+function fireBreathLayers(t, a, b, dt) {
+  if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) {
+    warmCauldron(false, dt);
+    return [];
+  }
   const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
   const hand = WIZARD.castingHand(wizard.direction, castStrength());
   const z = 13;
@@ -1806,14 +1906,23 @@ function fireBreathLayers(t, a, b) {
   const startA = Math.floor(originA / TILE_SIZE), startB = Math.floor(originB / TILE_SIZE);
   const reach = 22 * fireCharge;
   let visibleReach = reach;
+  let hitsCauldron = false;
   for (let distance = 0; distance < reach; distance += .5) {
     const column = Math.floor((originA + distance * da) / TILE_SIZE);
     const row = Math.floor((originB + distance * db) / TILE_SIZE);
+    if (currentRoom === rooms.potion && (cauldronA - a) * da + (cauldronB - b) * db > 0 &&
+        Math.abs(column + .5 - cauldronA / TILE_SIZE) < 1 &&
+        Math.abs(row + .5 - cauldronB / TILE_SIZE) < 1) {
+      hitsCauldron = true;
+      visibleReach = distance + 2;
+      break;
+    }
     if ((column !== startA || row !== startB) && !isWalkable(column, row)) {
       visibleReach = distance;
       break;
     }
   }
+  warmCauldron(hitsCauldron, dt);
   if (!visibleReach) return [];
   const [x, y] = P(originA, originB, z);
   const dx = 2 * (da - db), dy = da + db;
@@ -1970,6 +2079,13 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (questDialogue?.open) return;
+    if (key === 'e' && !event.repeat && currentRoom === rooms.potion &&
+        Math.abs(wizard.a - 4) + Math.abs(wizard.b - 5) <= 1) {
+      event.preventDefault();
+      talkToSkeletonMage();
+      return;
+    }
     if (key === 'q') {
       event.preventDefault();
       fireHeld = true;
@@ -2029,6 +2145,14 @@ if (!preview) {
   });
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
+    if (currentRoom === rooms.potion && skeletonMage.naturalWidth) {
+      const [x, y] = P(skeletonMageA, skeletonMageB, 0);
+      if (Math.abs(px + CX - x) <= skeletonMage.naturalWidth / 2 &&
+          py + CY >= y - skeletonMage.naturalHeight - 18 && py + CY <= y) {
+        talkToSkeletonMage();
+        return;
+      }
+    }
     if (currentRoom === rooms.tower && chestInventory) {
       const [x, y] = P(52, 4, 8);
       if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
@@ -2121,10 +2245,10 @@ function drawTileBorder(tile, color) {
 }
 
 const movementHint = document.getElementById('movement-hint');
-const defaultHint = movementHint ? movementHint.textContent + ' Houd Q ingedrukt voor een vuurstraal.' : undefined;
-if (movementHint) movementHint.textContent = defaultHint;
+const defaultHint = movementHint ? movementHint.textContent : undefined;
 
 function updateWizard(dt) {
+  if (questDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
@@ -2176,8 +2300,8 @@ function updateWizard(dt) {
         clearHover();
         heldKeys.clear();
         const hints = {
-          library: 'Bibliotheek · De boog achterin leidt naar de hoofdkamer. De boog rechtsvoor leidt naar de drankenkamer.',
-          potion: 'Drankenkamer · Klik op de boog of loop ernaartoe om terug te gaan.'
+          library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
+          potion: 'Potion room · Click the Skeleton Mage to talk, or press E when beside him. Use the arch to return.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
@@ -2549,7 +2673,7 @@ function drawRoomOccupants(t, dt) {
   const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings : potionFurnishings;
-  const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b)].sort((left, right) => left.depth - right.depth);
+  const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b, dt)].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
@@ -2641,6 +2765,7 @@ function frame(ms) {
     drawRoomOccupants(t, dt);
     // De voorste muur staat vóór de meubels en personages op de vloer.
     if (currentRoom.foreground) ctx.drawImage(currentRoom.foreground, 0, 0);
+    if (currentRoom === rooms.potion) drawQuestMarker(t);
     requestAnimationFrame(frame);
     return;
   }
@@ -2684,7 +2809,7 @@ function fit() {
   zoomOut.disabled = zoom === MIN_ZOOM;
   zoomIn.disabled = zoom === MAX_ZOOM;
   zoomReset.textContent = zoom + '%';
-  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' procent. Zet terug naar 100 procent.');
+  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' percent. Reset to 100 percent.');
 }
 function setZoom(value) {
   zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
