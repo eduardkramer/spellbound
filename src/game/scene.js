@@ -980,6 +980,14 @@ function buildFront() {
   store(seatA + seatB + 7, t => drawSeatedWizard(t, armchairSeat));
   chairPart(5.3, .55, 8, 1.55, 5.7, 4, upholstery);
   chairPart(5.4, .7, 12, 1.35, 5.35, 1, cushion);
+  // Een geweven plaid over de voorste armleuning, buiten de zitting.
+  const throwWool = flat('#bc785d', '#8b4947', (u, z) => {
+    if (z <= 8) return u % 2 ? '#d0a17b' : '#823f41';
+    if (z === 10 || z === 11) return '#d2a074';
+    return u % 3 === 0 ? '#a75950' : '#9b514a';
+  });
+  chairPart(6.62, 1.35, 8, .34, 3, 5.2, throwWool);
+  chairPart(5.62, 1.35, 13, 1.34, 3, .3, throwWool);
   store(seatA + seatB + 7);
 
   // Donker schrijfbureau met uitgesneden panelen.
@@ -1013,7 +1021,17 @@ function buildFront() {
   box(g, 31.2, 26, 15.5, 1.6, 1.6, 3, gilding);
   box(g, 30.9, 25.7, 18, 2.2, 2.2, 1, gilding);
   box(g, 35.5, 27, 15.5, 4, 3, 1.5, flat('#2f7a3a', '#e8dcb0', '#17481f'));
-  store(56, drawDeskOrb);
+  // Lage bijenwaskaars bij het open boek.
+  const candleA = 20.5, candleB = 28.5;
+  box(g, candleA - .9, candleB - .8, 15.5, 1.8, 1.6, .7, gilding);
+  box(g, candleA - .45, candleB - .45, 16.2, .9, .9, 2.7,
+    flat('#f1d29f', '#c48a59', '#ad704d'));
+  const [candleX, candleY] = P(candleA, candleB, 19);
+  store(56, t => {
+    drawDeskOrb(t);
+    flame(candleX, candleY - 1, t, 3);
+    glow(candleX, candleY + 3, 16, 11, '255,188,105', .025);
+  });
 
   // Hoge zitstok voor de sneeuwuil.
   box(g, 51, 0, 55, 10, 4.5, 3, woodD);
@@ -2537,7 +2555,7 @@ function frame(ms) {
   drawRoomOccupants(t, dt);
   const n = (Math.sin(t * 9) + Math.sin(t * 13.7) + Math.sin(t * 5.3)) / 3;
   const [gx, gy] = P(21, 6, 14);
-  glow(gx, gy, 80, 56, '255,150,50', .045 + .015 * n);
+  glow(gx, gy, 80, 56, '255,166,75', .052 + .015 * n);
   for (const [x, y] of cand) glow(x, y + 4, 22, 16, '255,200,120', .03);
   if (preview && cv.hidden) {
     cv.hidden = false;
