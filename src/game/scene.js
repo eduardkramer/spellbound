@@ -562,28 +562,57 @@ function drawRackBottle(g, a, z, shape, color) {
 }
 
 function drawPotionRack(g) {
-  const wood = woodC('#815334');
-  const trim = woodC('#a2734e');
+  const trim = {
+    top: (a, b) => {
+      if (b >= rackDepth) return '#c19669';
+      if (b >= 2.5 && b < 3) return '#795236';
+      return hash(Math.floor(a / 5), Math.floor(b * 2)) > .72 ? '#b0885c' : '#9c714b';
+    },
+    left: (u, z) => {
+      if (z === 1 || z === 13 || z === 25 || z === rackHeight - 1) {
+        return hash(u, z) > .86 ? '#a7774e' : '#be9061';
+      }
+      return '#69452f';
+    },
+    right: '#573b30'
+  };
+  const post = flat('#a87b53', (u, z) => {
+    const edge = (u - rackStart * 2) % (rackWidth * 2 - 4);
+    if (edge === 0) return '#69452f';
+    if (edge === 3) return '#4b3228';
+    if (edge === 1) return '#a67b56';
+    return hash(u, z >> 2) > .78 ? '#96704d' : '#825936';
+  }, (u, z) => {
+    if (u === 0 || u === rackDepth * 2 - 1 || z < 3 || z >= rackHeight - 4) return '#765238';
+    if (u === 1 || z === rackHeight - 5) return '#49342c';
+    return hash(u, z >> 2) > .83 ? '#634735' : '#56402f';
+  });
   const inner = flat('#49352f', '#332731', '#392a2c');
   box(g, rackStart, 0, 0, rackWidth, 1.5, rackHeight, inner);
+  box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, trim);
 
   const stock = [
-    [[3, 1, 3], [7, 2, 0], [14, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
+    [[4.5, 1, 3], [8, 2, 0], [14, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
     [[4, 0, 1], [8, 2, 3], [13, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
     [[4, 3, 2], [8, 0, 3], [13, 2, 1], [17, 1, 0], [24, 0, 4], [29, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
     const z = 3 + index * 12;
-    box(g, rackStart, 0, z - 2, rackWidth, rackDepth, 2, index ? wood : trim);
+    box(g, rackStart, 0, z - 2, rackWidth, rackDepth, 2, trim);
     for (const [offset, shape, color] of row) {
       drawRackBottle(g, rackStart + offset, z, shape, palette[color]);
     }
   });
 
-  for (const a of [rackStart, rackStart + rackWidth - 1.5]) {
-    box(g, a, 0, 0, 1.5, rackDepth, rackHeight, wood);
-    for (const z of [4, 16, 28, 37]) dot(g, ...P(a + .75, rackDepth, z), '#bc9768');
+  const stileWidth = 2;
+  for (const a of [rackStart, rackStart + rackWidth - stileWidth]) {
+    box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
+    for (const z of [3, 15, 27, 36]) {
+      const [x, y] = P(a + 1, rackDepth, z);
+      dot(g, x, y, '#503a2c');
+      dot(g, x, y - 1, '#bf9b69');
+    }
   }
   box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
 }
