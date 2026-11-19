@@ -508,7 +508,20 @@ function libraryShelf(start, end, ladderAt) {
 
 const sunsetSky = ['#ffce8f', '#f7a279', '#db7b83', '#ae6683', '#795778', '#584763'];
 
-function autumnSunset(x, y, showSun = true) {
+function distantCastle(x, y) {
+  const column = Math.floor(x - 49);
+  const height = Math.floor(y * 49) - 9;
+  if (column < 0 || column > 15 || height < 0) return null;
+  const tower = column < 4 || column > 11;
+  const wall = column < 9 ? '#685168' : '#59485e';
+  const top = tower ? (column < 4 ? 11 : 9) : 6;
+  if (height > top || (height === top && column % 2)) return null;
+  if (tower && height === top - 3 && (column === 2 || column === 13)) return '#a7797a';
+  if (height === top - 1) return '#81607a';
+  return wall;
+}
+
+function autumnSunset(x, y, showSun = true, showCastle = false) {
   const ridge = .24 + Math.sin(x * .085) * .045 + Math.cos(x * .16) * .028;
   const canopy = .14 + Math.sin(x * .24) * .045 + Math.cos(x * .68) * .026;
   const leaf = hash(Math.floor(x / 2), Math.floor(y * 23));
@@ -516,10 +529,18 @@ function autumnSunset(x, y, showSun = true) {
     if (y > canopy - .047) return leaf > .5 ? '#d49555' : '#b7754c';
     return leaf > .7 ? '#a8674d' : '#774853';
   }
+  const castle = showCastle && distantCastle(x, y);
+  if (castle) return castle;
   if (y < ridge) return '#765773';
   if (showSun && Math.hypot(x - 48, (y - .43) * 49) < 5) return '#ffe8a9';
   if (y > .51 && y < .56 && Math.sin(x * .15) > .35) return '#ffc191';
   return sunsetSky[Math.max(0, Math.min(5, Math.floor((y - .23) * 7.7)))];
+}
+
+function readingWindowGlass(u, z) {
+  const x = u - 87, y = z - 28;
+  return y >= 3 && Math.hypot(x, Math.max(0, y - 37)) <= 17 &&
+    x !== 0 && y !== 27 && y !== 28;
 }
 
 function drawReadingWindow(g) {
@@ -528,7 +549,7 @@ function drawReadingWindow(g) {
     const arch = Math.hypot(x, Math.max(0, y - 37));
     if (arch > 20) return null;
     if (arch > 17 || y < 3) return arch > 19 ? '#394047' : '#947358';
-    if (Math.abs(x) < 1 || y === 27 || y === 28) return '#6b5144';
+    if (!readingWindowGlass(u, z)) return '#6b5144';
     return autumnSunset(u - 51, y / 53);
   });
 }
@@ -846,7 +867,7 @@ function drawPotionWorkshop(g) {
       if (arch > 21) return null;
       if (arch > potionGlassRadius || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
       if (potionWindowCross(x, y)) return '#77513e';
-      return autumnSunset(u - 21, y / 49, false);
+      return autumnSunset(u - 21, y / 49, false, true);
     });
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
@@ -1657,6 +1678,60 @@ function drawLibraryLights(t) {
 // Zelfde herfstlucht als in het leesraam en de potionkamer.
 function drawSky() {
   wallL(ctx, 0, 24, 64, 60, 90, (u, z) => autumnSunset(u + 1, (z - 60) / 29));
+}
+
+function drawWindowLife(t, paint, start, width, bottom, height, inGlass, seed) {
+  function pixel(column, level, color) {
+    const u = start + Math.round(column), z = bottom + Math.round(level);
+    if (inGlass(u, z)) paint(ctx, 0, u, u + 1, z, z + 1, () => color);
+  }
+
+  const clock = t + seed * 2.7;
+  const cycle = Math.floor(clock / 13);
+  const flight = (clock % 13 - 2 - 4 * hash(cycle, seed)) / 3.4;
+  if (flight >= 0 && flight <= 1) {
+    const direction = hash(cycle, seed + 1) > .5 ? 1 : -1;
+    const x = (direction > 0 ? flight : 1 - flight) * (width + 16) - 8;
+    const y = height * (.55 + hash(cycle, seed + 2) * .22) + Math.sin(flight * Math.PI) * 3;
+    const count = hash(cycle, seed + 3) > .46 ? 3 : 1;
+    for (let bird = 0; bird < count; bird++) {
+      const bx = x - bird * 6 * direction, by = y + bird % 2 * 3;
+      const wing = Math.floor(t * 7 + bird) % 2 ? 1 : -1;
+      pixel(bx, by, '#49374e');
+      pixel(bx - 1, by + wing, '#49374e');
+      pixel(bx + 1, by + wing, '#49374e');
+    }
+  }
+
+  const colors = ['#d88a45', '#eeae62', '#b95743'];
+  for (let leaf = 0; leaf < 3; leaf++) {
+    const time = clock + leaf * 2.19;
+    const drift = (time % 7.6) / 5.6;
+    if (drift >= 1) continue;
+    const x = (width - 1) * hash(Math.floor(time / 7.6) + leaf, seed + 9)
+      + Math.sin(drift * 9 + leaf) * 3 + drift * 5;
+    const y = height * (1 - drift);
+    const color = colors[leaf];
+    pixel(x, y, color);
+    if (Math.floor(time * 5) % 2) pixel(x + 1, y + 1, color);
+  }
+}
+
+function drawRoomWindowLife(t) {
+  if (currentRoom === rooms.tower) {
+    drawWindowLife(t, wallL, 24, 40, 60, 29, (u, z) =>
+      u >= 24 && u < 64 && z >= 60 && z < 90 &&
+      !(u >= 43 && u < 45) && !(z >= 74 && z < 76), 1);
+  } else if (currentRoom === rooms.library) {
+    drawWindowLife(t, wallL, 70, 35, 31, 53, readingWindowGlass, 2);
+  } else if (currentRoom === rooms.potion) {
+    for (const center of potionWindowCenters) {
+      drawWindowLife(t, wallR, center - 18, 37, potionWindowBase + 3, 46, (u, z) => {
+        const x = u - center, y = z - potionWindowBase;
+        return y >= 3 && potionWindowArch(x, y) <= potionGlassRadius && !potionWindowCross(x, y);
+      }, center === potionWindowCenters[0] ? 3 : 4);
+    }
+  }
 }
 
 // banieren
@@ -3292,6 +3367,7 @@ function frame(ms) {
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
+  drawRoomWindowLife(t);
   if (currentRoom === rooms.potion) {
     drawRackBubbles(t);
     ctx.drawImage(rackGlass, 0, 0);
