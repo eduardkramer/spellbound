@@ -1726,25 +1726,44 @@ const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
 
 let skeletonInspectBody;
 
-function drawAlchemistGrip(left, top, lift) {
-  const elbowX = left + 7 - Math.round(lift * 3);
-  const elbowY = top + 28 - Math.round(lift * 4);
-  const handX = left + 5 - Math.round(lift * 5);
-  const handY = top + 31 - Math.round(lift * 13);
+// Schouder, elleboog en hand zijn per pose op het pixelraster gezet.
+const alchemistPoses = [
+  { elbow: [6, 27], hand: [3, 32], tilt: 0 },
+  { elbow: [6, 27], hand: [0, 28], tilt: 0 },
+  { elbow: [6, 27], hand: [3, 22], tilt: 1 }
+];
 
-  line(ctx, left + 10, top + 24, elbowX, elbowY, '#b6977b');
-  line(ctx, elbowX, elbowY, handX, handY, '#b6977b');
-  line(ctx, elbowX, elbowY - 1, handX, handY - 1, '#e2ccaa');
+function drawAlchemistGrip(left, top, pose) {
+  const [ex, ey] = pose.elbow;
+  const [hx, hy] = pose.hand;
+  const handX = left + hx, handY = top + hy;
+  line(ctx, left + 11, top + 23, left + ex, top + ey, '#b6977b');
+  line(ctx, left + ex, top + ey, handX, handY, '#e2ccaa');
+  dot(ctx, left + ex, top + ey, '#f0d9b7');
 
-  // De hals van de fles volgt de vingers, ook tijdens het zakken.
-  const bottleX = handX - 1;
-  dot(ctx, bottleX, handY - 2, '#d2a474');
-  rect(ctx, bottleX - 1, handY - 1, 3, 3, '#aacac0');
-  ell(ctx, bottleX, handY + 3, 3, 2, '#709a91');
-  ell(ctx, bottleX, handY + 3, 2, 1, '#85c960');
-  dot(ctx, bottleX - 1, handY + 2, '#e3f4c9');
-  rect(ctx, handX, handY, 2, 1, '#f0d9b7');
-  dot(ctx, handX + 1, handY + 1, '#b6977b');
+  // In de kijkpose kantelt de fles om de hals die de vingers vasthouden.
+  const bottleX = handX - (pose.tilt ? 4 : 2);
+  const bottleY = handY + (pose.tilt ? -3 : 3);
+  line(ctx, handX - 1, handY, bottleX, bottleY, '#aacac0');
+  ell(ctx, bottleX, bottleY, 3, 2, '#709a91');
+  ell(ctx, bottleX, bottleY + 1, 2, 1, '#85c960');
+  dot(ctx, bottleX - 1, bottleY - 1, '#e3f4c9');
+  dot(ctx, handX + (pose.tilt ? 1 : -2), handY - (pose.tilt ? 0 : 2), '#d2a474');
+  rect(ctx, handX - 1, handY, 2, 1, '#f0d9b7');
+  dot(ctx, handX, handY + 1, '#b6977b');
+}
+
+function drawAlchemistInspectionFace(left, top) {
+  // Een links gericht profiel onder de bestaande hoed.
+  const rows = ['....bbbb...', '..bbhhhbb..', '.bhhbhhbb..',
+    'bhobhhbb...', 'bbobhbb....', '.bbhhb.....', '...bbbb....'];
+  const palette = { b: '#b6977b', h: '#e9d3af', o: '#822b3c' };
+  rows.forEach((row, dy) => {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] !== '.') dot(ctx, left + 9 + dx, top + 14 + dy, palette[row[dx]]);
+    }
+  });
+  dot(ctx, left + 11, top + 17, '#ff5159');
 }
 
 function drawSkeletonMage(t) {
@@ -1757,10 +1776,10 @@ function drawSkeletonMage(t) {
   const headWidth = 23, headHeight = 21;
   const cycle = (t + 3) % 12;
   const inspecting = cycle < 4;
-  const lift = inspecting ? Math.min(cycle, 4 - cycle, 1) : 0;
-  const ease = lift * lift * (3 - 2 * lift);
-  const nod = inspecting ? Math.round(ease) : Math.sin(t * 2.4) > .62 ? -1 : 0;
-  const lean = inspecting ? -Math.round(ease) : 0;
+  const phase = Math.min(cycle, 4 - cycle);
+  const poseIndex = phase < .3 ? 0 : phase < .64 ? 1 : 2;
+  const looking = inspecting && poseIndex === 2;
+  const nod = inspecting ? 0 : Math.sin(t * 2.4) > .62 ? -1 : 0;
   if (inspecting && !skeletonInspectBody) {
     skeletonInspectBody = document.createElement('canvas');
     skeletonInspectBody.width = width;
@@ -1777,15 +1796,17 @@ function drawSkeletonMage(t) {
     left, top + headHeight, width, height - headHeight);
   ctx.drawImage(skeletonMage, headWidth, 0, width - headWidth, headHeight,
     left + headWidth, top, width - headWidth, headHeight);
-  ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
-    left + lean, top + nod, headWidth, headHeight);
-
-  const eyeY = top + nod;
-  dot(ctx, left + lean + 14, eyeY + 16, '#8f263b');
-  dot(ctx, left + lean + 15, eyeY + 16, '#ff5159');
-  dot(ctx, left + lean + 18, eyeY + 14, '#ff5159');
-
-  if (inspecting) drawAlchemistGrip(left, top, ease);
+  if (looking) {
+    ctx.drawImage(skeletonMage, 0, 0, headWidth, 14, left, top, headWidth, 14);
+    drawAlchemistInspectionFace(left, top);
+  } else {
+    ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
+      left, top + nod, headWidth, headHeight);
+    dot(ctx, left + 14, top + nod + 16, '#8f263b');
+    dot(ctx, left + 15, top + nod + 16, '#ff5159');
+    dot(ctx, left + 18, top + nod + 14, '#ff5159');
+  }
+  if (inspecting) drawAlchemistGrip(left, top, alchemistPoses[poseIndex]);
 
   const flicker = Math.sin(t * 11) + .45 * Math.sin(t * 18);
   dot(ctx, left + 27, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
