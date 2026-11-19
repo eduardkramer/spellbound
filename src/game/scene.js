@@ -552,17 +552,17 @@ const rackHeight = 40;
 const rackBubbles = [];
 const rackGlass = mk();
 const rackBottleShapes = [
-  ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
-  ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
-  ['ccc', 'ggg', 'g.g', 'ghg', 'g.g', 'glg', 'gbg', 'glg', 'gdg', '.g.'],
-  ['..ccc..', '..ggg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
+  ['..ccc..', '..gsg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
+  ['.ccccc.', '.gsssg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
+  ['ccc', 'gsg', 'g.g', 'ghg', 'g.g', 'glg', 'gbg', 'glg', 'gdg', '.g.'],
+  ['..ccc..', '..gsg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
 ];
 
 function drawRackBottle(g, a, z, shape, color) {
   const [x, y] = P(a, rackDepth - .5, z);
   const rows = rackBottleShapes[shape];
   const colors = {
-    c: '#b0875e', g: '#879ea8', h: '#f4eadd',
+    c: '#b0875e', s: sh(color, 1.18), g: '#879ea8', h: '#f4eadd',
     l: color, d: sh(color, .58), b: sh(color, 1.28),
     k: color === '#78a655' ? '#cadc83' : sh(color, 1.53)
   };
@@ -572,7 +572,9 @@ function drawRackBottle(g, a, z, shape, color) {
   rows.forEach((row, dy) => {
     for (let dx = 0; dx < row.length; dx++) {
       if (row[dx] === '.') continue;
-      dot(g, left + dx, top + dy, colors[row[dx]]);
+      const pixel = row[dx];
+      const pigment = pixel === 'c' && dx === (row.length >> 1) ? '#d7af7e' : colors[pixel];
+      dot(g, left + dx, top + dy, pigment);
     }
   });
   const surface = rows.findIndex(row => row.includes('l'));
@@ -611,9 +613,10 @@ function drawPotionRack(g) {
   // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
   box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
+  // Op de middelste plank blijft ruimte voor het flesje op de werkbank.
   const stock = [
     [[6.5, 1, 3], [8, 2, 0], [12, 0, 2], [16, 3, 1], [21, 1, 2], [24.5, 2, 4]],
-    [[6.5, 0, 1], [8, 2, 3], [11.5, 1, 4], [14, 2, 2], [20, 3, 0], [24, 0, 3]],
+    [[6.5, 0, 1], [8, 2, 3], [11.5, 1, 4], [14, 2, 2], [24, 0, 3]],
     [[6.5, 3, 2], [8.5, 0, 3], [12, 2, 1], [15.5, 1, 0], [20, 0, 4], [25, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
