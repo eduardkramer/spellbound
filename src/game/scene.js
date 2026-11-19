@@ -468,6 +468,8 @@ function drawLibraryShelves(g) {
 const potionBookcases = [[3, 31], [80, 109]];
 const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
+const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
+const [potionLampX, potionLampY] = P(32, 1, 78);
 
 function drawPotionWorkshop(g) {
   const timber = flat('#aa7650', '#704831', '#563529');
@@ -494,6 +496,25 @@ function drawPotionWorkshop(g) {
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
 
+  // Gedroogde kruiden hangen naast het recept boven de doorgang.
+  wallL(g, 0, 48, 66, 59, 82, (u, z) => {
+    const x = u - 48, y = z - 59;
+    if (y > 20 || y < 2) return '#78523e';
+    if (y === 18 && x >= 6 && x <= 11) return '#a06a43';
+    if (y > 4 && y < 15 && x > 3 && x < 14 && (y % 4 === 0 || x === 8)) return '#a27754';
+    return '#dfbb80';
+  });
+  for (const [b, color] of [[17.5, '#758854'], [37.5, '#b182b1']]) {
+    const [x, y] = P(0, b, 75);
+    line(g, x, y - 5, x, y + 7, '#bc9466');
+    for (let i = 0; i < 5; i++) {
+      const side = i % 2 ? 1 : -1;
+      line(g, x, y + i, x + side * 4, y + i + 5, '#4a583c');
+      ell(g, x + side * 4, y + i + 5, 2, 1, i % 3 ? color : sh(color, 1.3));
+    }
+    rect(g, x - 1, y, 3, 2, '#d3a86b');
+  }
+
   // Een lage wandkast met drie rijen flessen onder de ramen.
   box(g, 8, 0, 0, 48, 5, 46, timber);
   wallR(g, 5, 16, 112, 0, 46, (u, z) => {
@@ -516,9 +537,43 @@ function drawPotionWorkshop(g) {
   });
 }
 
+function drawPotionLight(t) {
+  const x = potionLampX, y = potionLampY;
+  glow(x, y, 34, 31, '255,181,85', .047 + Math.sin(t * 4) * .009);
+  line(ctx, x, y - 13, x, y - 6, '#a7774a');
+  ell(ctx, x, y, 5, 7, '#5b3a35');
+  ell(ctx, x, y + 1, 4, 5, '#d58c46');
+  ell(ctx, x, y + 1, 2, 3, Math.sin(t * 7) > 0 ? '#ffe9a6' : '#ffd080');
+  rect(ctx, x - 3, y + 5, 7, 2, '#815237');
+}
+
+function drawPotionWorkbench(g) {
+  const a = workbenchA, b = workbenchB;
+  const wood = woodC('#815334'), trim = woodC('#b78252');
+  for (const da of [-3, 2]) for (const db of [-3, 2]) {
+    box(g, a + da, b + db, 0, 1, 1, 12, wood);
+  }
+  box(g, a - 3.8, b - 3.8, 11, 7.6, 7.6, 2, trim);
+  const paper = flat('#edcf94', '#ae8053', '#b88c62');
+  box(g, a - 2.7, b - 1, 13, 4, 3, 1, paper);
+  for (let row = 0; row < 3; row++) {
+    line(g, ...P(a - 2, b - .4 + row * .7, 14), ...P(a + (row === 2 ? -.6 : .6), b - .4 + row * .7, 14), '#a47b58');
+  }
+  const [mx, my] = P(a + 2, b - 2, 13);
+  ell(g, mx, my - 1, 4, 3, '#514b5d');
+  ell(g, mx, my - 3, 4, 2, '#8c8799');
+  ell(g, mx, my - 3, 2, 1, '#3b3846');
+  line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
+}
+
 function drawCauldron(t) {
   const [x, y] = P(cauldronA, cauldronB, 0);
   ell(ctx, x, y, 19, 6, '#282339');
+  ell(ctx, x, y - 2, 11, 4, '#58363a');
+  for (let i = -2; i <= 2; i++) {
+    const flame = 2 + Math.round(2 * (1 + Math.sin(t * 9 + i * 2)));
+    rect(ctx, x + i * 3, y - flame, 2, flame, i % 2 ? '#ed9252' : '#ffc771');
+  }
   for (const offset of [-11, 11]) {
     rect(ctx, x + offset - 2, y - 7, 5, 8, '#242733');
     rect(ctx, x + offset - 1, y - 5, 2, 4, '#545561');
@@ -556,6 +611,14 @@ function drawCauldron(t) {
 
 function potionFloor(a, b) {
   const column = Math.floor(a / TILE_SIZE), row = Math.floor(b / TILE_SIZE);
+  const edge = Math.min(a - 11, 39 - a, b - 15, 35 - b);
+  if (edge >= 0) {
+    if (edge < 1) return '#442d47';
+    if (edge < 2) return '#b78a63';
+    const diamond = Math.abs(a - 25) + Math.abs(b - 25);
+    if (diamond >= 5 && diamond < 6) return '#bf936c';
+    return hash(Math.floor(a * 2), Math.floor(b * 2)) > .8 ? '#775369' : '#69475e';
+  }
   if (a % TILE_SIZE < .5 || b % TILE_SIZE < .5) return '#39334f';
   return sh('#56516b', .89 + hash(column, row) * .2);
 }
@@ -1251,10 +1314,15 @@ rooms.potion.floor = [
   '........',
   '.....XX.',
   '.....XX.',
-  'X.......',
+  'X..X....',
   'X.......'
 ];
-const potionFurnishings = [{ depth: cauldronA + cauldronB, animate: drawCauldron }];
+const workbenchCanvas = mk();
+drawPotionWorkbench(workbenchCanvas.getContext('2d'));
+const potionFurnishings = [
+  { depth: workbenchA + workbenchB, canvas: workbenchCanvas },
+  { depth: cauldronA + cauldronB, animate: drawCauldron }
+];
 let currentRoom = rooms.tower;
 const currentFloor = () => currentRoom.floor;
 const wizard = { a: 4, b: 4, direction: 'se', step: null };
@@ -2042,6 +2110,8 @@ function frame(ms) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
       drawLibraryPortrait(t);
       drawLibraryLights(t);
+    } else {
+      drawPotionLight(t);
     }
     drawRoomOccupants(t, dt);
     // De voorste muur staat vóór de meubels en personages op de vloer.
