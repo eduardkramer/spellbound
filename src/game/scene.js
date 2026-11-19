@@ -473,7 +473,6 @@ const [potionLampX, potionLampY] = P(32, 1, 78);
 const potionRackImage = new Image();
 
 function drawPotionRackSprite(g) {
-  if (!potionRackImage.naturalWidth) return false;
   // Deze kast staat schuin onder de ramen. Behoud de ingebouwde kijkhoek.
   const [x, y] = P(19, 14, 0);
   const width = 76;
@@ -483,7 +482,6 @@ function drawPotionRackSprite(g) {
   g.imageSmoothingQuality = 'high';
   g.drawImage(potionRackImage, x, y - 39, width, potionRackImage.naturalHeight * scale);
   g.restore();
-  return true;
 }
 
 // Silhouetten met afzonderlijke pixels voor glas, vloeistof en etiketten.
@@ -612,7 +610,7 @@ function drawPotionWorkshop(g) {
   }
 
   // Gebruik het getekende rek zolang de sprite niet beschikbaar is.
-  if (drawPotionRackSprite(g)) return;
+  if (potionRackImage.naturalWidth) return;
   box(g, 8, 0, 0, 48, 5, 46, timber);
   wallR(g, 5, 16, 112, 0, 46, potionRackColor);
   for (const [a, color] of [[11, '#77b9c6'], [32, '#aa85c0'], [53, '#d1a266']]) {
@@ -2224,11 +2222,21 @@ function drawFurnishing({ canvas, animate }, t, dt) {
 let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
-  ctx.clearRect(0, 0, W, H);
   updateWizard(dt);
+  // Houd de PNG op bijna zijn eigen resolutie, zonder de logische spelmaten te wijzigen.
+  const showRackSprite = currentRoom === rooms.potion && potionRackImage.naturalWidth > 0;
+  const renderScale = showRackSprite ? 3 : 1;
+  if (cv.width !== W * renderScale) {
+    cv.width = W * renderScale;
+    cv.height = H * renderScale;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+  }
+  ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky(t);
   ctx.drawImage(currentRoom.canvas, 0, 0);
+  if (showRackSprite) drawPotionRackSprite(ctx);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (currentRoom !== rooms.tower) {
