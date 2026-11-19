@@ -869,7 +869,7 @@ function drawCauldronFire(x, y, t, intensity) {
 function drawCauldron(t, dt) {
   const [x, y] = P(cauldronA, cauldronB, 0);
   const lit = questStage === 'ready' || questStage === 'complete';
-  if (lit) cauldronIgnition = Math.min(1, cauldronIgnition + dt / 1.15);
+  if (lit) cauldronWarmup = Math.min(1, cauldronWarmup + dt / 2.5);
   ell(ctx, x, y, 19, 6, '#282339');
   ell(ctx, x, y - 1, 10, 3, '#3e302f');
   line(ctx, x - 7, y + 1, x + 6, y - 1, '#76573f');
@@ -886,7 +886,7 @@ function drawCauldron(t, dt) {
     dot(ctx, x + dx, y - 21 + Math.round((1 - Math.abs(dx) / 10) * 2), '#999485');
   }
   ell(ctx, x, y - 11, 12, 7, '#303440');
-  drawCauldronFire(x, y + 1, t, cauldronIgnition);
+  drawCauldronFire(x, y + 1, t, Math.min(1, cauldronWarmup * 2.2));
   for (const side of [-1, 1]) {
     ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
     ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
@@ -902,9 +902,14 @@ function drawCauldron(t, dt) {
 
   ell(ctx, x, y - 26, 19, 8, '#242431');
   ell(ctx, x, y - 27, 18, 7, '#73757b');
-  ell(ctx, x, y - 27, 16, 5, lit ? '#4f9e42' : '#3d6646');
-  ell(ctx, x - 2, y - 27, 12, 4, lit ? '#76c951' : '#547c51');
-  for (let i = 0; lit && i < 7; i++) {
+  const warmth = cauldronWarmup * cauldronWarmup * (3 - 2 * cauldronWarmup);
+  const liquidColor = (cold, hot) => `rgb(${cold.map((channel, i) =>
+    Math.round(channel + (hot[i] - channel) * warmth)).join(',')})`;
+  ell(ctx, x, y - 27, 16, 5, liquidColor([61, 102, 70], [79, 158, 66]));
+  ell(ctx, x - 2, y - 27, 12, 4, liquidColor([84, 124, 81], [118, 201, 81]));
+  ctx.save();
+  for (let i = 0; warmth > i / 8 && i < 7; i++) {
+    ctx.globalAlpha = Math.min(1, (warmth - i / 8) * 4);
     const age = (t * (.55 + hash(i, 17) * .27) + hash(i, 8)) % 1;
     const bx = x + (hash(i, 13) - .5) * 22;
     const by = y - 27 + (hash(i, 15) - .5) * 6;
@@ -916,19 +921,27 @@ function drawCauldron(t, dt) {
       dot(ctx, bx + 1, by - 3 - 10 * (age - .8), '#d2f989');
     }
   }
-  // Roerlepel met de steel op de achterste rand.
-  line(ctx, x + 4, y - 28, x + 18, y - 40, '#593b30');
-  line(ctx, x + 5, y - 29, x + 18, y - 41, '#bd8959');
-  dot(ctx, x + 18, y - 41, '#e0ac75');
-  for (let i = 0; lit && i < 4; i++) {
+  ctx.restore();
+
+  // Een deels ondergedompelde houten lepel met een verdikte grip.
+  ell(ctx, x + 5, y - 28, 4, 2, '#573b30');
+  ell(ctx, x + 5, y - 29, 3, 2, '#94633f');
+  line(ctx, x + 3, y - 29, x + 6, y - 30, '#c39563');
+  line(ctx, x + 6, y - 30, x + 18, y - 40, '#593b30');
+  line(ctx, x + 6, y - 31, x + 18, y - 41, '#bd8959');
+  line(ctx, x + 15, y - 39, x + 19, y - 42, '#dba873');
+  dot(ctx, x + 18, y - 42, '#ecc295');
+  dot(ctx, x + 18, y - 40, '#976441');
+  ctx.save();
+  for (let i = 0; i < 4 && warmth > 0; i++) {
     const age = (t * .39 + i / 4) % 1;
-    ctx.globalAlpha = Math.sin(age * Math.PI) * .29;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .29 * warmth;
     const steamX = x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3 + age * 5;
     const steamY = y - 31 - 25 * age;
     ell(ctx, steamX, steamY, 2 + Math.floor(age * 4), 2, '#bfe88e');
     ell(ctx, steamX - 2, steamY + 1, 2, 1, '#e9edbc');
   }
-  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 function potionFloor(a, b) {
@@ -1816,7 +1829,7 @@ try {
   // De quest werkt ook wanneer lokale opslag is uitgeschakeld.
 }
 
-let cauldronIgnition = questStage === 'ready' || questStage === 'complete' ? 1 : 0;
+let cauldronWarmup = questStage === 'ready' || questStage === 'complete' ? 1 : 0;
 
 function hasQuestWand() {
   return document.getElementById('hotbar')?.dataset.hasWand === 'true';
