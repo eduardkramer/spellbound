@@ -525,89 +525,105 @@ function drawLibraryShelves(g) {
 }
 
 const potionBookcases = [[3, 31], [87, 109]];
-const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
-const potionRackImage = new Image();
+const rackStart = 2 * TILE_SIZE;
+const rackWidth = 4 * TILE_SIZE;
+const rackDepth = 5;
+const rackHeight = 40;
+const rackBubbles = [];
+const rackBottleShapes = [
+  ['..ccc..', '..ggg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
+  ['.ccccc.', '.ggggg.', 'g.....g', 'gh....g', 'ghllldg', 'glkdldg', 'gdkbkdg', 'gdddddg', '.ggggg.'],
+  ['ccc', 'ggg', 'g.g', 'ghg', 'g.g', 'glg', 'gbg', 'glg', 'gdg', '.g.'],
+  ['..ccc..', '..ggg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
+];
 
-function drawPotionRackSprite(g) {
-  // De voetpunten van de voorste poten in de sprite van 230 × 150.
-  const leftFoot = [4, 119], rightFoot = [215, 149];
-  const extraDepth = 2;
-  const [leftX, leftY] = P(2 * TILE_SIZE, 4 + extraDepth, 0);
-  const [rightX, rightY] = P(6 * TILE_SIZE, 4 + extraDepth, 0);
-  const scale = (rightX - leftX) / (rightFoot[0] - leftFoot[0]);
-  const slopeCorrection = (rightY - leftY) / (rightX - leftX)
-    - (rightFoot[1] - leftFoot[1]) / (rightFoot[0] - leftFoot[0]);
-  g.save();
-  g.imageSmoothingEnabled = false;
-  g.translate(leftX, leftY);
-  g.transform(scale, scale * slopeCorrection, 0, scale, 0, 0);
-  // Verleng alleen het hout langs de achterkant, buiten het front met de flessen.
-  const depthX = 2 * extraDepth / scale;
-  const depthY = -extraDepth / scale - slopeCorrection * depthX;
-  const rearLeft = [13 - leftFoot[0], 1 - leftFoot[1]];
-  const rearRight = [229 - leftFoot[0], 37 - leftFoot[1]];
-  const rearBase = [229 - leftFoot[0], 140 - leftFoot[1]];
-  for (const [start, end, color] of [
-    [rearLeft, rearRight, '#a87349'],
-    [rearRight, rearBase, '#694333']
-  ]) {
-    g.beginPath();
-    g.moveTo(...start);
-    g.lineTo(...end);
-    g.lineTo(end[0] + depthX, end[1] + depthY);
-    g.lineTo(start[0] + depthX, start[1] + depthY);
-    g.closePath();
-    g.fillStyle = color;
-    g.fill();
-  }
-  g.drawImage(potionRackImage, -leftFoot[0], -leftFoot[1]);
-  g.restore();
+function drawRackBottle(g, a, z, shape, color) {
+  const [x, y] = P(a, rackDepth - .5, z);
+  const rows = rackBottleShapes[shape];
+  const colors = {
+    c: '#b0875e', g: '#879ea8', h: '#f4eadd',
+    l: color, d: sh(color, .58), b: sh(color, 1.28),
+    k: color === '#78a655' ? '#cadc83' : sh(color, 1.53)
+  };
+  const left = Math.round(x) - (rows[0].length >> 1);
+  const top = Math.round(y) - rows.length + 1;
+  ell(g, x, y, (rows[0].length >> 1) + 1, 1, '#4b3631');
+  rows.forEach((row, dy) => {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] === '.') continue;
+      dot(g, left + dx, top + dy, colors[row[dx]]);
+    }
+  });
+  const surface = rows.findIndex(row => row.includes('l'));
+  rackBubbles.push([left + rows[surface].indexOf('l'), top + surface, sh(color, 1.62)]);
 }
 
-// Silhouetten met afzonderlijke pixels voor glas, vloeistof en etiketten.
-const potionShelfSlots = [
-  [0, 1, 2, 4, 5, 7, 9, 10],
-  [0, 2, 3, 5, 6, 8, 10, 11],
-  [1, 2, 4, 6, 7, 9, 11]
-];
-const potionSprites = [
-  ['..ccc..', '..ggg..', '..g.g..', '.g...g.', 'gh...sg', 'ghlllsG', 'gllplsG', 'gllplsG', '.GsssG.', '..GGG..'],
-  ['...c...', '..ggg..', '...g...', '..g.g..', '..ghg..', '.glhsg.', '.gllsG.', 'glpplsG', 'gllsssG', '.GGGGG.'],
-  ['..ccc..', '..ggg..', '.ggggg.', 'gg...gG', 'ghlllsG', 'glpppsG', 'glpppsG', 'glsssGG', '.GGGGG.'],
-  ['...c...', '..ggg..', '..g.g..', '..ghg..', '..glg..', '..glg..', '..gsg..', '..gsg..', '...G...']
-];
+function drawPotionRack(g) {
+  const trim = {
+    top: (a, b) => {
+      if (b >= rackDepth) return '#c19669';
+      if (b >= 2.5 && b < 3) return '#795236';
+      return hash(Math.floor(a / 5), Math.floor(b * 2)) > .72 ? '#b0885c' : '#9c714b';
+    },
+    left: (u, z) => {
+      if (z === 2 || z === 14 || z === 26 || z === rackHeight - 1) {
+        return hash(u, z) > .86 ? '#a7774e' : '#be9061';
+      }
+      return '#69452f';
+    },
+    right: '#573b30'
+  };
+  const post = flat('#a87b53', (u, z) => {
+    const edge = (u - rackStart * 2) % (rackWidth * 2 - 4);
+    if (z < 2) return '#63432f';
+    if (edge === 0) return '#69452f';
+    if (edge === 3) return '#4b3228';
+    if (edge === 1) return '#a67b56';
+    return hash(u, z >> 2) > .78 ? '#96704d' : '#825936';
+  }, (u, z) => {
+    if (u === 0 || u === rackDepth * 2 - 1 || z < 3 || z >= rackHeight - 4) return '#765238';
+    if (u === 1 || z === rackHeight - 5) return '#49342c';
+    return hash(u, z >> 2) > .83 ? '#634735' : '#56402f';
+  });
+  const inner = flat('#49352f', '#332731', '#392a2c');
+  box(g, rackStart, 0, 0, rackWidth, 1.5, rackHeight, inner);
+  // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
+  box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
-function potionRackColor(u, z) {
-  const x = u - 16;
-  const grain = hash(Math.floor(u / 4), z);
-  const trim = x < 3 || x > 92 || x % 32 < 2;
-  if (trim || z < 5 || z > 43) {
-    if ((z === 3 || z === 42) && x % 32 === 1) return '#dfb879';
-    if (x % 32 === 1 || z === 44) return grain > .72 ? '#c69967' : '#ac774f';
-    return grain > .75 ? '#78513b' : '#64412f';
-  }
-  const row = Math.floor((z - 5) / 13), y = (z - 5) % 13;
-  if (y < 2) return y === 1 ? (grain > .72 ? '#bc895c' : '#9e6b49') : '#4e322c';
+  const stock = [
+    [[8, 1, 3], [12, 2, 0], [16, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
+    [[8, 0, 1], [12, 2, 3], [15.5, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
+    [[7.5, 3, 2], [12.5, 0, 3], [16, 2, 1], [19.5, 1, 0], [24, 0, 4], [29, 3, 1]]
+  ];
+  const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
+  stock.forEach((row, index) => {
+    const z = 3 + index * 12;
+    box(g, rackStart, 0, z - 2, rackWidth, rackDepth, 2, trim);
+    for (const [offset, shape, color] of row) {
+      drawRackBottle(g, rackStart + offset, z, shape, palette[color]);
+    }
+  });
 
-  const slot = Math.floor(x / 8);
-  const sprite = potionSprites[(slot + row * 3) % potionSprites.length];
-  const pixel = potionShelfSlots[row].includes(slot)
-    ? sprite[sprite.length - 1 - (y - 2)]?.[x % 8 - 1]
-    : undefined;
-  const liquid = potionColors[(slot + 2 * row) % potionColors.length];
-  switch (pixel) {
-    case 'c': return y % 2 ? '#ccaa76' : '#9f754d';
-    case 'g': return '#9cbdc7';
-    case 'G': return '#4e6578';
-    case 'h': return '#effbdf';
-    case 'l': return liquid;
-    case 's': return sh(liquid, .61);
-    case 'p': return x % 2 ? '#eed6a7' : '#b4926d';
-    default: return y >= 10 ? '#241e2a' : grain > .8 ? '#3a2933' : '#32252f';
+  const stileWidth = 2;
+  for (const a of [rackStart, rackStart + rackWidth - stileWidth]) {
+    box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
+    for (const z of [4, 16, 28, 36]) {
+      const [x, y] = P(a + 1, rackDepth, z);
+      dot(g, x, y, '#503a2c');
+      dot(g, x, y - 1, '#bf9b69');
+    }
   }
+  box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
+}
+
+function drawRackBubbles(t) {
+  rackBubbles.forEach(([x, y, color], index) => {
+    const phase = (t * .85 + index * .381) % 1;
+    if (phase < .34) dot(ctx, x, y, color);
+  });
 }
 
 const workshopStone = brickFn({
@@ -634,6 +650,32 @@ function drawWallIvy(g, vines) {
   }
 }
 
+const potionWindowCenters = [39, 88];
+const potionWindowBase = 48;
+const potionGlassRadius = 18;
+
+function potionWindowArch(x, y) {
+  return Math.hypot(x, Math.max(0, y - 31));
+}
+
+function potionWindowCross(x, y) {
+  return x >= -1 && x < 1 || y >= 27 && y < 29;
+}
+
+function potionWindowLight(a, b) {
+  // Licht door de bovenste ruit valt verder de kamer in.
+  const y = (b - 5) * 1.3;
+  if (y < 3 || y >= 49) return 0;
+  const u = 2 * (a - (b - 18) * .36);
+  for (const center of potionWindowCenters) {
+    const x = u - center;
+    const arch = potionWindowArch(x, y);
+    if (arch > potionGlassRadius || potionWindowCross(x, y)) continue;
+    return (1 - b / 65) * (arch > potionGlassRadius - 1 ? .55 : 1);
+  }
+  return 0;
+}
+
 function drawPotionWorkshop(g) {
   const timber = {
     top: (a, b) => {
@@ -650,13 +692,13 @@ function drawPotionWorkshop(g) {
     wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
   }
 
-  for (const center of [39, 88]) {
-    wallR(g, 0, center - 21, center + 22, 48, 101, (u, z) => {
-      const x = u - center, y = z - 48;
-      const arch = Math.hypot(x, Math.max(0, y - 31));
+  for (const center of potionWindowCenters) {
+    wallR(g, 0, center - 21, center + 22, potionWindowBase, potionWindowBase + 53, (u, z) => {
+      const x = u - center, y = z - potionWindowBase;
+      const arch = potionWindowArch(x, y);
       if (arch > 21) return null;
-      if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
-      if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
+      if (arch > potionGlassRadius || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
+      if (potionWindowCross(x, y)) return '#77513e';
       return autumnSunset(u - 21, y / 49, false);
     });
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
@@ -681,17 +723,8 @@ function drawPotionWorkshop(g) {
     rect(g, x - 1, y, 3, 2, '#d3a86b');
   }
 
-  // Gebruik het getekende rek zolang de sprite niet beschikbaar is.
-  if (potionRackImage.naturalWidth) return;
-  box(g, 8, 0, 0, 48, 5, 46, timber);
-  wallR(g, 5, 16, 112, 0, 46, potionRackColor);
-  for (const [a, color] of [[11, '#77b9c6'], [32, '#aa85c0'], [53, '#d1a266']]) {
-    const glass = flat(sh(color, 1.25), color, sh(color, .65));
-    box(g, a - 1.4, 1, 46, 2.8, 3, 5, glass);
-    box(g, a - .75, 1.6, 51, 1.5, 1.8, 2, glass);
-    box(g, a - .85, 1.5, 53, 1.7, 2, 1, timber);
-    dot(g, ...P(a - .8, 4, 49), '#e5ead3');
-  }
+  drawPotionRack(g);
+
 }
 
 function drawPotionLight(t) {
@@ -781,13 +814,9 @@ function potionFloor(a, b) {
   const contact = Math.min(
     contactShade(a, b, cauldronA, cauldronB, 9, 7),
     contactShade(a, b, workbenchA, workbenchB, 5, 5),
-    b < 8 && a >= 8 && a < 56 ? .74 : 1
+    b < rackDepth + 2 && a >= rackStart && a < rackStart + rackWidth ? .74 : 1
   );
-  // De twee ramen werpen schuine lichtbanen met de schaduw van hun stijlen.
-  const ray = a - b * .47;
-  const pane = Math.min(Math.abs(ray - 13), Math.abs(ray - 36));
-  const daylight = b >= 7 && b < 51 && pane >= .85 && pane < 6.4
-    ? (1 - b / 58) * (pane < 5.8 ? 1 : .43) : 0;
+  const daylight = potionWindowLight(a, b);
 
   let color;
   if (edge >= 0) {
@@ -805,7 +834,7 @@ function potionFloor(a, b) {
   const rgb = color.startsWith('#')
     ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
     : color.slice(4, -1).split(',').map(Number);
-  const light = [213, 225, 199];
+  const light = [241, 207, 158];
   const amount = daylight * .84;
   return 'rgb(' + rgb.map((channel, index) =>
     Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
@@ -845,15 +874,29 @@ function buildStatic(sg, room) {
 /* ---------- meubels ---------- */
 const furnishings = [];
 const flasks = [];
-function flask(g, x, y, liq, type) {
+function flask(g, x, y, liq, type, collection = flasks) {
   if (type === 'tube') {
     rect(g, x - 1, y - 9, 3, 9, '#cfe8ff'); rect(g, x - 1, y - 7, 3, 7, liq); dot(g, x, y - 5, sh(liq, 1.4)); rect(g, x - 1, y - 10, 3, 1, '#a8703a');
+  } else if (type === 'jar') {
+    rect(g, x - 4, y - 7, 9, 7, '#a5cbd9');
+    rect(g, x - 3, y - 5, 7, 4, liq);
+    rect(g, x - 3, y - 9, 7, 2, '#a8703a');
+    rect(g, x - 3, y - 7, 1, 5, '#f3ffff');
+  } else if (type === 'diamond') {
+    for (let row = 0; row < 9; row++) {
+      const w = Math.min(row, 8 - row);
+      rect(g, x - w, y - 9 + row, w * 2 + 1, 1, '#cfe8ff');
+      if (w > 0 && row >= 3) rect(g, x - w + 1, y - 9 + row, w * 2 - 1, 1, liq);
+    }
+    rect(g, x - 1, y - 11, 3, 3, '#cfe8ff');
+    rect(g, x - 1, y - 12, 3, 1, '#a8703a');
+    dot(g, x - 2, y - 5, '#ffffff');
   } else {
     ell(g, x, y - 4, 4, 4, '#cfe8ff'); ell(g, x, y - 4, 3, 3, liq);
     dot(g, x - 2, y - 6, '#ffffff'); dot(g, x - 1, y - 7, '#ffffff');
     rect(g, x - 1, y - 11, 3, 4, '#cfe8ff'); rect(g, x - 1, y - 9, 3, 2, liq); rect(g, x - 1, y - 12, 3, 1, '#a8703a');
   }
-  flasks.push({ x, y, liq });
+  collection?.push({ x, y });
 }
 const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
@@ -1066,15 +1109,6 @@ for (const room of Object.values(rooms)) {
   }
 }
 buildFront();
-
-potionRackImage.addEventListener('load', () => {
-  rooms.potion.floor[0] = 'X.XXXX..';
-  const background = potionC.getContext('2d');
-  background.clearRect(0, 0, W, H);
-  buildStatic(background, rooms.potion);
-  outline(background, '#14183a');
-}, { once: true });
-potionRackImage.src = 'assets/sprites/potion-rack.png';
 
 const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   const canvas = mk(), g = canvas.getContext('2d');
@@ -1506,13 +1540,17 @@ function glow(x, y, rx, ry, rgb, a) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-function drawFlaskGlints(t) {
-  for (let i = 0; i < flasks.length; i++) {
-    const f = flasks[i];
-    ctx.globalAlpha = .85;
-    for (let k = 0; k < 2; k++) dot(ctx, f.x + (k ? 1 : -1), f.y - 2 - ((t * 4 + i * 1.7 + k * 2.3) % 5), '#f4fff8');
-    ctx.globalAlpha = 1;
+function drawFlaskGlint(g, x, y, t, phase, size = 1) {
+  g.save();
+  g.globalAlpha *= .85;
+  for (let k = 0; k < 2; k++) {
+    dot(g, x + (k ? size : -size), y - (2 + ((t * 4 + phase * 1.7 + k * 2.3) % 5)) * size, '#f4fff8');
   }
+  g.restore();
+}
+
+function drawFlaskGlints(t) {
+  flasks.forEach(({ x, y }, i) => drawFlaskGlint(ctx, x, y, t, i));
 }
 
 /* ---------- speelbare tovenaar ---------- */
@@ -1534,7 +1572,7 @@ rooms.tower.floor = towerFloor;
 rooms.library.floor = libraryFloorMap;
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
-  'XXXXXXX.',
+  'X.XXXX..',
   'X.......',
   '........',
   '.....XX.',
@@ -2444,20 +2482,11 @@ function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
   fireCharge = canBreatheFire() ? Math.min(1, fireCharge + dt * 7) : 0;
-  // Teken de sprite met fijnere pixels dan de kamer, binnen dezelfde spelmaten.
-  const showRackSprite = currentRoom === rooms.potion && potionRackImage.naturalWidth > 0;
-  const renderScale = showRackSprite ? 2 : 1;
-  if (cv.width !== W * renderScale) {
-    cv.width = W * renderScale;
-    cv.height = H * renderScale;
-    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-  }
   ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
-  if (showRackSprite) drawPotionRackSprite(ctx);
+  if (currentRoom === rooms.potion) drawRackBubbles(t);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (currentRoom !== rooms.tower) {
