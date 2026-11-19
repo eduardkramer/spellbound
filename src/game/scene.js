@@ -473,14 +473,15 @@ const [potionLampX, potionLampY] = P(32, 1, 78);
 const potionRackImage = new Image();
 
 function drawPotionRackSprite(g) {
-  // Deze kast staat schuin onder de ramen. Behoud de ingebouwde kijkhoek.
-  const [x, y] = P(19, 14, 0);
+  // Lijn de voorrand uit met de vloer onder de ramen.
+  const [x, y] = P(14, 4, 0);
   const width = 76;
   const scale = width / potionRackImage.naturalWidth;
   g.save();
-  g.imageSmoothingEnabled = true;
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(potionRackImage, x, y - 39, width, potionRackImage.naturalHeight * scale);
+  g.imageSmoothingEnabled = false;
+  g.translate(x, y - 39);
+  g.transform(1, .35, 0, 1, 0, 0);
+  g.drawImage(potionRackImage, 0, 0, width, potionRackImage.naturalHeight * scale);
   g.restore();
 }
 
@@ -1434,7 +1435,7 @@ rooms.library.floor = libraryFloorMap;
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
   'XXXXXXX.',
-  'X.XX....',
+  'X.......',
   '........',
   '.....XX.',
   '.....XX.',
@@ -2223,9 +2224,9 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
-  // Houd de PNG op bijna zijn eigen resolutie, zonder de logische spelmaten te wijzigen.
+  // Teken de sprite met fijnere pixels dan de kamer, binnen dezelfde spelmaten.
   const showRackSprite = currentRoom === rooms.potion && potionRackImage.naturalWidth > 0;
-  const renderScale = showRackSprite ? 3 : 1;
+  const renderScale = showRackSprite ? 2 : 1;
   if (cv.width !== W * renderScale) {
     cv.width = W * renderScale;
     cv.height = H * renderScale;
