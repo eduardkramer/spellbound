@@ -474,12 +474,12 @@ const potionRackImage = new Image();
 
 function drawPotionRackSprite(g) {
   // Lijn de voorrand uit met de vloer onder de ramen.
-  const [x, y] = P(15.5, 4, 0);
-  const width = 70;
+  const [x, y] = P(20, 4, 0);
+  const width = 3 * TILE_SIZE * 2 + 4;
   const scale = width / potionRackImage.naturalWidth;
   g.save();
   g.imageSmoothingEnabled = false;
-  g.translate(x, y - 36);
+  g.translate(x, y - 27);
   g.transform(1, .32, 0, 1, 0, 0);
   g.drawImage(potionRackImage, 0, 0, width, potionRackImage.naturalHeight * scale);
   g.restore();
@@ -991,6 +991,7 @@ for (const room of Object.values(rooms)) {
 buildFront();
 
 potionRackImage.addEventListener('load', () => {
+  rooms.potion.floor[0] = 'X.XXXX..';
   const background = potionC.getContext('2d');
   background.clearRect(0, 0, W, H);
   buildStatic(background, rooms.potion);
