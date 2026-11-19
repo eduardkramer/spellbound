@@ -475,11 +475,12 @@ const potionRackImage = new Image();
 function drawPotionRackSprite(g) {
   if (!potionRackImage.naturalWidth) return false;
   // Koppel de voorrand van de sprite aan dezelfde isometrische as als de muur.
-  const [x, y] = P(8, 5, 46);
+  const [x, y] = P(11, 5, 46);
+  const scale = .41;
   g.save();
   g.imageSmoothingEnabled = false;
   g.translate(x, y);
-  g.transform(.475, .178, 0, .4, 0, 0);
+  g.transform(scale, .138, 0, scale, 0, 0);
   g.drawImage(potionRackImage, -1, -13);
   g.restore();
   return true;
