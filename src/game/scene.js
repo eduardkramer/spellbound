@@ -1892,6 +1892,13 @@ function talkToSkeletonMage() {
   questDialogue.showModal();
 }
 
+document.getElementById('reset-quest')?.addEventListener('click', () => {
+  cauldronHeat = 0;
+  cauldronWarmup = 0;
+  advanceCauldronQuest('available');
+  cv.focus({ preventScroll: true });
+});
+
 questDialogue?.addEventListener('close', () => {
   if (questDialogue.returnValue === 'advance') {
     if (questStage === 'available') advanceCauldronQuest('active');
