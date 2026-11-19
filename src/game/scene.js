@@ -2041,6 +2041,7 @@ const moves = new Map([
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
 let wandLight = false;
+let wandLightFade = 0;
 let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
@@ -2185,7 +2186,18 @@ searchBookStack?.addEventListener('click', findMissingPage);
 
 const stockDarkness = mk();
 
+function updateWandLight(dt) {
+  if (!WIZARD.staffEquipped) wandLight = false;
+  const step = dt / .45;
+  wandLightFade = wandLight ? Math.min(1, wandLightFade + step) : Math.max(0, wandLightFade - step);
+}
+
+function wandLightIntensity() {
+  return wandLightFade * wandLightFade * (3 - 2 * wandLightFade);
+}
+
 function drawStockDarkness(x, y, wandTip, t) {
+  const light = wandTip ? wandLightIntensity() : 0;
   const mask = stockDarkness.getContext('2d');
   mask.clearRect(0, 0, W, H);
   mask.fillStyle = 'rgba(13, 12, 31, .81)';
@@ -2202,10 +2214,10 @@ function drawStockDarkness(x, y, wandTip, t) {
   }
 
   reveal(...P(5, (STOCK_DOOR_ROW + .5) * TILE_SIZE, 14), 45, .7);
-  if (wandLight && wandTip) {
+  if (light > 0) {
     const [tipX, tipY] = wandTip;
-    reveal(tipX, tipY, 64 + Math.sin(t * 3) * 2, 1);
-    reveal(x, y - 4, 52, .82);
+    reveal(tipX, tipY, 38 + 26 * light + Math.sin(t * 3) * 2, light);
+    reveal(x, y - 4, 33 + 19 * light, .82 * light);
   }
   mask.globalCompositeOperation = 'source-over';
 
@@ -2213,16 +2225,21 @@ function drawStockDarkness(x, y, wandTip, t) {
   ctx.globalCompositeOperation = 'source-atop';
   ctx.drawImage(stockDarkness, 0, 0);
   ctx.restore();
-  if (wandLight && wandTip) {
-    glow(...wandTip, 11, 10, '158,225,255', .16);
+  if (light > 0) {
+    glow(...wandTip, 11, 10, '158,225,255', .16 * light);
+    ctx.save();
+    ctx.globalAlpha = light;
     dot(ctx, wandTip[0], wandTip[1], '#f2fbff');
+    ctx.restore();
   }
 }
 
 function drawMissingPage(t) {
   if (questManager?.status(pageQuest) !== 'active') return;
   const distance = Math.hypot(wizard.a - pageStackTile[0], wizard.b - pageStackTile[1]);
-  if (distance > (wandLight && WIZARD.staffEquipped ? 4 : 2)) return;
+  const light = WIZARD.staffEquipped ? wandLightIntensity() : 0;
+  const visibility = Math.max(0, Math.min(1, 3 + 2 * light - distance));
+  if (!visibility) return;
   const [a, b] = pageStackTile.map(tile => (tile + .5) * TILE_SIZE);
   const [x, y] = P(a + 1, b + 1.7, 11);
   const pulse = .5 + .5 * Math.sin(t * 2.3);
@@ -2231,20 +2248,22 @@ function drawMissingPage(t) {
   halo.addColorStop(0, `rgba(255, 219, 137, ${.34 + pulse * .11})`);
   halo.addColorStop(.5, 'rgba(241, 178, 81, .19)');
   halo.addColorStop(1, 'rgba(241, 178, 81, 0)');
+  ctx.globalAlpha = visibility;
   ctx.fillStyle = halo;
   ctx.fillRect(x - 22, y - 20, 40, 40);
   for (const [offset, delay] of [[-9, 0], [4, .31], [10, .65], [-3, .83]]) {
     const age = (t * .7 + delay) % 1;
     const sx = x + offset + Math.sin(age * 4 + offset) * 2;
     const sy = y - 3 - age * 19;
-    ctx.globalAlpha = Math.sin(age * Math.PI);
+    ctx.globalAlpha = visibility * Math.sin(age * Math.PI);
     rect(ctx, sx - 1, sy, 3, 1, '#f5c769');
     rect(ctx, sx, sy - 1, 1, 3, '#f5c769');
     dot(ctx, sx, sy, '#fff4cb');
   }
-  ctx.restore();
+  ctx.globalAlpha = visibility;
   rect(ctx, x - 1, y, 4, 2, '#efd79f');
   dot(ctx, x + 2, y, '#fff2c6');
+  ctx.restore();
 }
 
 function drawReturnedPage() {
@@ -3181,7 +3200,7 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
-  if (!WIZARD.staffEquipped) wandLight = false;
+  updateWandLight(dt);
   updateStockroomHint();
   if (searchBookStack) searchBookStack.hidden = !canSearchBookStack();
   fireCharge = canBreatheFire() ? Math.min(1, fireCharge + dt * 7) : 0;
