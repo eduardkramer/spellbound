@@ -2186,7 +2186,24 @@ function drawMissingPage(t) {
   if (questManager?.status(pageQuest) !== 'active') return;
   const [a, b] = pageStackTile.map(tile => (tile + .5) * TILE_SIZE);
   const [x, y] = P(a + 1, b + 1.7, 11);
-  glow(x - 2, y + 2, 14, 9, '255,209,124', .045 + .012 * Math.sin(t * 2.3));
+  const pulse = .5 + .5 * Math.sin(t * 2.3);
+  ctx.save();
+  const halo = ctx.createRadialGradient(x - 2, y, 1, x - 2, y, 20);
+  halo.addColorStop(0, `rgba(255, 219, 137, ${.34 + pulse * .11})`);
+  halo.addColorStop(.5, 'rgba(241, 178, 81, .19)');
+  halo.addColorStop(1, 'rgba(241, 178, 81, 0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(x - 22, y - 20, 40, 40);
+  for (const [offset, delay] of [[-9, 0], [4, .31], [10, .65], [-3, .83]]) {
+    const age = (t * .7 + delay) % 1;
+    const sx = x + offset + Math.sin(age * 4 + offset) * 2;
+    const sy = y - 3 - age * 19;
+    ctx.globalAlpha = Math.sin(age * Math.PI);
+    rect(ctx, sx - 1, sy, 3, 1, '#f5c769');
+    rect(ctx, sx, sy - 1, 1, 3, '#f5c769');
+    dot(ctx, sx, sy, '#fff4cb');
+  }
+  ctx.restore();
   rect(ctx, x - 1, y, 4, 2, '#efd79f');
   dot(ctx, x + 2, y, '#fff2c6');
 }
