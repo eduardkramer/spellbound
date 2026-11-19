@@ -528,8 +528,9 @@ const potionBookcases = [[3, 31], [87, 109]];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
-const rackStart = 2 * TILE_SIZE;
-const rackWidth = 4 * TILE_SIZE;
+const rackStart = 2 * TILE_SIZE + 1;
+const rackEnd = 6 * TILE_SIZE;
+const rackWidth = rackEnd - rackStart;
 const rackDepth = 5;
 const rackHeight = 40;
 const rackBubbles = [];
@@ -594,9 +595,9 @@ function drawPotionRack(g) {
   box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
   const stock = [
-    [[8, 1, 3], [12, 2, 0], [16, 0, 2], [20, 3, 1], [25, 1, 2], [29, 2, 4]],
-    [[8, 0, 1], [12, 2, 3], [15.5, 1, 4], [18, 2, 2], [24, 3, 0], [28, 0, 3]],
-    [[7.5, 3, 2], [12.5, 0, 3], [16, 2, 1], [19.5, 1, 0], [24, 0, 4], [29, 3, 1]]
+    [[7.5, 1, 3], [11, 2, 0], [15, 0, 2], [19, 3, 1], [24, 1, 2], [28, 2, 4]],
+    [[7.5, 0, 1], [11, 2, 3], [14.5, 1, 4], [17, 2, 2], [23, 3, 0], [27, 0, 3]],
+    [[7.5, 3, 2], [11.5, 0, 3], [15, 2, 1], [18.5, 1, 0], [23, 0, 4], [28, 3, 1]]
   ];
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
@@ -608,7 +609,7 @@ function drawPotionRack(g) {
   });
 
   const stileWidth = 2;
-  for (const a of [rackStart, rackStart + rackWidth - stileWidth]) {
+  for (const a of [rackStart, rackEnd - stileWidth]) {
     box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
     for (const z of [4, 16, 28, 36]) {
       const [x, y] = P(a + 1, rackDepth, z);
@@ -814,7 +815,7 @@ function potionFloor(a, b) {
   const contact = Math.min(
     contactShade(a, b, cauldronA, cauldronB, 9, 7),
     contactShade(a, b, workbenchA, workbenchB, 5, 5),
-    b < rackDepth + 2 && a >= rackStart && a < rackStart + rackWidth ? .74 : 1
+    b < rackDepth + 2 && a >= rackStart && a < rackEnd ? .74 : 1
   );
   const daylight = potionWindowLight(a, b);
 
