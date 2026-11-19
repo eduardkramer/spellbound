@@ -11,6 +11,9 @@ const ROOM_TILES = 8;
 const N = ROOM_TILES * TILE_SIZE;
 const EXIT_COLUMN = 4;
 const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
+const POTION_COLUMNS = 7;
+const POTION_ROWS = 5;
+const POTION_DOOR_ROW = 3;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
@@ -23,7 +26,19 @@ if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk(), secondC = mk();
+const statC = mk(), secondC = mk(), potionC = mk();
+const rooms = {
+  tower: { canvas: statC, exits: [
+    { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' },
+    { tile: [ROOM_TILES - 1, POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
+  ] },
+  library: { canvas: secondC, exits: [
+    { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' }
+  ] },
+  potion: { canvas: potionC, exits: [
+    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'tower', arrival: [ROOM_TILES - 2, POTION_DOOR_ROW], direction: 'nw' }
+  ] }
+};
 
 const P = (a, b, z) => [CX + 2 * (a - b), CY + a + b - z];
 
@@ -224,13 +239,13 @@ function arch(adu, z) {
   const inner = adu <= w2 && (z <= zs ? true : ((adu + c) * (adu + c) + (z - zs) * (z - zs) <= R2 * R2));
   return inner ? 2 : 1;
 }
-function facadeFn(br) {
+function facadeFn(br, span) {
   return (u, z) => {
     if (u >= 0 && z >= 0) return null;
     if (u >= 0) {
-      const r = arch(Math.abs(u - N + .5), z + .5);
+      const r = arch(Math.abs(u - span + .5), z + .5);
       if (r === 2) return z > -22 ? '#10132b' : '#171b38';
-      if (r === 1) return ((Math.floor(Math.abs(u - N) / 3) + Math.floor((z + 60) / 3)) & 1) ? '#7a9cca' : '#6684b6';
+      if (r === 1) return ((Math.floor(Math.abs(u - span) / 3) + Math.floor((z + 60) / 3)) & 1) ? '#7a9cca' : '#6684b6';
     }
     return br(u, z);
   };
@@ -324,22 +339,29 @@ function rightFn(u, z) {
   return brR(u, z);
 }
 
+function passageColor(dx, z) {
+  const curve = Math.hypot(dx, Math.max(0, z - 31));
+  if (curve > 17) return null;
+  if (curve > 12) {
+    const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
+    return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
+  }
+  if (curve > 11) return '#242849';
+  if (z < 3) return '#d6af67';
+  if (z < 9) return '#4d4261';
+  return '#171933';
+}
+
 function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
   box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
-  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => {
-    const dx = u - center;
-    const curve = Math.hypot(dx, Math.max(0, z - 31));
-    if (curve > 17) return null;
-    if (curve > 12) {
-      const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
-      return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
-    }
-    if (curve > 11) return '#242849';
-    if (z < 3) return '#d6af67';
-    if (z < 9) return '#4d4261';
-    return '#171933';
-  });
+  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+}
+
+function drawSidePassage(g, { wallA, tile }) {
+  const center = (tile[1] + .5) * TILE_SIZE;
+  box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
 }
 
 /* ---------- bibliotheek ---------- */
@@ -439,20 +461,34 @@ function drawLibraryShelves(g) {
   }
 }
 
-function buildStatic(sg, library = false) {
-  topFace(sg, 0, 0, N, 0, N, library ? shadedLibraryFloor : shadedTowerFloor);
-  wallL(sg, 0, 0, 2 * N, 0, WH, library ? brL : leftFn);
-  wallR(sg, 0, 0, 2 * N, 0, WH, library ? brR : rightFn);
-  topFace(sg, WH, -T, N, -T, 0, copingFn);
-  topFace(sg, WH, -T, 0, 0, N, copingFn);
-  const mer = { top: copingFn, left: (u, z) => brOutL(u, z), right: (u, z) => brOutR(u, z) };
+function potionFloor(a, b) {
+  const column = Math.floor(a / TILE_SIZE), row = Math.floor(b / TILE_SIZE);
+  if (a % TILE_SIZE < .5 || b % TILE_SIZE < .5) return '#39334f';
+  return sh('#56516b', .89 + hash(column, row) * .2);
+}
+
+function buildStatic(sg, room) {
+  const library = room === rooms.library;
+  const potion = room === rooms.potion;
+  const width = potion ? POTION_COLUMNS * TILE_SIZE : N;
+  const depth = potion ? POTION_ROWS * TILE_SIZE : N;
+  const floor = potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  topFace(sg, 0, 0, width, 0, depth, floor);
+  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : brL);
+  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : brR);
+  topFace(sg, WH, -T, width, -T, 0, copingFn);
+  topFace(sg, WH, -T, 0, 0, depth, copingFn);
+  const mer = { top: copingFn, left: brOutL, right: brOutR };
   box(sg, -T, -T, WH, T, T, 12, mer);
-  box(sg, -T, N - 8, WH, T, 8, 10, mer);
-  box(sg, N - 8, -T, WH, 8, T, 10, mer);
-  wallR(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutL));
-  wallL(sg, N, -2 * T, 2 * N, -F, WH, facadeFn(brOutR));
+  box(sg, -T, depth - 8, WH, T, 8, 10, mer);
+  box(sg, width - 8, -T, WH, 8, T, 10, mer);
+  wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
+  wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) drawLibraryShelves(sg);
-  drawPassage(sg, library);
+  if (!potion) drawPassage(sg, library);
+  for (const exit of room.exits) {
+    if (exit.wallA !== undefined) drawSidePassage(sg, exit);
+  }
 }
 
 /* ---------- meubels ---------- */
@@ -667,9 +703,9 @@ function outline(g, hex) {
   for (let i = 0; i < pts.length; i += 2) g.fillRect(pts[i], pts[i + 1], 1, 1);
 }
 
-for (const [canvas, empty] of [[statC, false], [secondC, true]]) {
-  const background = canvas.getContext('2d');
-  buildStatic(background, empty);
+for (const room of Object.values(rooms)) {
+  const background = room.canvas.getContext('2d');
+  buildStatic(background, room);
   outline(background, '#14183a');
 }
 buildFront();
@@ -1106,8 +1142,11 @@ const towerFloor = [
 ];
 const libraryFloorMap = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILES).fill('.'));
 for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
-let inSecondRoom = false;
-const currentFloor = () => inSecondRoom ? libraryFloorMap : towerFloor;
+rooms.tower.floor = towerFloor;
+rooms.library.floor = libraryFloorMap;
+rooms.potion.floor = Array.from({ length: POTION_ROWS }, () => '.'.repeat(POTION_COLUMNS));
+let currentRoom = rooms.tower;
+const currentFloor = () => currentRoom.floor;
 const wizard = { a: 4, b: 4, direction: 'se', step: null };
 const moves = new Map([
   ['arrowup', [0, -1, 'ne']], ['arrowright', [1, 0, 'se']],
@@ -1174,7 +1213,7 @@ function updateIceBalls(dt) {
       const a = ball.a + ball.da * dt * 36 / steps;
       const b = ball.b + ball.db * dt * 36 / steps;
       const tileA = Math.floor(a / TILE_SIZE), tileB = Math.floor(b / TILE_SIZE);
-      const outside = a < 0 || b < 0 || a >= N || b >= N;
+      const outside = a < 0 || b < 0 || tileA >= currentFloor()[0].length || tileB >= currentFloor().length;
       const blocked = (tileA !== ball.startA || tileB !== ball.startB) && !isWalkable(tileA, tileB);
       if (outside || blocked || ball.age > 2) {
         ball.impact = .001;
@@ -1232,7 +1271,7 @@ function clearRoute() {
 }
 
 function nextToChest(a = wizard.a, b = wizard.b) {
-  return !inSecondRoom && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
+  return currentRoom === rooms.tower && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
 }
 
 function requestChest() {
@@ -1303,14 +1342,14 @@ if (!preview) {
   });
   cv.addEventListener('click', event => {
     const [px, py] = pointerPosition(event);
-    if (!inSecondRoom && chestInventory) {
+    if (currentRoom === rooms.tower && chestInventory) {
       const [x, y] = P(52, 4, 8);
       if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
         requestChest();
         return;
       }
     }
-    if (inSecondRoom && librarianHit) {
+    if (currentRoom === rooms.library && librarianHit) {
       const [x, y] = librarianHit;
       if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
         librarianDialogue.hidden = !librarianDialogue.hidden;
@@ -1321,7 +1360,7 @@ if (!preview) {
       }
     }
     librarianDialogue.hidden = true;
-    const seats = inSecondRoom ? librarySeats : [armchairSeat];
+    const seats = currentRoom === rooms.library ? librarySeats : currentRoom === rooms.tower ? [armchairSeat] : [];
     const seat = seats.find(({ tile, hit }) => {
       const [x, y] = P((tile[0] + .5) * TILE_SIZE, (tile[1] + .5) * TILE_SIZE, 0);
       return Math.abs(px + CX - x) <= hit[0] && py + CY >= y - hit[1] && py + CY <= y + 3;
@@ -1331,13 +1370,19 @@ if (!preview) {
       clearRoute();
       return;
     }
-    const tile = seat ? seat.approach : tileAtPointer(event);
+    const clickedExit = currentRoom.exits.find(({ wallA, tile }) => {
+      if (wallA === undefined) return false;
+      const u = 2 * wallA - px - 1;
+      const z = wallA + Math.floor(u / 2) - 1 - py;
+      return z >= 0 && passageColor(2 * (tile[1] + .5) * TILE_SIZE - u, z);
+    });
+    const tile = clickedExit?.tile ?? (seat ? seat.approach : tileAtPointer(event));
     if (!tile || !isWalkable(...tile)) return;
     const start = wizard.step ?? wizard;
     const nextRoute = findRoute(start, ...tile);
     if (!nextRoute) return;
     heldKeys.clear();
-    requestedSeat = seat ?? null;
+    requestedSeat = clickedExit ? null : seat ?? null;
     requestedChest = false;
     route = nextRoute;
     destination = route.length ? tile : null;
@@ -1347,7 +1392,8 @@ if (!preview) {
 // Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
 function findRoute(start, targetA, targetB) {
   const queue = [{ a: start.a, b: start.b, previous: null }];
-  const tileId = (a, b) => b * ROOM_TILES + a;
+  const columns = currentFloor()[0].length;
+  const tileId = (a, b) => b * columns + a;
   const visited = new Set([tileId(start.a, start.b)]);
   for (let index = 0; index < queue.length; index++) {
     const tile = queue[index];
@@ -1428,20 +1474,23 @@ function updateWizard(dt) {
     if (wizard.step.elapsed >= STEP_TIME) {
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
-      if (wizard.a === EXIT_COLUMN && wizard.b === (inSecondRoom ? 0 : ROOM_TILES - 1)) {
-        inSecondRoom = !inSecondRoom;
+      const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
+      if (exit) {
+        currentRoom = rooms[exit.target];
         iceBalls.length = 0;
         castTime = 0;
         librarianDialogue.hidden = true;
-        wizard.b = inSecondRoom ? 1 : ROOM_TILES - 2;
-        wizard.direction = inSecondRoom ? 'sw' : 'ne';
+        [wizard.a, wizard.b] = exit.arrival;
+        wizard.direction = exit.direction;
         requestedSeat = null;
         clearRoute();
         clearHover();
         heldKeys.clear();
-        movementHint.textContent = inSecondRoom
-          ? 'Bibliotheek · Klik op een stoel om te zitten of loop naar de boog om terug te gaan.'
-          : defaultHint;
+        const hints = {
+          library: 'Bibliotheek · Klik op een stoel om te zitten of loop naar de boog om terug te gaan.',
+          potion: 'Drankenkamer · Klik op de boog of loop ernaartoe om terug te gaan.'
+        };
+        movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
       wizard.step = null;
       if (!route.length) destination = null;
@@ -1799,9 +1848,9 @@ function drawRoomOccupants(t, dt) {
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
-  const roomFurnishings = inSecondRoom
+  const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
-    : furnishings;
+    : currentRoom === rooms.tower ? furnishings : [];
   const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
@@ -1874,14 +1923,16 @@ function frame(ms) {
   ctx.clearRect(0, 0, W, H);
   updateWizard(dt);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
-  if (!inSecondRoom) drawSky(t);
-  ctx.drawImage(inSecondRoom ? secondC : statC, 0, 0);
+  if (currentRoom === rooms.tower) drawSky(t);
+  ctx.drawImage(currentRoom.canvas, 0, 0);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
-  if (inSecondRoom) {
-    if (librarianDialogue.hidden) updateLibrarian(dt);
-    drawLibraryPortrait(t);
-    drawLibraryLights(t);
+  if (currentRoom !== rooms.tower) {
+    if (currentRoom === rooms.library) {
+      if (librarianDialogue.hidden) updateLibrarian(dt);
+      drawLibraryPortrait(t);
+      drawLibraryLights(t);
+    }
     drawRoomOccupants(t, dt);
     requestAnimationFrame(frame);
     return;
