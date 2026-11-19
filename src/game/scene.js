@@ -1548,12 +1548,44 @@ const skeletonMage = new Image();
 skeletonMage.src = 'assets/sprites/skeleton-mage.png';
 const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
 
-function drawSkeletonMage() {
+function drawSkeletonMage(t) {
   if (!skeletonMage.naturalWidth) return;
   const [x, y] = P(skeletonMageA, skeletonMageB, 0);
+  const width = skeletonMage.naturalWidth, height = skeletonMage.naturalHeight;
+  const left = Math.round(x - width / 2), top = Math.round(y - height);
   ell(ctx, x, y, 7, 2, 'rgba(25,20,34,.42)');
-  ctx.drawImage(skeletonMage, Math.round(x - skeletonMage.naturalWidth / 2),
-    Math.round(y - skeletonMage.naturalHeight));
+
+  const headWidth = 23, headHeight = 19;
+  const nod = Math.sin(t * 2.4) > .62 ? -1 : 0;
+  ctx.drawImage(skeletonMage, 0, headHeight, width, height - headHeight,
+    left, top + headHeight, width, height - headHeight);
+  ctx.drawImage(skeletonMage, headWidth, 0, width - headWidth, headHeight,
+    left + headWidth, top, width - headWidth, headHeight);
+  ctx.drawImage(skeletonMage, 0, 0, headWidth, headHeight,
+    left, top + nod, headWidth, headHeight);
+
+  // Leesbare oogkassen en kaak op de kleine spelsprite.
+  const faceY = top + nod;
+  rect(ctx, left + 13, faceY + 14, 6, 3, '#e8cfaf');
+  rect(ctx, left + 14, faceY + 17, 5, 2, '#d8b994');
+  rect(ctx, left + 15, faceY + 19, 4, 1, '#a78168');
+  rect(ctx, left + 14, faceY + 15, 2, 2, '#282030');
+  dot(ctx, left + 18, faceY + 15, '#282030');
+  dot(ctx, left + 15, faceY + 16, '#78e6ba');
+  dot(ctx, left + 17, faceY + 17, '#59413f');
+  dot(ctx, left + 16, faceY + 18, '#78574d');
+  dot(ctx, left + 18, faceY + 18, '#78574d');
+
+  const flicker = Math.sin(t * 11) + .45 * Math.sin(t * 18);
+  dot(ctx, left + 29, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
+  dot(ctx, left + 30, top + 9 - Math.round(flicker), '#60c18e');
+  const ember = (t * 1.3) % 1;
+  if (ember < .72) {
+    ctx.save();
+    ctx.globalAlpha = 1 - ember;
+    dot(ctx, left + 29 + Math.sin(t * 6), top + 7 - ember * 5, '#9cf6bd');
+    ctx.restore();
+  }
 }
 
 const potionFurnishings = [
