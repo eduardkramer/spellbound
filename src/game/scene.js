@@ -848,21 +848,38 @@ function drawPotionWorkbench(g) {
   line(g, mx, my - 3, mx + 3, my - 8, '#c7b3a4');
 }
 
+// Opeenvolgende silhouetten van een laag, breed vuur tussen de ketelpoten.
+const cauldronFlameFrames = [
+  [1, 3, 5, 4, 2, 3, 7, 10, 8, 5, 3, 3, 6, 8, 7, 4, 3, 2, 1],
+  [1, 2, 4, 7, 4, 3, 5, 8, 11, 7, 5, 3, 4, 7, 9, 6, 3, 2, 1],
+  [1, 3, 5, 8, 5, 3, 4, 6, 9, 10, 6, 4, 3, 5, 8, 8, 5, 3, 1],
+  [1, 2, 4, 6, 8, 4, 3, 5, 8, 10, 8, 4, 3, 5, 7, 9, 6, 2, 1],
+  [1, 3, 6, 5, 7, 5, 3, 7, 9, 8, 6, 4, 4, 7, 9, 6, 4, 3, 1],
+  [1, 4, 6, 5, 3, 4, 6, 9, 8, 6, 4, 3, 5, 9, 7, 5, 4, 2, 1]
+];
+
 function drawCauldronFire(x, y, t, intensity) {
   if (intensity <= 0) return;
-  ell(ctx, x, y, 10, 3, '#68332b');
-  for (let i = 0; i < 5; i++) {
-    const dx = (i - 2) * 4;
-    const pulse = Math.sin(t * (9 + i) + i * 2) * .5 + .5;
-    const height = Math.max(1, Math.round(intensity * (4 + pulse * 5 - Math.abs(i - 2))));
-    const base = y + (i % 2);
-    line(ctx, x + dx - 1, base, x + dx + (pulse > .5 ? 1 : 0), base - height, '#b3452e');
-    line(ctx, x + dx, base, x + dx, base - Math.round(height * .75), '#f78938');
-    if (height >= 3) line(ctx, x + dx + 1, base, x + dx + 1, base - Math.floor(height / 2), '#ffcf68');
-    const age = (t * .9 + i * .37) % 1;
-    if (height >= 5 && age < .62) {
-      dot(ctx, x + dx + Math.sin(age * 4) * 2, base - height - age * 4, '#fcb358');
-    }
+  ell(ctx, x, y + 1, 11, 3, '#502636');
+  ell(ctx, x, y, 9, 2, '#8e342c');
+  const frame = cauldronFlameFrames[Math.floor(t * 12) % cauldronFlameFrames.length];
+  for (const [i, tip] of frame.entries()) {
+    const height = Math.round(tip * intensity);
+    if (!height) continue;
+    const dx = i - 9;
+    const baseY = y - (Math.abs(dx) > 6 ? 1 : 0);
+    rect(ctx, x + dx, baseY - height + 1, 1, height, '#b73b2e');
+    const orange = Math.floor(height * .8);
+    if (orange) rect(ctx, x + dx, baseY - orange + 1, 1, orange, '#f47b31');
+    const core = Math.floor(height * (i % 3 === 0 ? .54 : .4));
+    if (core) rect(ctx, x + dx, baseY - core + 1, 1, core, '#ffbc45');
+    if (core >= 3) rect(ctx, x + dx, baseY - 1, 1, 2, '#ffea89');
+  }
+  for (let i = 0; i < 4; i++) {
+    const age = (t * (1.1 + i * .13) + i * .31) % 1;
+    if (intensity < .45 || age >= .82) continue;
+    dot(ctx, x + (i - 1.5) * 5 + Math.sin(age * 5 + i) * 2,
+      y - 3 - age * 11 * intensity, age < .38 ? '#ffd06a' : '#b85037');
   }
 }
 
