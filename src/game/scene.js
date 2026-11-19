@@ -11,8 +11,8 @@ const ROOM_TILES = 8;
 const N = ROOM_TILES * TILE_SIZE;
 const EXIT_COLUMN = 4;
 const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
-const POTION_COLUMNS = 7;
-const POTION_ROWS = 5;
+const POTION_COLUMNS = 8;
+const POTION_ROWS = 7;
 const POTION_DOOR_ROW = 3;
 const LIBRARY_POTION_DOOR_ROW = 4;
 const T = 20;     // muurdikte
@@ -465,6 +465,95 @@ function drawLibraryShelves(g) {
   }
 }
 
+const potionBookcases = [[3, 31], [80, 109]];
+const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
+const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
+
+function drawPotionWorkshop(g) {
+  const timber = flat('#aa7650', '#704831', '#563529');
+  for (const [start, end] of potionBookcases) {
+    box(g, 0, start / 2, 0, 4, (end - start) / 2, 87, timber);
+    wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
+  }
+
+  for (const center of [39, 88]) {
+    wallR(g, 0, center - 21, center + 22, 48, 101, (u, z) => {
+      const x = u - center, y = z - 48;
+      const arch = Math.hypot(x, Math.max(0, y - 31));
+      if (arch > 21) return null;
+      if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
+      if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
+      const distantRidge = 19 + 6 * Math.sin(u * .17) + 4 * Math.cos(u * .32);
+      const nearRidge = 11 + 5 * Math.sin(u * .24 + 1);
+      if (y < nearRidge) return hash(u, z) > .78 ? '#569072' : '#407762';
+      if (y < distantRidge) return '#789f91';
+      if (Math.hypot(u - 86, (y - 36) * 1.4) < 5) return '#fff0bf';
+      if (y >= 32 && y < 35 && Math.sin(u * .19) > .68) return '#dde7dc';
+      return y > 33 ? '#9cc2c6' : '#bcd7cc';
+    });
+    box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
+  }
+
+  // Een lage wandkast met drie rijen flessen onder de ramen.
+  box(g, 8, 0, 0, 48, 5, 46, timber);
+  wallR(g, 5, 16, 112, 0, 46, (u, z) => {
+    const x = u - 16;
+    if (x < 3 || x > 92 || x % 32 < 2 || z < 5 || z > 43) {
+      return x % 32 === 1 || z === 44 ? '#b07a52' : '#66402e';
+    }
+    const row = Math.floor((z - 5) / 13), y = (z - 5) % 13;
+    if (y < 2) return y === 1 ? '#ac754d' : '#623d2b';
+    const slot = Math.floor(x / 8), dx = x % 8 - 4;
+    const width = (slot + row) % 3 === 0 ? 2 : 3;
+    if (y === 11 && Math.abs(dx) <= 1) return '#bc9367';
+    if (y >= 8 && y <= 10 && Math.abs(dx) <= 1) return '#b4d2d6';
+    if (y >= 2 && y <= 8 && Math.abs(dx) <= (y === 8 || y === 2 ? width - 1 : width)) {
+      const liquid = potionColors[(slot + 2 * row) % potionColors.length];
+      if (dx === 1 && y === 6) return '#f7eee2';
+      return y >= 7 ? '#c7dedb' : dx === -width || y === 2 ? sh(liquid, .65) : liquid;
+    }
+    return '#2c202a';
+  });
+}
+
+function drawCauldron(t) {
+  const [x, y] = P(cauldronA, cauldronB, 0);
+  ell(ctx, x, y, 19, 6, '#282339');
+  for (const offset of [-11, 11]) {
+    rect(ctx, x + offset - 2, y - 7, 5, 8, '#242733');
+    rect(ctx, x + offset - 1, y - 5, 2, 4, '#545561');
+  }
+  ell(ctx, x, y - 15, 17, 15, '#252632');
+  ell(ctx, x - 2, y - 15, 14, 13, '#3b3e4b');
+  ell(ctx, x, y - 11, 12, 7, '#303440');
+  for (const side of [-1, 1]) {
+    ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
+    ell(ctx, x + side * 17, y - 21, 2, 2, '#292632');
+  }
+  ell(ctx, x, y - 26, 19, 8, '#242431');
+  ell(ctx, x, y - 27, 18, 7, '#73757b');
+  ell(ctx, x, y - 27, 16, 5, '#4f9e42');
+  ell(ctx, x - 2, y - 27, 12, 4, '#76c951');
+  for (let i = 0; i < 7; i++) {
+    const age = (t * (.55 + hash(i, 17) * .27) + hash(i, 8)) % 1;
+    const bx = x + (hash(i, 13) - .5) * 22;
+    const by = y - 27 + (hash(i, 15) - .5) * 6;
+    const radius = age < .45 ? 1 : 2;
+    if (age < .8) {
+      ell(ctx, bx, by, radius, 1, '#abe86e');
+      dot(ctx, bx - 1, by - 1, '#e1ff9c');
+    } else {
+      dot(ctx, bx + 1, by - 3 - 10 * (age - .8), '#d2f989');
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    const age = (t * .39 + i / 4) % 1;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .34;
+    ell(ctx, x + (i - 1.5) * 6 + Math.sin(age * 5 + i) * 3, y - 31 - 22 * age, 2 + Math.floor(age * 4), 2, '#bfe88e');
+  }
+  ctx.globalAlpha = 1;
+}
+
 function potionFloor(a, b) {
   const column = Math.floor(a / TILE_SIZE), row = Math.floor(b / TILE_SIZE);
   if (a % TILE_SIZE < .5 || b % TILE_SIZE < .5) return '#39334f';
@@ -489,6 +578,7 @@ function buildStatic(sg, room) {
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) drawLibraryShelves(sg);
+  if (potion) drawPotionWorkshop(sg);
   if (!potion) drawPassage(sg, library);
   for (const exit of room.exits) {
     if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
@@ -1154,7 +1244,17 @@ const libraryFloorMap = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILE
 for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
 rooms.tower.floor = towerFloor;
 rooms.library.floor = libraryFloorMap;
-rooms.potion.floor = Array.from({ length: POTION_ROWS }, () => '.'.repeat(POTION_COLUMNS));
+// De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
+rooms.potion.floor = [
+  'XXXXXXX.',
+  'X.......',
+  '........',
+  '.....XX.',
+  '.....XX.',
+  'X.......',
+  'X.......'
+];
+const potionFurnishings = [{ depth: cauldronA + cauldronB, animate: drawCauldron }];
 let currentRoom = rooms.tower;
 const currentFloor = () => currentRoom.floor;
 const wizard = { a: 4, b: 4, direction: 'se', step: null };
@@ -1860,7 +1960,7 @@ function drawRoomOccupants(t, dt) {
   const [x, y] = P(a, b, 0);
   const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
-    : currentRoom === rooms.tower ? furnishings : [];
+    : currentRoom === rooms.tower ? furnishings : potionFurnishings;
   const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
