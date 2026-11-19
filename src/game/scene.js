@@ -397,7 +397,9 @@ function shadedLibraryFloor(a, b) {
     const centerB = (row + .5) * TILE_SIZE + 1.5;
     shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
   }
-  return shade === 1 ? color : sh(color, shade);
+  const lamplight = Math.max(0, 1 - Math.hypot((a - 39) / 20, (b - 22) / 17),
+    1 - Math.hypot((a - 19) / 17, (b - 41) / 16));
+  return sh(color, shade * (1 + lamplight * .32));
 }
 
 function libraryFloor(a, b) {
@@ -406,11 +408,18 @@ function libraryFloor(a, b) {
     if (edge < .8 || (edge > 1.8 && edge < 2.7)) return '#bea875';
     if (edge < 4) return '#485b48';
     const pattern = Math.abs(a - 33.5) + Math.abs(b - 36.5);
-    return Math.abs(pattern - 13) < .85 ? '#899474' : '#607451';
+    const weave = hash(Math.floor(a * 2), Math.floor(b * 2));
+    if (Math.abs(pattern - 13) < .85 || Math.abs(pattern - 16) < .55) return '#91a17a';
+    return weave > .86 ? '#68795d' : '#52674d';
   }
-  const plank = Math.floor(a / 5);
-  if (a % 5 < .5 || (b + plank * 6) % 16 < .5) return '#4c342b';
-  return hash(plank, Math.floor((b + plank * 6) / 16)) > .5 ? '#80583f' : '#744e39';
+  const row = Math.floor(b / 8);
+  const offsetA = a + (row % 2) * 5;
+  const seam = Math.min(offsetA % 10, b % 8);
+  const stone = hash(Math.floor(offsetA / 10), row);
+  if (seam < .55) return '#33383f';
+  if (seam < 1.15) return '#777f7d';
+  const speck = hash(Math.floor(a * 2), Math.floor(b * 2));
+  return sh('#5e656a', .83 + stone * .24 + (speck > .92 ? .09 : 0));
 }
 
 function libraryShelf(start, end, ladderAt) {
@@ -454,7 +463,7 @@ function libraryShelf(start, end, ladderAt) {
 
 function drawLibraryShelves(g) {
   const depth = 3, height = 87;
-  const timber = flat('#916447', '#603d30', '#51332b');
+  const timber = woodC('#926348');
   for (const [start, end] of leftShelfRanges) {
     box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
     wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
@@ -518,9 +527,9 @@ const workshopStone = brickFn({
   hi: '#697783', lo: '#343d49'
 }, 22, 10);
 
-function drawWorkshopIvy(g) {
+function drawWallIvy(g, vines) {
   // Getekend vóór de meubels, zodat de ranken tegen het metselwerk blijven.
-  for (const [a, b, length] of [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]) {
+  for (const [a, b, length] of vines) {
     let previous = P(a, b, 103);
     for (let drop = 3; drop <= length; drop += 3) {
       const sway = Math.sin(drop * .25 + a + b) * 3;
@@ -547,7 +556,7 @@ function drawPotionWorkshop(g) {
     left: (u, z) => sh('#805337', .82 + hash(u, Math.floor(z / 7)) * .26),
     right: (u, z) => sh('#63402f', .82 + hash(u, Math.floor(z / 7)) * .22)
   };
-  drawWorkshopIvy(g);
+  drawWallIvy(g, [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]);
   for (const [start, end] of potionBookcases) {
     box(g, 0, start / 2, 0, 4, (end - start) / 2, 87, timber);
     wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
@@ -731,8 +740,8 @@ function buildStatic(sg, room) {
   const depth = potion ? POTION_ROWS * TILE_SIZE : N;
   const floor = potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
-  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : potion ? workshopStone : brL);
-  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : potion ? workshopStone : brR);
+  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
+  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
   topFace(sg, WH, -T, width, -T, 0, copingFn);
   topFace(sg, WH, -T, 0, 0, depth, copingFn);
   const mer = { top: copingFn, left: brOutL, right: brOutR };
@@ -741,7 +750,10 @@ function buildStatic(sg, room) {
   box(sg, width - 8, -T, WH, 8, T, 10, mer);
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
-  if (library) drawLibraryShelves(sg);
+  if (library) {
+    drawWallIvy(sg, [[0, 11, 28], [0, 31, 38], [0, 54, 24], [7, 0, 31], [52, 0, 36]]);
+    drawLibraryShelves(sg);
+  }
   if (potion) drawPotionWorkshop(sg);
   if (!potion) drawPassage(sg, library);
   for (const exit of room.exits) {
@@ -1048,7 +1060,7 @@ function drawLibraryLights(t) {
   for (const [a, b] of [[10, 10], [46, 16], [14, 48]]) {
     const [x, y] = P(a, b, 72);
     line(ctx, x, y - 37, x, y - 6, '#443139');
-    glow(x, y, 20, 19, '255,200,109', .1 + .015 * Math.sin(t * 1.4 + a));
+    glow(x, y, 29, 26, '255,189,100', .085 + .015 * Math.sin(t * 1.4 + a));
     ell(ctx, x, y, 6, 6, '#d7a866');
     ell(ctx, x, y - 1, 4, 4, '#fff0bc');
     rect(ctx, x - 2, y - 8, 4, 3, '#966540');
