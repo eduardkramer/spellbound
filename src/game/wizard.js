@@ -109,7 +109,7 @@ function drawStaffGlow(g, x, y, time = 0) {
 }
 
 /* tekent de tovenaar naar rechts-onder (voorkant) of rechts-boven (achterkant); links = gespiegeld */
-function figure(g, back, f, walking, withStaff) {
+function figure(g, back, f, walking, withStaff, castingBody = false) {
   const cx = FX, fy = FY;
   const bob = walking && (f & 1) ? -1 : 0;                  // lichaam gaat op en neer tijdens het lopen
   const hd = !walking && f ? 1 : 0;                         // adem: hoofd 1 px omlaag
@@ -148,10 +148,12 @@ function figure(g, back, f, walking, withStaff) {
   else { dot(g, cx - 2, fy - 8 + bob, goldL); dot(g, cx + 3, fy - 14 + bob, goldL); dot(g, cx - 3, fy - 16 + bob, gold); }
   rect(g, cx - 4, fy - 12 + bob, 8, 1, gold); if (!back) dot(g, cx, fy - 12 + bob, goldL);    // riem
 
-  // armen
-  rect(g, cx - 7, fy - 21 + bob + arm, 2, 8, pal.m); rect(g, cx - 7, fy - 21 + bob + arm, 1, 8, pal.d);
-  rect(g, cx + 5, fy - 21 + bob - arm, 2, 8, pal.m); rect(g, cx + 6, fy - 21 + bob - arm, 1, 8, pal.l);
-  rect(g, cx - 7, fy - 13 + bob + arm, 2, 2, skin); rect(g, cx + 6, fy - 14 + bob - arm, 2, 2, skin);
+  // De castpose tekent de armen apart, zodat de rustpose er niet onderuit steekt.
+  if (!castingBody) {
+    rect(g, cx - 7, fy - 21 + bob + arm, 2, 8, pal.m); rect(g, cx - 7, fy - 21 + bob + arm, 1, 8, pal.d);
+    rect(g, cx + 5, fy - 21 + bob - arm, 2, 8, pal.m); rect(g, cx + 6, fy - 21 + bob - arm, 1, 8, pal.l);
+    rect(g, cx - 7, fy - 13 + bob + arm, 2, 2, skin); rect(g, cx + 6, fy - 14 + bob - arm, 2, 2, skin);
+  }
 
   if (back) {
     drawCape(g, cx, shoulder, capeSwing, true);
@@ -192,15 +194,16 @@ function figure(g, back, f, walking, withStaff) {
 /* ---------- cellen renderen ---------- */
 let staffEquipped = true;
 const variants = {};
-for (const withStaff of [true, false]) {
-const cache = variants[withStaff] = {};
+for (const variant of [true, false, 'casting']) {
+const withStaff = variant === true;
+const cache = variants[variant] = {};
 for (const dir of DIRS) {
   cache[dir] = {};
   for (const st of ['idle', 'walk']) {
     cache[dir][st] = [];
     for (let f = 0; f < FRAMES[st]; f++) {
       const t = document.createElement('canvas'); t.width = CW; t.height = CH;
-      figure(t.getContext('2d'), dir[0] === 'n', f, st === 'walk', withStaff);
+      figure(t.getContext('2d'), dir[0] === 'n', f, st === 'walk', withStaff, variant === 'casting');
       const c = document.createElement('canvas'); c.width = CW; c.height = CH;
       const g = c.getContext('2d');
       if (dir[1] === 'w') { g.translate(CW, 0); g.scale(-1, 1); }
@@ -233,6 +236,38 @@ for (const dir of DIRS) {
 const currentCache = () => variants[staffEquipped];
 const frameOf = (st, t) => Math.floor((t || 0) * FPS[st]) % FRAMES[st];
 
+function drawCastingSleeve(g, shoulder, elbow, wrist, near) {
+  const dark = '#30283e';
+  const cloth = near ? '#665574' : '#4c405d';
+  const highlight = near ? '#9d86a5' : '#776581';
+  // Elke pas langs de mouw krijgt een silhouet, schaduw en verlichte bovenrand.
+  const pixels = [];
+  for (const [start, end, startWidth, endWidth] of [[shoulder, elbow, 2.25, 2], [elbow, wrist, 2, 1.55]]) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(end[0] - start[0], end[1] - start[1])));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      pixels.push([
+        start[0] + (end[0] - start[0]) * t,
+        start[1] + (end[1] - start[1]) * t,
+        startWidth + (endWidth - startWidth) * t
+      ]);
+    }
+  }
+  for (const [x, y, width] of pixels) ell(g, x, y, Math.ceil(width + .35), 2, dark);
+  for (const [x, y, width] of pixels) ell(g, x, y, Math.round(width), 1, cloth);
+  for (const [x, y] of pixels) dot(g, x, y - 1, highlight);
+  dot(g, ...elbow, dark);
+  rect(g, wrist[0] - 1, wrist[1] - 1, 3, 2, '#bd9259');
+  dot(g, wrist[0], wrist[1] - 1, '#e4bd7f');
+}
+
+function drawCastingGrip(g, x, y, side, near) {
+  rect(g, x - 2, y - 1, 4, 3, near ? '#8d5a4c' : '#74504c');
+  rect(g, x - 1, y - 1, 3, 2, near ? '#d6ab84' : '#b28268');
+  dot(g, x - side, y - 2, near ? '#edc7a0' : '#d0a586');
+  dot(g, x + side, y + 1, '#694740');
+}
+
 window.WIZARD = {
   CW, CH, FX, FY, DIRS, FPS, FRAMES,
   castingHand(dir, strength) {
@@ -244,25 +279,31 @@ window.WIZARD = {
     const hand = this.castingHand(dir, strength);
     const side = dir.endsWith('w') ? -1 : 1;
     const targetX = x + hand.x, targetY = y + hand.y;
-    const rightX = x + side * 7 * (1 - strength) + hand.x * strength;
-    const rightY = y - 12 + (hand.y + 12) * strength;
-    const leftX = x - side * 7 * (1 - strength) + hand.x * strength;
-    const leftY = y - 12 + (hand.y + 12) * strength;
-    // De staf volgt de grijphand tot de handen op hetzelfde punt samenkomen.
+    const back = dir.startsWith('n');
+    const reach = strength * strength * (3 - 2 * strength);
+    const nearHand = [x + side * 7 * (1 - reach) + hand.x * reach,
+      y - 12 + (hand.y + 12) * reach];
+    const farHand = [x - side * (7 * (1 - reach) + reach) + hand.x * reach,
+      y - 12 + (hand.y + 11) * reach];
+    const nearShoulder = [x + side * 5, y - (back ? 20 : 18)];
+    const farShoulder = [x - side * 5, y - (back ? 19 : 20)];
+    const nearElbow = [x + side * (8 + 2 * reach), y - 14 + reach * 2];
+    const farElbow = [x - side * (7 - reach * 3), y - 13 + reach * 3];
+    const nearWrist = [nearHand[0] + side, nearHand[1] + 1];
+    const farWrist = [farHand[0] - side * 2, farHand[1] + 1];
+
+    drawCastingSleeve(g, farShoulder, farElbow, farWrist, false);
+    drawCastingGrip(g, ...farHand, side, false);
+    drawCastingSleeve(g, nearShoulder, nearElbow, nearWrist, true);
+
+    // De vingers van de voorste hand sluiten over de staf; de duim blijft zichtbaar.
     g.save();
-    g.translate(rightX, rightY);
-    g.rotate(side * strength * .22);
-    staffPixels((sx, sy, color) => dot(g, sx - 4, sy - 29, color), seated ? 34 : 44);
-    drawStaffGlow(g, 1.5, -24.5, Date.now() / 1000);
+    g.translate(...nearHand);
+    g.rotate(side * reach * .25);
+    staffPixels((sx, sy, color) => dot(g, sx - 4.5, sy - 29, color), seated ? 34 : 44);
+    drawStaffGlow(g, 1, -24.5, Date.now() / 1000);
     g.restore();
-    for (const [shoulder, hx, hy] of [[-6, leftX, leftY], [6, rightX, rightY]]) {
-      for (let i = 0; i <= 7; i++) {
-        rect(g, x + shoulder + (hx - x - shoulder) * i / 7 - 1,
-          y - 19 + (hy - y + 19) * i / 7, 3, 3, '#625575');
-      }
-      rect(g, hx - 1, hy - 1, 3, 3, '#d6ab84');
-      dot(g, hx - 1, hy - 1, '#edc7a0');
-    }
+    drawCastingGrip(g, ...nearHand, side, true);
     if (strength > .45) drawStaffGlow(g, targetX, targetY, Date.now() / 1000);
   },
   drawStaffIcon(g) {
@@ -301,7 +342,7 @@ window.WIZARD = {
   draw(ctx, dir, st, t, x, y, casting = 0) {
     const left = Math.round(x) - FX, top = Math.round(y) - FY + 2;
     const castingStaff = staffEquipped && casting > 0;
-    ctx.drawImage(variants[staffEquipped && !castingStaff][dir][st][frameOf(st, t)], left, top);
+    ctx.drawImage(variants[castingStaff ? 'casting' : staffEquipped][dir][st][frameOf(st, t)], left, top);
     if (castingStaff) {
       this.drawCastingPose(ctx, dir, x, y, casting);
       return;
