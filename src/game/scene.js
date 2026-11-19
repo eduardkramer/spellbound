@@ -531,7 +531,18 @@ const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
 const potionRackImage = new Image();
 
-function drawPotionRackSprite(g) {
+// Posities in de afbeelding van de kast (230 × 150).
+const rackLiquid = [[20, 42], [37, 45], [70, 49], [120, 53], [161, 62],
+  [42, 76], [79, 87], [95, 88], [161, 96],
+  [20, 108], [36, 109], [73, 115], [113, 118], [131, 123], [175, 130]];
+const rackTopFlasks = [
+  [33, '#46d6e8', 'round'],
+  [79, '#ffbd50', 'jar'],
+  [133, '#bf85f5', 'tube'],
+  [182, '#75e78a', 'diamond']
+];
+
+function drawPotionRackSprite(g, t) {
   // De voetpunten van de voorste poten in de sprite van 230 × 150.
   const leftFoot = [4, 119], rightFoot = [215, 149];
   const extraDepth = 2;
@@ -565,6 +576,21 @@ function drawPotionRackSprite(g) {
   }
   g.drawImage(potionRackImage, -leftFoot[0], -leftFoot[1]);
   g.restore();
+
+  const rackPoint = (u, v) => [
+    leftX + (u - leftFoot[0]) * scale,
+    leftY + (v - leftFoot[1] + (u - leftFoot[0]) * slopeCorrection) * scale
+  ];
+  rackLiquid.forEach(([u, v], i) => drawFlaskGlint(g, ...rackPoint(u, v), t, i, .55));
+  rackTopFlasks.forEach(([u, color, shape], i) => {
+    const [x, y] = rackPoint(u, 8 + u * .16);
+    g.save();
+    g.translate(Math.round(x), Math.round(y));
+    g.scale(.75, .75);
+    flask(g, 0, 0, color, shape, null);
+    drawFlaskGlint(g, 0, 0, t, i);
+    g.restore();
+  });
 }
 
 // Silhouetten met afzonderlijke pixels voor glas, vloeistof en etiketten.
@@ -845,15 +871,29 @@ function buildStatic(sg, room) {
 /* ---------- meubels ---------- */
 const furnishings = [];
 const flasks = [];
-function flask(g, x, y, liq, type) {
+function flask(g, x, y, liq, type, collection = flasks) {
   if (type === 'tube') {
     rect(g, x - 1, y - 9, 3, 9, '#cfe8ff'); rect(g, x - 1, y - 7, 3, 7, liq); dot(g, x, y - 5, sh(liq, 1.4)); rect(g, x - 1, y - 10, 3, 1, '#a8703a');
+  } else if (type === 'jar') {
+    rect(g, x - 4, y - 7, 9, 7, '#a5cbd9');
+    rect(g, x - 3, y - 5, 7, 4, liq);
+    rect(g, x - 3, y - 9, 7, 2, '#a8703a');
+    rect(g, x - 3, y - 7, 1, 5, '#f3ffff');
+  } else if (type === 'diamond') {
+    for (let row = 0; row < 9; row++) {
+      const w = Math.min(row, 8 - row);
+      rect(g, x - w, y - 9 + row, w * 2 + 1, 1, '#cfe8ff');
+      if (w > 0 && row >= 3) rect(g, x - w + 1, y - 9 + row, w * 2 - 1, 1, liq);
+    }
+    rect(g, x - 1, y - 11, 3, 3, '#cfe8ff');
+    rect(g, x - 1, y - 12, 3, 1, '#a8703a');
+    dot(g, x - 2, y - 5, '#ffffff');
   } else {
     ell(g, x, y - 4, 4, 4, '#cfe8ff'); ell(g, x, y - 4, 3, 3, liq);
     dot(g, x - 2, y - 6, '#ffffff'); dot(g, x - 1, y - 7, '#ffffff');
     rect(g, x - 1, y - 11, 3, 4, '#cfe8ff'); rect(g, x - 1, y - 9, 3, 2, liq); rect(g, x - 1, y - 12, 3, 1, '#a8703a');
   }
-  flasks.push({ x, y, liq });
+  collection?.push({ x, y });
 }
 const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
@@ -1506,13 +1546,17 @@ function glow(x, y, rx, ry, rgb, a) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-function drawFlaskGlints(t) {
-  for (let i = 0; i < flasks.length; i++) {
-    const f = flasks[i];
-    ctx.globalAlpha = .85;
-    for (let k = 0; k < 2; k++) dot(ctx, f.x + (k ? 1 : -1), f.y - 2 - ((t * 4 + i * 1.7 + k * 2.3) % 5), '#f4fff8');
-    ctx.globalAlpha = 1;
+function drawFlaskGlint(g, x, y, t, phase, size = 1) {
+  g.save();
+  g.globalAlpha *= .85;
+  for (let k = 0; k < 2; k++) {
+    dot(g, x + (k ? size : -size), y - (2 + ((t * 4 + phase * 1.7 + k * 2.3) % 5)) * size, '#f4fff8');
   }
+  g.restore();
+}
+
+function drawFlaskGlints(t) {
+  flasks.forEach(({ x, y }, i) => drawFlaskGlint(ctx, x, y, t, i));
 }
 
 /* ---------- speelbare tovenaar ---------- */
@@ -2457,7 +2501,7 @@ function frame(ms) {
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
-  if (showRackSprite) drawPotionRackSprite(ctx);
+  if (showRackSprite) drawPotionRackSprite(ctx, t);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (currentRoom !== rooms.tower) {
