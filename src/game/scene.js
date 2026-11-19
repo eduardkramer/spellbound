@@ -471,6 +471,42 @@ const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
 
+// Silhouetten met afzonderlijke pixels voor glas, vloeistof en etiketten.
+const potionSprites = [
+  ['..ccc..', '..ggg..', '..g.g..', '.g...g.', 'gh...sg', 'ghlllsG', 'gllplsG', 'gllplsG', '.GsssG.', '..GGG..'],
+  ['...c...', '..ggg..', '...g...', '..g.g..', '..ghg..', '.glhsg.', '.gllsG.', 'glpplsG', 'gllsssG', '.GGGGG.'],
+  ['..ccc..', '..ggg..', '.ggggg.', 'gg...gG', 'ghlllsG', 'glpppsG', 'glpppsG', 'glsssGG', '.GGGGG.'],
+  ['...c...', '..ggg..', '..g.g..', '..ghg..', '..glg..', '..glg..', '..gsg..', '..gsg..', '...G...']
+];
+
+function potionRackColor(u, z) {
+  const x = u - 16;
+  const grain = hash(Math.floor(u / 4), z);
+  const trim = x < 3 || x > 92 || x % 32 < 2;
+  if (trim || z < 5 || z > 43) {
+    if ((z === 3 || z === 42) && x % 32 === 1) return '#dfb879';
+    if (x % 32 === 1 || z === 44) return grain > .72 ? '#c69967' : '#ac774f';
+    return grain > .75 ? '#78513b' : '#64412f';
+  }
+  const row = Math.floor((z - 5) / 13), y = (z - 5) % 13;
+  if (y < 2) return y === 1 ? (grain > .72 ? '#bc895c' : '#9e6b49') : '#4e322c';
+
+  const slot = Math.floor(x / 8);
+  const sprite = potionSprites[(slot + row * 3) % potionSprites.length];
+  const pixel = sprite[sprite.length - 1 - (y - 2)]?.[x % 8 - 1];
+  const liquid = potionColors[(slot + 2 * row) % potionColors.length];
+  switch (pixel) {
+    case 'c': return y % 2 ? '#ccaa76' : '#9f754d';
+    case 'g': return '#9cbdc7';
+    case 'G': return '#4e6578';
+    case 'h': return '#effbdf';
+    case 'l': return liquid;
+    case 's': return sh(liquid, .61);
+    case 'p': return x % 2 ? '#eed6a7' : '#b4926d';
+    default: return y >= 10 ? '#241e2a' : grain > .8 ? '#3a2933' : '#32252f';
+  }
+}
+
 function drawPotionWorkshop(g) {
   const timber = flat('#aa7650', '#704831', '#563529');
   for (const [start, end] of potionBookcases) {
@@ -517,24 +553,14 @@ function drawPotionWorkshop(g) {
 
   // Een lage wandkast met drie rijen flessen onder de ramen.
   box(g, 8, 0, 0, 48, 5, 46, timber);
-  wallR(g, 5, 16, 112, 0, 46, (u, z) => {
-    const x = u - 16;
-    if (x < 3 || x > 92 || x % 32 < 2 || z < 5 || z > 43) {
-      return x % 32 === 1 || z === 44 ? '#b07a52' : '#66402e';
-    }
-    const row = Math.floor((z - 5) / 13), y = (z - 5) % 13;
-    if (y < 2) return y === 1 ? '#ac754d' : '#623d2b';
-    const slot = Math.floor(x / 8), dx = x % 8 - 4;
-    const width = (slot + row) % 3 === 0 ? 2 : 3;
-    if (y === 11 && Math.abs(dx) <= 1) return '#bc9367';
-    if (y >= 8 && y <= 10 && Math.abs(dx) <= 1) return '#b4d2d6';
-    if (y >= 2 && y <= 8 && Math.abs(dx) <= (y === 8 || y === 2 ? width - 1 : width)) {
-      const liquid = potionColors[(slot + 2 * row) % potionColors.length];
-      if (dx === 1 && y === 6) return '#f7eee2';
-      return y >= 7 ? '#c7dedb' : dx === -width || y === 2 ? sh(liquid, .65) : liquid;
-    }
-    return '#2c202a';
-  });
+  wallR(g, 5, 16, 112, 0, 46, potionRackColor);
+  for (const [a, color] of [[11, '#77b9c6'], [32, '#aa85c0'], [53, '#d1a266']]) {
+    const glass = flat(sh(color, 1.25), color, sh(color, .65));
+    box(g, a - 1.4, 1, 46, 2.8, 3, 5, glass);
+    box(g, a - .75, 1.6, 51, 1.5, 1.8, 2, glass);
+    box(g, a - .85, 1.5, 53, 1.7, 2, 1, timber);
+    dot(g, ...P(a - .8, 4, 49), '#e5ead3');
+  }
 }
 
 function drawPotionLight(t) {
@@ -611,16 +637,40 @@ function drawCauldron(t) {
 
 function potionFloor(a, b) {
   const column = Math.floor(a / TILE_SIZE), row = Math.floor(b / TILE_SIZE);
+  const variation = hash(column, row);
+  const grain = hash(Math.floor(a * 2), Math.floor(b * 2));
   const edge = Math.min(a - 11, 39 - a, b - 15, 35 - b);
+  const contact = Math.min(
+    contactShade(a, b, cauldronA, cauldronB, 9, 7),
+    contactShade(a, b, workbenchA, workbenchB, 5, 5),
+    b < 8 && a >= 8 && a < 56 ? .74 : 1
+  );
+  // De twee ramen werpen schuine lichtbanen met de schaduw van hun stijlen.
+  const ray = a - b * .47;
+  const pane = Math.min(Math.abs(ray - 13), Math.abs(ray - 36));
+  const daylight = b >= 7 && b < 51 && pane >= .85 && pane < 6.4
+    ? (1 - b / 58) * (pane < 5.8 ? 1 : .43) : 0;
+
+  let color;
   if (edge >= 0) {
-    if (edge < 1) return '#442d47';
-    if (edge < 2) return '#b78a63';
     const diamond = Math.abs(a - 25) + Math.abs(b - 25);
-    if (diamond >= 5 && diamond < 6) return '#bf936c';
-    return hash(Math.floor(a * 2), Math.floor(b * 2)) > .8 ? '#775369' : '#69475e';
+    if (edge < 1) color = '#442d47';
+    else if (edge < 2 || (diamond >= 5 && diamond < 6)) color = '#b78a63';
+    else color = grain > .8 ? '#775369' : '#69475e';
+  } else {
+    const seam = Math.min(a % TILE_SIZE, b % TILE_SIZE);
+    if (seam < .55) color = '#35334d';
+    else if (seam < 1.15) color = '#726b82';
+    else color = sh('#57566d', .85 + variation * .24 + (grain > .94 ? .13 : 0));
   }
-  if (a % TILE_SIZE < .5 || b % TILE_SIZE < .5) return '#39334f';
-  return sh('#56516b', .89 + hash(column, row) * .2);
+  if (!daylight) return sh(color, contact);
+  const rgb = color.startsWith('#')
+    ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
+    : color.slice(4, -1).split(',').map(Number);
+  const light = [151, 192, 192];
+  const amount = daylight * .55;
+  return 'rgb(' + rgb.map((channel, index) =>
+    Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
 }
 
 function buildStatic(sg, room) {
