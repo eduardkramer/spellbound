@@ -20,6 +20,7 @@
     border:2px solid #b79259;background:#30263a;color:#fff1d3;box-shadow:3px 3px #20192a}
   #librarian-dialogue p{margin:6px 0 10px}
   #close-librarian-dialogue{width:auto;padding:0 10px}
+  #reset-quest{width:auto;padding:0 10px;font-size:12px}
   #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
   #quest-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
   #quest-dialogue::backdrop{background:#12102599}
@@ -99,10 +100,11 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="zoom" role="group" aria-label="Room zoom">
+  <div id="zoom" role="group" aria-label="Game controls">
     <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
     <button type="button" id="zoom-reset">100%</button>
     <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+    <button type="button" id="reset-quest">Reset quest</button>
   </div>
   <div id="scene-view">
     <canvas id="scene" tabindex="0" aria-label="Wizard’s room" aria-describedby="movement-hint"></canvas>
