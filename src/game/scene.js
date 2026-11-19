@@ -719,6 +719,46 @@ function potionWindowLight(a, b) {
   return 0;
 }
 
+function drawPotionDryingRack(g, timber) {
+  const railZ = 94;
+  box(g, 0, 17, railZ - 2, 2, 25, 2, timber);
+  for (const b of [17.75, 29, 41.25]) {
+    const [x, y] = P(2, b, railZ - 1);
+    dot(g, x, y, '#49342c');
+    dot(g, x, y - 1, '#d9ad77');
+  }
+
+  const bundles = [
+    [19.5, 'herb', '#819354'],
+    [23, 'flower', '#a87b9c'],
+    [35.5, 'mushroom', '#b76d4a'],
+    [39.5, 'mushroom', '#94705d']
+  ];
+  for (const [b, kind, color] of bundles) {
+    const [x, y] = P(2, b, railZ - 1);
+    line(g, x, y, x, y + 6, '#c29a69');
+    if (kind === 'mushroom') {
+      line(g, x, y + 6, x - 2, y + 14, '#cbb090');
+      line(g, x, y + 6, x + 2, y + 16, '#d6bc99');
+      ell(g, x - 2, y + 14, 2, 1, color);
+      ell(g, x + 2, y + 16, 3, 2, color);
+      dot(g, x + 1, y + 15, '#dab184');
+    } else {
+      for (const [dx, dy] of [[-3, 9], [2, 11], [-2, 14], [1, 16]]) {
+        line(g, x, y + 6, x + dx, y + dy, '#48513b');
+        ell(g, x + dx, y + dy, 2, 1, color);
+        dot(g, x + dx - 1, y + dy, sh(color, 1.28));
+      }
+    }
+    // Een kort touwtje met een beschreven perkamentlabel.
+    dot(g, x + 2, y + 4, '#dbb987');
+    rect(g, x + 2, y + 5, 4, 4, '#be925f');
+    rect(g, x + 2, y + 5, 3, 3, '#e2bf83');
+    dot(g, x + 3, y + 6, '#765340');
+    dot(g, x + 4, y + 7, '#96744e');
+  }
+}
+
 function drawPotionWorkshop(g) {
   const timber = {
     top: (a, b) => {
@@ -747,7 +787,7 @@ function drawPotionWorkshop(g) {
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
 
-  // Gedroogde kruiden hangen naast het recept boven de doorgang.
+  // Het recept hangt onder het droogrek, boven de doorgang.
   wallL(g, 0, 48, 66, 59, 82, (u, z) => {
     const x = u - 48, y = z - 59;
     if (y > 20 || y < 2) return '#78523e';
@@ -755,17 +795,7 @@ function drawPotionWorkshop(g) {
     if (y > 4 && y < 15 && x > 3 && x < 14 && (y % 4 === 0 || x === 8)) return '#a27754';
     return '#dfbb80';
   });
-  for (const [b, color] of [[17.5, '#758854'], [37.5, '#b182b1']]) {
-    const [x, y] = P(0, b, 75);
-    line(g, x, y - 5, x, y + 7, '#bc9466');
-    for (let i = 0; i < 5; i++) {
-      const side = i % 2 ? 1 : -1;
-      line(g, x, y + i, x + side * 4, y + i + 5, '#4a583c');
-      ell(g, x + side * 4, y + i + 5, 2, 1, i % 3 ? color : sh(color, 1.3));
-    }
-    rect(g, x - 1, y, 3, 2, '#d3a86b');
-  }
-
+  drawPotionDryingRack(g, timber);
   drawPotionRack(g);
 
 }
