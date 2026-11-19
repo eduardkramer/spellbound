@@ -1557,6 +1557,8 @@ const moves = new Map([
 ]);
 const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' };
 const heldKeys = new Set();
+let fireHeld = false;
+let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
 let requestedSeat = null, activeSeat = null;
 let requestedChest = false;
@@ -1568,7 +1570,61 @@ const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 const iceBalls = [];
 let iceCooldown = 0;
 let castTime = 0;
-const castStrength = () => castTime > .2 ? (.32 - castTime) / .12 : Math.max(0, castTime / .2);
+const castStrength = () => Math.max(fireCharge,
+  castTime > .2 ? (.32 - castTime) / .12 : Math.max(0, castTime / .2));
+
+function canBreatheFire() {
+  return fireHeld && WIZARD.staffEquipped && !seatProgress &&
+    !chestInventory?.open && librarianDialogue.hidden;
+}
+
+const fireSprite = new Image();
+fireSprite.src = 'assets/sprites/fire-breath.png';
+const fireFrameWidth = 88, fireFrameHeight = 38, fireFrameCount = 16;
+
+function fireBreathLayers(t, a, b) {
+  if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) return [];
+  const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
+  const hand = WIZARD.castingHand(wizard.direction, castStrength());
+  const z = 13;
+  const originA = a + (hand.y + z + hand.x / 2) / 2;
+  const originB = b + (hand.y + z - hand.x / 2) / 2;
+  const startA = Math.floor(originA / TILE_SIZE), startB = Math.floor(originB / TILE_SIZE);
+  const reach = 22 * fireCharge;
+  let visibleReach = reach;
+  for (let distance = 0; distance < reach; distance += .5) {
+    const column = Math.floor((originA + distance * da) / TILE_SIZE);
+    const row = Math.floor((originB + distance * db) / TILE_SIZE);
+    if ((column !== startA || row !== startB) && !isWalkable(column, row)) {
+      visibleReach = distance;
+      break;
+    }
+  }
+  if (!visibleReach) return [];
+  const [x, y] = P(originA, originB, z);
+  const dx = 2 * (da - db), dy = da + db;
+  const projected = Math.hypot(dx, dy);
+  const ux = dx / projected, uy = dy / projected;
+  const side = Math.sign(dx);
+  const scale = .73;
+  const frame = Math.floor(t / .06) % fireFrameCount;
+  return [{
+    depth: originA + originB,
+    animate() {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(x, y);
+      ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
+      ctx.beginPath();
+      ctx.rect(0, -fireFrameHeight * scale, visibleReach * projected, fireFrameHeight * scale * 2);
+      ctx.clip();
+      ctx.drawImage(fireSprite, frame % 4 * fireFrameWidth, Math.floor(frame / 4) * fireFrameHeight,
+        fireFrameWidth, fireFrameHeight, -5 * scale, -24 * scale,
+        fireFrameWidth * scale, fireFrameHeight * scale);
+      ctx.restore();
+    }
+  }];
+}
 
 function castIceBall() {
   if (!WIZARD.staffEquipped || iceCooldown > 0 || chestInventory?.open ||
@@ -1700,6 +1756,12 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (key === 'q') {
+      event.preventDefault();
+      fireHeld = true;
+      if (WIZARD.staffEquipped && !chestInventory?.open && librarianDialogue.hidden) requestedSeat = null;
+      return;
+    }
     if (key === 'f') {
       event.preventDefault();
       if (!event.repeat) castIceBall();
@@ -1716,10 +1778,18 @@ if (!preview) {
     requestedSeat = null;
     heldKeys.add(key);
   });
-  addEventListener('keyup', event => heldKeys.delete(event.key.toLowerCase()));
-  addEventListener('blur', () => heldKeys.clear());
+  addEventListener('keyup', event => {
+    const key = event.key.toLowerCase();
+    if (key === 'q') fireHeld = false;
+    heldKeys.delete(key);
+  });
+  const releaseControls = () => {
+    heldKeys.clear();
+    fireHeld = false;
+  };
+  addEventListener('blur', releaseControls);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) heldKeys.clear();
+    if (document.hidden) releaseControls();
   });
 }
 
@@ -1837,7 +1907,8 @@ function drawTileBorder(tile, color) {
 }
 
 const movementHint = document.getElementById('movement-hint');
-const defaultHint = movementHint?.textContent;
+const defaultHint = movementHint ? movementHint.textContent + ' Houd Q ingedrukt voor een vuurstraal.' : undefined;
+if (movementHint) movementHint.textContent = defaultHint;
 
 function updateWizard(dt) {
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
@@ -1882,6 +1953,7 @@ function updateWizard(dt) {
         currentRoom = rooms[exit.target];
         iceBalls.length = 0;
         castTime = 0;
+        fireCharge = 0;
         librarianDialogue.hidden = true;
         [wizard.a, wizard.b] = exit.arrival;
         wizard.direction = exit.direction;
@@ -2263,7 +2335,7 @@ function drawRoomOccupants(t, dt) {
   const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings : potionFurnishings;
-  const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
+  const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b)].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
@@ -2333,6 +2405,7 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
+  fireCharge = canBreatheFire() ? Math.min(1, fireCharge + dt * 7) : 0;
   // Teken de sprite met fijnere pixels dan de kamer, binnen dezelfde spelmaten.
   const showRackSprite = currentRoom === rooms.potion && potionRackImage.naturalWidth > 0;
   const renderScale = showRackSprite ? 2 : 1;
