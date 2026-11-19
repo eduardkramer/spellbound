@@ -479,6 +479,44 @@ const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
+const potionRackImage = new Image();
+
+function drawPotionRackSprite(g) {
+  // De voetpunten van de voorste poten in de sprite van 230 × 150.
+  const leftFoot = [4, 119], rightFoot = [215, 149];
+  const extraDepth = 2;
+  const [leftX, leftY] = P(2 * TILE_SIZE, 4 + extraDepth, 0);
+  const [rightX, rightY] = P(6 * TILE_SIZE, 4 + extraDepth, 0);
+  const scale = (rightX - leftX) / (rightFoot[0] - leftFoot[0]);
+  const slopeCorrection = (rightY - leftY) / (rightX - leftX)
+    - (rightFoot[1] - leftFoot[1]) / (rightFoot[0] - leftFoot[0]);
+  g.save();
+  g.imageSmoothingEnabled = false;
+  g.translate(leftX, leftY);
+  g.transform(scale, scale * slopeCorrection, 0, scale, 0, 0);
+  // Verleng alleen het hout langs de achterkant, buiten het front met de flessen.
+  const depthX = 2 * extraDepth / scale;
+  const depthY = -extraDepth / scale - slopeCorrection * depthX;
+  const rearLeft = [13 - leftFoot[0], 1 - leftFoot[1]];
+  const rearRight = [229 - leftFoot[0], 37 - leftFoot[1]];
+  const rearBase = [229 - leftFoot[0], 140 - leftFoot[1]];
+  for (const [start, end, color] of [
+    [rearLeft, rearRight, '#a87349'],
+    [rearRight, rearBase, '#694333']
+  ]) {
+    g.beginPath();
+    g.moveTo(...start);
+    g.lineTo(...end);
+    g.lineTo(end[0] + depthX, end[1] + depthY);
+    g.lineTo(start[0] + depthX, start[1] + depthY);
+    g.closePath();
+    g.fillStyle = color;
+    g.fill();
+  }
+  g.drawImage(potionRackImage, -leftFoot[0], -leftFoot[1]);
+  g.restore();
+}
+
 // Silhouetten met afzonderlijke pixels voor glas, vloeistof en etiketten.
 const potionShelfSlots = [
   [0, 1, 2, 4, 5, 7, 9, 10],
@@ -604,7 +642,8 @@ function drawPotionWorkshop(g) {
     rect(g, x - 1, y, 3, 2, '#d3a86b');
   }
 
-  // Teken het rek en de flessen op hetzelfde pixelraster als de muur.
+  // Gebruik het getekende rek zolang de sprite niet beschikbaar is.
+  if (potionRackImage.naturalWidth) return;
   box(g, 8, 0, 0, 48, 5, 46, timber);
   wallR(g, 5, 16, 112, 0, 46, potionRackColor);
   for (const [a, color] of [[11, '#77b9c6'], [32, '#aa85c0'], [53, '#d1a266']]) {
@@ -985,6 +1024,15 @@ for (const room of Object.values(rooms)) {
   }
 }
 buildFront();
+
+potionRackImage.addEventListener('load', () => {
+  rooms.potion.floor[0] = 'X.XXXX..';
+  const background = potionC.getContext('2d');
+  background.clearRect(0, 0, W, H);
+  buildStatic(background, rooms.potion);
+  outline(background, '#14183a');
+}, { once: true });
+potionRackImage.src = 'assets/sprites/potion-rack.png';
 
 const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   const canvas = mk(), g = canvas.getContext('2d');
@@ -2211,11 +2259,21 @@ function drawFurnishing({ canvas, animate }, t, dt) {
 let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
-  ctx.clearRect(0, 0, W, H);
   updateWizard(dt);
+  // Teken de sprite met fijnere pixels dan de kamer, binnen dezelfde spelmaten.
+  const showRackSprite = currentRoom === rooms.potion && potionRackImage.naturalWidth > 0;
+  const renderScale = showRackSprite ? 2 : 1;
+  if (cv.width !== W * renderScale) {
+    cv.width = W * renderScale;
+    cv.height = H * renderScale;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+  }
+  ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
   if (currentRoom === rooms.tower) drawSky(t);
   ctx.drawImage(currentRoom.canvas, 0, 0);
+  if (showRackSprite) drawPotionRackSprite(ctx);
   drawTileBorder(hoveredTile, '#ffe083');
   drawTileBorder(destination, '#9dffdb');
   if (currentRoom !== rooms.tower) {
