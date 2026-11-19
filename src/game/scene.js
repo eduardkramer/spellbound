@@ -399,7 +399,15 @@ function shadedLibraryFloor(a, b) {
   }
   const lamplight = Math.max(0, 1 - Math.hypot((a - 39) / 20, (b - 22) / 17),
     1 - Math.hypot((a - 19) / 17, (b - 41) / 16));
-  return sh(color, shade * (1 + lamplight * .32));
+  const adjusted = shade * (1 + lamplight * .32);
+  if (!lamplight) return sh(color, adjusted);
+  const channels = color.startsWith('#')
+    ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
+    : color.slice(4, -1).split(',').map(Number);
+  const amber = [255, 190, 106];
+  const amount = lamplight * .24;
+  return 'rgb(' + channels.map((channel, index) =>
+    Math.min(255, Math.round((channel * (1 - amount) + amber[index] * amount) * adjusted))).join(',') + ')';
 }
 
 function libraryFloor(a, b) {
@@ -1042,13 +1050,25 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
     for (const da of [-2.7, 2]) for (const db of [-2.7, 2]) {
       box(g, a + da, b + db, 0, .8, .8, 13, darkWood);
     }
+    box(g, a - 3.3, b - 3.3, 11, 6.6, 6.6, 2, darkWood);
     box(g, a - 3.5, b - 3.5, 13, 7, 7, 2, wood);
+    line(g, ...P(a - 3.4, b + 3.45, 15), ...P(a + 3.4, b + 3.45, 15), '#ce9663');
+    box(g, a - 2.55, b - 1.65, 15, 4.45, 3.7, .5,
+      flat(row === 3 && column === 2 ? '#6c465c' : '#395651', '#553142', '#382831'));
     const pages = flat('#f0ddb1', '#a78057', '#c2a67c');
     box(g, a - 2.4, b - 1.5, 15, 2, 3.4, 1, pages);
     box(g, a - .25, b - 1.5, 15, 2, 3.4, 1, pages);
-    const [x, y] = P(a + 2, b - 2, 15);
-    rect(g, x - 2, y - 4, 4, 4, '#608d88');
+    for (let ln = 0; ln < 3; ln++) {
+      const pageB = b - .9 + ln * .65;
+      line(g, ...P(a - 2.05, pageB, 16), ...P(a - .8, pageB, 16), '#ad8d63');
+      line(g, ...P(a + .15, pageB, 16), ...P(a + (ln === 2 ? .95 : 1.35), pageB, 16), '#ad8d63');
+    }
+    const [x, y] = P(a + 2.2, b - 2.1, 15);
+    ell(g, x, y, 3, 1, '#654332');
+    rect(g, x - 2, y - 4, 4, 4, '#436866');
+    dot(g, x - 2, y - 2, '#8ab0a0');
     ell(g, x, y - 4, 2, 1, '#352930');
+    if (row === 3 && column === 2) line(g, x, y - 3, x + 5, y - 10, '#e4cba2');
   } else if (type === 'chair') {
     for (const da of [-2, 1.4]) for (const db of [-2, 1.4]) {
       box(g, a + da, b + db, 0, .65, .65, 6, darkWood);
@@ -1109,9 +1129,13 @@ function drawLibraryLights(t) {
     const [x, y] = P(a, b, 72);
     line(ctx, x, y - 37, x, y - 6, '#443139');
     glow(x, y, 29, 26, '255,189,100', .085 + .015 * Math.sin(t * 1.4 + a));
-    ell(ctx, x, y, 6, 6, '#d7a866');
-    ell(ctx, x, y - 1, 4, 4, '#fff0bc');
-    rect(ctx, x - 2, y - 8, 4, 3, '#966540');
+    ell(ctx, x, y, 6, 6, '#684a3a');
+    ell(ctx, x, y, 5, 5, '#d48e4d');
+    ell(ctx, x - 1, y, 3, 4, '#ffe5a6');
+    dot(ctx, x - 1, y + 1, '#fff5d9');
+    line(ctx, x + 2, y - 4, x + 2, y + 4, '#a87349');
+    rect(ctx, x - 3, y - 7, 6, 2, '#9e7150');
+    rect(ctx, x - 3, y + 5, 6, 2, '#835638');
   }
 }
 
