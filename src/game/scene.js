@@ -371,7 +371,9 @@ function drawSidePassage(g, { wallA, tile }, foreground) {
 /* ---------- bibliotheek ---------- */
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
 const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
+const readingSeat = { tile: [1, 5], approach: [2, 5], direction: 'ne', offsetB: 0, height: 7, hit: [14, 24] };
 const librarySeats = [
+  readingSeat,
   { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [4, 7], approach: [3, 7], direction: 'ne', height: 7, hit: [9, 16] }
@@ -379,9 +381,10 @@ const librarySeats = [
 
 const libraryLayout = [
   [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
-  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant']
+  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant'],
+  [1, 5, 'reading chair'], [0, 4, 'tea table']
 ];
-const leftShelfRanges = [[4, 64], [66, 124]];
+const leftShelfRanges = [[4, 64], [108, 124]];
 const rightShelfRanges = [[8, 48], [98, 126]];
 
 function shadedLibraryFloor(a, b) {
@@ -398,7 +401,7 @@ function shadedLibraryFloor(a, b) {
     shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
   }
   const lamplight = Math.max(0, 1 - Math.hypot((a - 39) / 20, (b - 22) / 17),
-    1 - Math.hypot((a - 19) / 17, (b - 41) / 16));
+    1 - Math.hypot((a - 13) / 17, (b - 44) / 16));
   const adjusted = shade * (1 + lamplight * .32);
   if (!lamplight) return sh(color, adjusted);
   const channels = color.startsWith('#')
@@ -467,6 +470,20 @@ function libraryShelf(start, end, ladderAt) {
     if (book.gilt && book.spine > 0 && (page === 1 || page === book.height - 3)) return '#b19a67';
     return sh(book.color, book.spine === 0 ? 1.02 : .75);
   };
+}
+
+function drawReadingWindow(g, t) {
+  wallL(g, 0, 66, 108, 28, 88, (u, z) => {
+    const x = u - 87, y = z - 28;
+    const arch = Math.hypot(x, Math.max(0, y - 37));
+    if (arch > 20) return null;
+    if (arch > 17 || y < 3) return arch > 19 ? '#394047' : '#947358';
+    if (Math.abs(x) < 1 || y === 27 || y === 28) return '#6b5144';
+    if (Math.hypot(x + 6, y - 40) < 4) return '#d8dfcd';
+    if (y < 12 + 4 * Math.sin(u * .33)) return '#283946';
+    if ((u + Math.floor((y + t * 26) / 5)) % 11 === 0 && (y + Math.floor(t * 26)) % 13 < 3) return '#8096a6';
+    return y > 31 ? '#34495a' : '#415968';
+  });
 }
 
 function drawLibraryShelves(g) {
@@ -798,6 +815,9 @@ function buildStatic(sg, room) {
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) {
+    drawReadingWindow(sg, 0);
+    box(sg, 0, 33, 26, 4, 21, 2.5, woodC('#89654c'));
+    box(sg, .5, 40, 28.5, 3, 8, 1.5, flat('#b37959', '#805247', '#64403c'));
     drawWallIvy(sg, [[0, 11, 28], [0, 31, 38], [0, 54, 24], [7, 0, 31], [52, 0, 36]]);
     drawLibraryShelves(sg);
   }
@@ -1069,6 +1089,24 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
     dot(g, x - 2, y - 2, '#8ab0a0');
     ell(g, x, y - 4, 2, 1, '#352930');
     if (row === 3 && column === 2) line(g, x, y - 3, x + 5, y - 10, '#e4cba2');
+  } else if (type === 'reading chair') {
+    const fabric = woodC('#895450'), cushion = woodC('#ac7161');
+    box(g, a - 3.3, b - 3.3, 1, 6.6, 6.6, 6, fabric);
+    box(g, a - 2.45, b - 2.5, 6, 4.9, 5, 1.5, cushion);
+    box(g, a - 3, b - 3.3, 6, 6, 1.9, 12, fabric);
+    for (const side of [-3.3, 2]) {
+      box(g, a + side, b - 2.5, 7, 1.3, 5.6, 3, cushion);
+    }
+    line(g, ...P(a - 2.7, b - 1.4, 17), ...P(a + 2.7, b - 1.4, 17), '#c29270');
+  } else if (type === 'tea table') {
+    box(g, a - 1, b - 1, 0, 2, 2, 7, darkWood);
+    box(g, a - 2.6, b - 2.6, 7, 5.2, 5.2, 1.4, wood);
+    box(g, a - 1.9, b, 8.4, 2.1, 1.9, .75, flat('#ae9eb8', '#634d70', '#543b5e'));
+    const [x, y] = P(a + 1, b - 1.2, 8.4);
+    ell(g, x, y, 3, 1, '#d1b99e');
+    rect(g, x - 1, y - 3, 3, 3, '#ddc6af');
+    dot(g, x + 2, y - 2, '#ddc6af');
+    dot(g, x, y - 3, '#785349');
   } else if (type === 'chair') {
     for (const da of [-2, 1.4]) for (const db of [-2, 1.4]) {
       box(g, a + da, b + db, 0, .65, .65, 6, darkWood);
@@ -1084,7 +1122,14 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   }
   outline(g, '#241d27');
   const seat = librarySeats.find(({ tile }) => tile[0] === column && tile[1] === row);
-  return { canvas, depth: a + b, animate: seat ? t => drawSeatedWizard(t, seat) : null };
+  const animate = seat ? t => drawSeatedWizard(t, seat) : type === 'tea table' ? t => {
+    const [x, y] = P(a + 1, b - 1.2, 8.4);
+    const age = (t * .6) % 1;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .6;
+    dot(ctx, x + Math.sin(t * 3), y - 5 - age * 6, '#f0e7da');
+    ctx.globalAlpha = 1;
+  } : null;
+  return { canvas, depth: a + b, animate };
 }).sort((a, b) => a.depth - b.depth);
 
 function drawLibraryPortrait(t) {
@@ -1915,7 +1960,8 @@ const libraryCatRoute = [
   [20, 30, 15, .7], [28, 28, 0, 1.7], [28, 40, 0, 2.8],
   [28, 40, 0, 2.1], [44, 40, 0, 1.2], [52, 40, 0, 1.6],
   [52, 28, 0, .7], [44, 30, 15, 3.8], [44, 30, 15, .7],
-  [44, 20, 0, 1.4], [34, 20, 0, 3]
+  [44, 20, 0, 1.4], [34, 20, 0, 1.5], [8, 20, 0, 1.2],
+  [8, 30, 0, .9], [2, 44, 30, 12], [2, 44, 30, .9], [8, 30, 0, 1.1]
 ];
 const libraryCatCycle = libraryCatRoute.reduce((total, point) => total + point[3], 0);
 
@@ -1935,6 +1981,14 @@ function libraryCatLayer(t) {
   const lift = z + (nextZ - z) * progress + (jumping ? 9 * Math.sin(Math.PI * progress) : 0);
   const [x, y] = P(ca, cb, lift);
   const face = nextA - a >= nextB - b ? 1 : -1;
+  if (!walking && !jumping && z === 30) {
+    return { depth: ca + cb + 3, animate: () => {
+      ell(ctx, x, y - 3, 6, 3, CAT_FUR);
+      ell(ctx, x - 1, y - 4, 4, 2, CAT_LIGHT);
+      ell(ctx, x + 4, y - 4, 2, 2, CAT_FUR);
+      dot(ctx, x + 5, y - 4, '#74626f');
+    } };
+  }
   return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking, progress) };
 }
 
@@ -2303,6 +2357,7 @@ function frame(ms) {
   if (currentRoom !== rooms.tower) {
     if (currentRoom === rooms.library) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
+      drawReadingWindow(ctx, t);
       drawLibraryPortrait(t);
       drawLibraryLights(t);
     } else {
