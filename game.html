@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -20,6 +20,11 @@
     border:2px solid #b79259;background:#30263a;color:#fff1d3;box-shadow:3px 3px #20192a}
   #librarian-dialogue p{margin:6px 0 10px}
   #close-librarian-dialogue{width:auto;padding:0 10px}
+  #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
+  #quest-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
+  #quest-dialogue::backdrop{background:#12102599}
+  #quest-dialogue h2{margin:0 0 8px;font-size:18px}
+  #quest-dialogue button{width:auto;padding:0 12px}
   #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
 
   /* ---- muziekspeler ---- */
@@ -94,29 +99,30 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="zoom" role="group" aria-label="Zoom van de speelkamer">
-    <button type="button" id="zoom-out" aria-label="Uitzoomen">−</button>
+  <div id="zoom" role="group" aria-label="Room zoom">
+    <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
     <button type="button" id="zoom-reset">100%</button>
-    <button type="button" id="zoom-in" aria-label="Inzoomen">+</button>
+    <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
   </div>
   <div id="scene-view">
-    <canvas id="scene" tabindex="0" aria-label="De speelkamer van de tovenaar" aria-describedby="movement-hint"></canvas>
+    <canvas id="scene" tabindex="0" aria-label="Wizard’s room" aria-describedby="movement-hint"></canvas>
   </div>
-  <aside id="librarian-dialogue" aria-label="Gesprek met de bibliothecaris" aria-live="polite" hidden>
-    <strong>Bibliothecaris</strong>
-    <p>Ze zeggen dat Madame Aubert haar ogen opent als iemand na middernacht een boek terugzet.</p>
-    <button type="button" id="close-librarian-dialogue">Sluiten</button>
+  <aside id="librarian-dialogue" aria-label="Conversation with the librarian" aria-live="polite" hidden>
+    <strong>Librarian</strong>
+    <p>They say Madame Aubert opens her eyes when someone returns a book after midnight.</p>
+    <button type="button" id="close-librarian-dialogue">Close</button>
   </aside>
 
-  <div id="hotbar" role="group" aria-label="Voorwerpen — selecteer met 1 tot en met 6">
-    <button type="button" class="hotbar-slot" data-slot="1" aria-label="Plek 1, toverstaf" aria-keyshortcuts="1" aria-pressed="true"><span class="slot-key" aria-hidden="true">1</span></button>
-    <button type="button" class="hotbar-slot" data-slot="2" aria-label="Plek 2, leeg" aria-keyshortcuts="2" aria-pressed="false"><span class="slot-key" aria-hidden="true">2</span></button>
-    <button type="button" class="hotbar-slot" data-slot="3" aria-label="Plek 3, leeg" aria-keyshortcuts="3" aria-pressed="false"><span class="slot-key" aria-hidden="true">3</span></button>
-    <button type="button" class="hotbar-slot" data-slot="4" aria-label="Plek 4, leeg" aria-keyshortcuts="4" aria-pressed="false"><span class="slot-key" aria-hidden="true">4</span></button>
-    <button type="button" class="hotbar-slot" data-slot="5" aria-label="Plek 5, leeg" aria-keyshortcuts="5" aria-pressed="false"><span class="slot-key" aria-hidden="true">5</span></button>
-    <button type="button" class="hotbar-slot" data-slot="6" aria-label="Plek 6, leeg" aria-keyshortcuts="6" aria-pressed="false"><span class="slot-key" aria-hidden="true">6</span></button>
+  <div id="hotbar" role="group" aria-label="Items — select with keys 1 through 6">
+    <button type="button" class="hotbar-slot" data-slot="1" aria-label="Slot 1, empty" aria-keyshortcuts="1" aria-pressed="false"><span class="slot-key" aria-hidden="true">1</span></button>
+    <button type="button" class="hotbar-slot" data-slot="2" aria-label="Slot 2, empty" aria-keyshortcuts="2" aria-pressed="false"><span class="slot-key" aria-hidden="true">2</span></button>
+    <button type="button" class="hotbar-slot" data-slot="3" aria-label="Slot 3, empty" aria-keyshortcuts="3" aria-pressed="false"><span class="slot-key" aria-hidden="true">3</span></button>
+    <button type="button" class="hotbar-slot" data-slot="4" aria-label="Slot 4, empty" aria-keyshortcuts="4" aria-pressed="false"><span class="slot-key" aria-hidden="true">4</span></button>
+    <button type="button" class="hotbar-slot" data-slot="5" aria-label="Slot 5, empty" aria-keyshortcuts="5" aria-pressed="false"><span class="slot-key" aria-hidden="true">5</span></button>
+    <button type="button" class="hotbar-slot" data-slot="6" aria-label="Slot 6, empty" aria-keyshortcuts="6" aria-pressed="false"><span class="slot-key" aria-hidden="true">6</span></button>
   </div>
-  <p id="movement-hint">Klik op een tegel om te lopen of op een stoel om te zitten. Open de kist door erop te klikken of druk op E als je ernaast staat. Lopen kan ook met de pijltjestoetsen of WASD. Druk op F voor een ijsbal met je uitgeruste toverstaf.</p>
+  <p id="quest-objective" role="status" hidden></p>
+  <p id="movement-hint">Click to move or sit. Use WASD or the arrow keys to walk. Click the chest to open it, or press E when beside it. With your wand equipped, press F for ice or hold Q for fire.</p>
 
   <div id="player">
     <div class="row">
@@ -124,28 +130,37 @@
       <div id="info"><div id="title">…</div><div id="sub"></div></div>
       <div id="time">0:00 / 0:00</div>
     </div>
-    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Positie">
+    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Playback position">
     <div class="row" id="controls">
       <div id="left">
-        <button id="prev" title="Vorige" aria-label="Vorige"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="1" height="6"/><rect x="2" y="3.5" width="1" height="1"/><rect x="3" y="2.5" width="1" height="3"/><rect x="4" y="1.5" width="1" height="5"/><rect x="5" y="0.5" width="1" height="7"/><rect x="6" y="0" width="1" height="0"/></svg></button>
-        <button id="play" title="Afspelen / pauzeren" aria-label="Afspelen"></button>
-        <button id="next" title="Volgende" aria-label="Volgende"><svg viewBox="0 0 8 8"><rect x="7" y="1" width="1" height="6"/><rect x="5" y="3.5" width="1" height="1"/><rect x="4" y="2.5" width="1" height="3"/><rect x="3" y="1.5" width="1" height="5"/><rect x="2" y="0.5" width="1" height="7"/></svg></button>
-        <button id="shuffle" title="Willekeurig" aria-label="Willekeurig"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="2" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="6" y="6" width="2" height="1"/></svg></button>
+        <button id="prev" title="Previous" aria-label="Previous"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="1" height="6"/><rect x="2" y="3.5" width="1" height="1"/><rect x="3" y="2.5" width="1" height="3"/><rect x="4" y="1.5" width="1" height="5"/><rect x="5" y="0.5" width="1" height="7"/><rect x="6" y="0" width="1" height="0"/></svg></button>
+        <button id="play" title="Play / pause" aria-label="Play"></button>
+        <button id="next" title="Next" aria-label="Next"><svg viewBox="0 0 8 8"><rect x="7" y="1" width="1" height="6"/><rect x="5" y="3.5" width="1" height="1"/><rect x="4" y="2.5" width="1" height="3"/><rect x="3" y="1.5" width="1" height="5"/><rect x="2" y="0.5" width="1" height="7"/></svg></button>
+        <button id="shuffle" title="Shuffle" aria-label="Shuffle"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="2" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="6" y="6" width="2" height="1"/></svg></button>
       </div>
       <div id="right">
-        <button id="mute" title="Geluid" aria-label="Geluid"></button>
+        <button id="mute" title="Sound" aria-label="Sound"></button>
         <input id="vol" type="range" min="0" max="100" value="60" aria-label="Volume">
       </div>
     </div>
   </div>
 </div>
+<dialog id="quest-dialogue" aria-labelledby="quest-title" aria-describedby="quest-message">
+  <strong>Skeleton Mage</strong>
+  <h2 id="quest-title">Fire Beneath the Cauldron</h2>
+  <p id="quest-message"></p>
+  <form method="dialog">
+    <button id="quest-action" value="advance"></button>
+    <button id="quest-dismiss" value="dismiss"></button>
+  </form>
+</dialog>
 <dialog id="chest-inventory" aria-labelledby="chest-title" aria-describedby="chest-help">
   <div class="chest-heading">
     <h2 id="chest-title">Chest</h2>
-    <button type="button" id="close-chest-inventory" aria-label="Kist sluiten" autofocus>×</button>
+    <button type="button" id="close-chest-inventory" aria-label="Close chest" autofocus>×</button>
   </div>
-  <p id="chest-help" class="visually-hidden">Kies een voorwerp en daarna een vakje om het te verplaatsen.</p>
-  <div id="chest-slots" class="inventory-slots" role="group" aria-label="Kist"></div>
+  <p id="chest-help" class="visually-hidden">Select an item, then select a slot to move it.</p>
+  <div id="chest-slots" class="inventory-slots" role="group" aria-label="Chest"></div>
   <div id="chest-hotbar" class="inventory-slots" role="group" aria-label="Hotbar"></div>
   <p id="chest-status" class="visually-hidden" role="status"></p>
 </dialog>
