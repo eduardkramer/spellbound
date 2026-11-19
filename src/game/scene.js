@@ -1027,12 +1027,16 @@ function stockroomFloor(a, b) {
 }
 
 const stockShelfRanges = [[6, 29], [34, 58], [64, 89]];
+const stockBookcases = [[0, 3], [6, 9]];
 const stockLayout = [
-  [2, 1, 'glass'], [7, 1, 'herbs'], [10, 2, 'barrel'], [10, 3, 'herbs'],
-  [4, 5, 'crystals'], [5, 5, 'herbs'], [8, 6, 'herbs'], [9, 6, 'glass'],
-  [2, 8, 'scrolls'], [3, 8, 'herbs'], [10, 8, 'barrel']
+  [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
+  [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
+  [1, 6, 'table'], [2, 6, 'chair'], [4, 5, 'crystals'], [5, 5, 'herbs'],
+  [6, 5, 'crates'], [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
+  [2, 8, 'scrolls'], [3, 8, 'herbs'], [5, 8, 'books'], [6, 8, 'chair'],
+  [7, 8, 'table'], [9, 8, 'crates'], [10, 8, 'barrel'], [11, 8, 'chest']
 ];
-const stockLanterns = [[0, 18], [0, 61], [49, 0]].map(([a, b]) => P(a, b, 75));
+const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
 
 function drawStockLanterns(t) {
   for (const [x, y] of stockLanterns) {
@@ -1047,6 +1051,12 @@ function drawStockLanterns(t) {
 
 function drawStockShelves(g) {
   const timber = woodC('#83583c');
+  for (const [first, limit] of stockBookcases) {
+    const start = first * TILE_SIZE + 2, end = limit * TILE_SIZE - 2;
+    box(g, 0, start, 0, 4, end - start, 87, timber);
+    wallL(g, 4, start * 2, end * 2, 0, 87, libraryShelf(start * 2, end * 2, null));
+    box(g, 0, start - .5, 86, 4.5, end - start + 1, 2, timber);
+  }
   for (const [start, end] of stockShelfRanges) {
     box(g, start, 0, 0, end - start, 5, 57, timber);
     wallR(g, 5, start * 2, end * 2, 2, 56, (u, z) => {
@@ -1077,6 +1087,36 @@ function drawStockShelves(g) {
 function drawStockContainer(g, a, b, kind) {
   const [x, y] = P(a, b, 0);
   ell(g, x, y, 8, 3, '#38313c');
+  const furnitureWood = woodC('#9b6345'), darkWood = woodC('#673f2c');
+  if (kind === 'chair' || kind === 'table') {
+    const chair = kind === 'chair';
+    const height = chair ? 7 : 11;
+    const size = chair ? 4 : 6;
+    for (const da of [-size / 2, size / 2 - 1]) {
+      for (const db of [-size / 2, size / 2 - 1]) box(g, a + da, b + db, 0, 1, 1, height, darkWood);
+    }
+    box(g, a - size / 2, b - size / 2, height, size, size, 1.5, furnitureWood);
+    if (chair) {
+      box(g, a - 2, b - 2, height, 4, 1, 8, darkWood);
+      box(g, a - 2.2, b - 2.3, height + 6, 4.4, 1.5, 2, furnitureWood);
+    } else {
+      box(g, a - 2.2, b - 1.75, height + 1.5, 3.5, 2.5, .75,
+        flat('#c1ad82', '#8a7559', '#a48a61'));
+    }
+    return;
+  }
+  if (kind === 'chest') {
+    box(g, a - 3, b - 2, 0, 6, 4, 5, darkWood);
+    box(g, a - 3.2, b - 2.2, 5, 6.4, 4.4, 2, furnitureWood);
+    box(g, a - 2.6, b - 1.8, 7, 5.2, 3.6, 1, furnitureWood);
+    for (const da of [-2, 2]) {
+      line(g, ...P(a + da, b + 2.25, 1), ...P(a + da, b + 2.25, 6), '#b28c59');
+    }
+    const [lx, ly] = P(a, b + 2.25, 4);
+    rect(g, lx - 1, ly - 1, 3, 2, '#d7b572');
+    dot(g, lx, ly, '#49312e');
+    return;
+  }
   if (kind === 'barrel') {
     ell(g, x, y - 5, 7, 6, '#72503d');
     rect(g, x - 6, y - 12, 13, 9, '#876046');
@@ -1102,7 +1142,19 @@ function drawStockContainer(g, a, b, kind) {
   box(g, a - 2.8, b - 2.8, 7, 5.6, 5.6, 1, woodC('#ae8156'));
   line(g, ...P(a - 2, b + 2.6, 1), ...P(a + 2, b + 2.6, 7), '#bd8b5c');
   line(g, ...P(a + 2.6, b - 2, 7), ...P(a + 2.6, b + 2, 1), '#81573d');
-  if (kind === 'glass') {
+  if (kind === 'crates') {
+    box(g, a - 1.6, b - 1.2, 8, 3.6, 3.2, 5, furnitureWood);
+    box(g, a - 1.8, b - 1.4, 12.5, 4, 3.6, .75, darkWood);
+  } else if (kind === 'books') {
+    const covers = ['#782d48', '#405e60', '#735086'];
+    for (const [index, cover] of covers.entries()) {
+      const offset = index % 2 ? -.5 : 0;
+      box(g, a - 2 + offset, b - 1.5, 8 + index * 1.4, 4, 3, 1.4,
+        flat(cover, '#bda781', '#8d7359'));
+      line(g, ...P(a - 2 + offset, b + 1.55, 9 + index * 1.4),
+        ...P(a + 2 + offset, b + 1.55, 9 + index * 1.4), cover);
+    }
+  } else if (kind === 'glass') {
     flask(g, x - 3, y - 7, '#89aaa0', 'tube', null);
     flask(g, x + 3, y - 9, '#628c91', 'round', null);
   } else if (kind === 'crystals') {
@@ -1893,6 +1945,9 @@ rooms.potion.floor = [
 ];
 rooms.stockroom.floor = Array.from({ length: STOCK_ROWS }, (_, row) =>
   Array(STOCK_COLUMNS).fill(row === 0 ? 'X' : '.'));
+for (const [first, limit] of stockBookcases) {
+  for (let row = first; row < limit; row++) rooms.stockroom.floor[row][0] = 'X';
+}
 for (const [a, b] of stockLayout) rooms.stockroom.floor[b][a] = 'X';
 const stockFurnishings = stockLayout.map(([column, row, kind]) => {
   const canvas = mk();
