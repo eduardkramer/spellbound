@@ -1724,6 +1724,25 @@ const skeletonMage = new Image();
 skeletonMage.src = 'assets/sprites/skeleton-mage.png';
 const skeletonMageA = 4.5 * TILE_SIZE, skeletonMageB = 5.5 * TILE_SIZE;
 
+function drawAlchemistPotion(x, y, t) {
+  // De magiër tilt de fles met magie op; staf en lantaarn blijven in zijn handen.
+  const cycle = (t + 3) % 12;
+  if (cycle >= 4) return;
+  const lift = Math.min(cycle, (4 - cycle), 1);
+  const rise = lift * lift * (3 - 2 * lift);
+  const fx = x + 7 - Math.round(rise * 2);
+  const fy = y + 33 - Math.round(rise * 17);
+  ctx.save();
+  ctx.globalAlpha = Math.min(lift * 5, 1);
+  rect(ctx, fx - 1, fy - 6, 3, 1, '#c19868');
+  rect(ctx, fx - 1, fy - 5, 3, 2, '#86aba9');
+  ell(ctx, fx, fy - 1, 3, 3, '#608d87');
+  ell(ctx, fx, fy, 2, 2, '#75bd63');
+  dot(ctx, fx - 1, fy - 2, '#e3f4c9');
+  dot(ctx, fx + 1, fy - Math.round((t * 3) % 2), '#b5e888');
+  ctx.restore();
+}
+
 function drawSkeletonMage(t) {
   if (!skeletonMage.naturalWidth) return;
   const [x, y] = P(skeletonMageA, skeletonMageB, 0);
@@ -1744,6 +1763,8 @@ function drawSkeletonMage(t) {
   dot(ctx, left + 14, eyeY + 16, '#8f263b');
   dot(ctx, left + 15, eyeY + 16, '#ff5159');
   dot(ctx, left + 18, eyeY + 14, '#ff5159');
+
+  drawAlchemistPotion(left, top, t);
 
   const flicker = Math.sin(t * 11) + .45 * Math.sin(t * 18);
   dot(ctx, left + 27, top + 11, flicker > 0 ? '#d1ffd9' : '#81edac');
