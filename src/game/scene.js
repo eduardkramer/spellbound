@@ -472,17 +472,30 @@ function libraryShelf(start, end, ladderAt) {
   };
 }
 
-function drawReadingWindow(g, t) {
+const sunsetSky = ['#ffce8f', '#f7a279', '#db7b83', '#ae6683', '#795778', '#584763'];
+
+function autumnSunset(x, y) {
+  const ridge = .24 + Math.sin(x * .085) * .045 + Math.cos(x * .16) * .028;
+  const canopy = .14 + Math.sin(x * .24) * .045 + Math.cos(x * .68) * .026;
+  const leaf = hash(Math.floor(x / 2), Math.floor(y * 23));
+  if (y < canopy) {
+    if (y > canopy - .047) return leaf > .5 ? '#d49555' : '#b7754c';
+    return leaf > .7 ? '#a8674d' : '#774853';
+  }
+  if (y < ridge) return '#765773';
+  if (Math.hypot(x - 48, (y - .43) * 49) < 5) return '#ffe8a9';
+  if (y > .51 && y < .56 && Math.sin(x * .15) > .35) return '#ffc191';
+  return sunsetSky[Math.max(0, Math.min(5, Math.floor((y - .23) * 7.7)))];
+}
+
+function drawReadingWindow(g) {
   wallL(g, 0, 66, 108, 28, 88, (u, z) => {
     const x = u - 87, y = z - 28;
     const arch = Math.hypot(x, Math.max(0, y - 37));
     if (arch > 20) return null;
     if (arch > 17 || y < 3) return arch > 19 ? '#394047' : '#947358';
     if (Math.abs(x) < 1 || y === 27 || y === 28) return '#6b5144';
-    if (Math.hypot(x + 6, y - 40) < 4) return '#d8dfcd';
-    if (y < 12 + 4 * Math.sin(u * .33)) return '#283946';
-    if ((u + Math.floor((y + t * 26) / 5)) % 11 === 0 && (y + Math.floor(t * 26)) % 13 < 3) return '#8096a6';
-    return y > 31 ? '#34495a' : '#415968';
+    return autumnSunset(u - 51, y / 53);
   });
 }
 
@@ -491,7 +504,18 @@ function drawLibraryShelves(g) {
   const timber = woodC('#926348');
   for (const [start, end] of leftShelfRanges) {
     box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
-    wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
+    const narrow = end - start < 24;
+    const shelf = libraryShelf(start, end, narrow ? null : 37);
+    wallL(g, depth, start, end, 0, height, (u, z) => {
+      if (narrow && (z < 7 || z >= 83)) {
+        if (z === 6 || z === 85) return '#ba895d';
+        return z % 4 === 0 ? '#51362b' : '#785037';
+      }
+      return shelf(u, z);
+    });
+    if (narrow) {
+      box(g, 0, start / 2 - .5, height, 3.5, (end - start) / 2 + 1, 1.5, timber);
+    }
   }
   for (const [start, end] of rightShelfRanges) {
     box(g, start / 2, 0, 0, (end - start) / 2, depth, height, timber);
@@ -632,18 +656,7 @@ function drawPotionWorkshop(g) {
       if (arch > 21) return null;
       if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
       if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
-      const distantRidge = 19 + 6 * Math.sin(u * .17) + 4 * Math.cos(u * .32);
-      const nearRidge = 11 + 5 * Math.sin(u * .24 + 1);
-      const crown = nearRidge + 3 * Math.sin(u * .81) + 2 * Math.cos(u * 1.3);
-      if (y < crown) {
-        const leaves = hash(Math.floor(u / 2), Math.floor(y / 2));
-        if (y > crown - 3) return leaves > .46 ? '#8db680' : '#6e9d71';
-        return leaves > .72 ? '#619a76' : '#447d66';
-      }
-      if (y < distantRidge) return '#789f91';
-      if (Math.hypot(u - 86, (y - 36) * 1.4) < 5) return '#fff0bf';
-      if (y >= 32 && y < 35 && Math.sin(u * .19) > .68) return '#dde7dc';
-      return y > 33 ? '#9cc2c6' : '#bcd7cc';
+      return autumnSunset(u - 21, y / 49);
     });
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
@@ -815,7 +828,7 @@ function buildStatic(sg, room) {
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) {
-    drawReadingWindow(sg, 0);
+    drawReadingWindow(sg);
     box(sg, 0, 33, 26, 4, 21, 2.5, woodC('#89654c'));
     box(sg, .5, 40, 28.5, 3, 8, 1.5, flat('#b37959', '#805247', '#64403c'));
     drawWallIvy(sg, [[0, 11, 28], [0, 31, 38], [0, 54, 24], [7, 0, 31], [52, 0, 36]]);
@@ -1185,28 +1198,9 @@ function drawLibraryLights(t) {
 }
 
 /* ---------- animaties ---------- */
-// hemel in het raam
-const stars = [];
-for (let i = 0; i < 26; i++) stars.push({ u: 25 + Math.floor(hash(i, 1) * 37), z: 62 + Math.floor(hash(i, 2) * 26), p: hash(i, 3) * 6.28, big: i % 6 === 0 });
-const skyBands = ['#27386e', '#202f62', '#1a2755', '#141e48', '#0e1639'];
-function skyPx(u, z, c) { if (u >= 24 && u < 64 && z >= 60 && z < 90) pxL(ctx, u, z, c); }
-function drawSky(t) {
-  wallL(ctx, 0, 24, 64, 60, 90, (u, z) => skyBands[Math.min(4, Math.floor((z - 60) / 6))]);
-  for (const s of stars) {
-    const v = Math.sin(t * 2.2 + s.p);
-    const c = v > .35 ? '#ffffff' : v > -.4 ? '#8aa0ff' : '#4a5a9a';
-    skyPx(s.u, s.z, c);
-    if (s.big && v > .35) { skyPx(s.u - 1, s.z, '#8aa0ff'); skyPx(s.u + 1, s.z, '#8aa0ff'); skyPx(s.u, s.z - 1, '#8aa0ff'); skyPx(s.u, s.z + 1, '#8aa0ff'); }
-  }
-  for (let du = -4; du <= 4; du++) for (let dz = -4; dz <= 4; dz++) {      // maan
-    if (du * du + dz * dz <= 16 && (du - 2) * (du - 2) + (dz - 1) * (dz - 1) > 11) skyPx(55 + du, 80 + dz, '#f4e9b0');
-  }
-  // vleermuis
-  const ub = 20 + ((t * 7) % 55), zb = Math.round(72 + Math.sin(t * 3) * 6), up = (Math.floor(t * 8) & 1) === 0;
-  const bu = Math.round(ub), k = '#04050c';
-  skyPx(bu, zb, k); skyPx(bu + 1, zb, k);
-  if (up) { skyPx(bu - 1, zb + 1, k); skyPx(bu - 2, zb + 2, k); skyPx(bu + 2, zb + 1, k); skyPx(bu + 3, zb + 2, k); skyPx(bu - 2, zb + 1, k); skyPx(bu + 3, zb + 1, k); }
-  else { skyPx(bu - 1, zb - 1, k); skyPx(bu - 2, zb - 1, k); skyPx(bu + 2, zb - 1, k); skyPx(bu + 3, zb - 1, k); skyPx(bu - 3, zb - 2, k); skyPx(bu + 4, zb - 2, k); }
+// Zelfde herfstlucht als in het leesraam en de potionkamer.
+function drawSky() {
+  wallL(ctx, 0, 24, 64, 60, 90, (u, z) => autumnSunset(u + 1, (z - 60) / 29));
 }
 
 // banieren
@@ -2349,7 +2343,7 @@ function frame(ms) {
   }
   ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
-  if (currentRoom === rooms.tower) drawSky(t);
+  if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
   if (showRackSprite) drawPotionRackSprite(ctx);
   drawTileBorder(hoveredTile, '#ffe083');
@@ -2357,7 +2351,6 @@ function frame(ms) {
   if (currentRoom !== rooms.tower) {
     if (currentRoom === rooms.library) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
-      drawReadingWindow(ctx, t);
       drawLibraryPortrait(t);
       drawLibraryLights(t);
     } else {
