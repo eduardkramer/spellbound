@@ -371,7 +371,9 @@ function drawSidePassage(g, { wallA, tile }, foreground) {
 /* ---------- bibliotheek ---------- */
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
 const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
+const readingSeat = { tile: [1, 5], approach: [2, 5], direction: 'ne', offsetB: 0, height: 7, hit: [14, 24] };
 const librarySeats = [
+  readingSeat,
   { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [4, 7], approach: [3, 7], direction: 'ne', height: 7, hit: [9, 16] }
@@ -379,9 +381,10 @@ const librarySeats = [
 
 const libraryLayout = [
   [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
-  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant']
+  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant'],
+  [1, 5, 'reading chair'], [0, 4, 'tea table']
 ];
-const leftShelfRanges = [[4, 64], [66, 124]];
+const leftShelfRanges = [[4, 64], [115, 126]];
 const rightShelfRanges = [[8, 48], [98, 126]];
 
 function shadedLibraryFloor(a, b) {
@@ -398,8 +401,16 @@ function shadedLibraryFloor(a, b) {
     shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
   }
   const lamplight = Math.max(0, 1 - Math.hypot((a - 39) / 20, (b - 22) / 17),
-    1 - Math.hypot((a - 19) / 17, (b - 41) / 16));
-  return sh(color, shade * (1 + lamplight * .32));
+    1 - Math.hypot((a - 13) / 17, (b - 44) / 16));
+  const adjusted = shade * (1 + lamplight * .32);
+  if (!lamplight) return sh(color, adjusted);
+  const channels = color.startsWith('#')
+    ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
+    : color.slice(4, -1).split(',').map(Number);
+  const amber = [255, 190, 106];
+  const amount = lamplight * .24;
+  return 'rgb(' + channels.map((channel, index) =>
+    Math.min(255, Math.round((channel * (1 - amount) + amber[index] * amount) * adjusted))).join(',') + ')';
 }
 
 function libraryFloor(a, b) {
@@ -461,12 +472,51 @@ function libraryShelf(start, end, ladderAt) {
   };
 }
 
+const sunsetSky = ['#ffce8f', '#f7a279', '#db7b83', '#ae6683', '#795778', '#584763'];
+
+function autumnSunset(x, y, showSun = true) {
+  const ridge = .24 + Math.sin(x * .085) * .045 + Math.cos(x * .16) * .028;
+  const canopy = .14 + Math.sin(x * .24) * .045 + Math.cos(x * .68) * .026;
+  const leaf = hash(Math.floor(x / 2), Math.floor(y * 23));
+  if (y < canopy) {
+    if (y > canopy - .047) return leaf > .5 ? '#d49555' : '#b7754c';
+    return leaf > .7 ? '#a8674d' : '#774853';
+  }
+  if (y < ridge) return '#765773';
+  if (showSun && Math.hypot(x - 48, (y - .43) * 49) < 5) return '#ffe8a9';
+  if (y > .51 && y < .56 && Math.sin(x * .15) > .35) return '#ffc191';
+  return sunsetSky[Math.max(0, Math.min(5, Math.floor((y - .23) * 7.7)))];
+}
+
+function drawReadingWindow(g) {
+  wallL(g, 0, 66, 108, 28, 88, (u, z) => {
+    const x = u - 87, y = z - 28;
+    const arch = Math.hypot(x, Math.max(0, y - 37));
+    if (arch > 20) return null;
+    if (arch > 17 || y < 3) return arch > 19 ? '#394047' : '#947358';
+    if (Math.abs(x) < 1 || y === 27 || y === 28) return '#6b5144';
+    return autumnSunset(u - 51, y / 53);
+  });
+}
+
 function drawLibraryShelves(g) {
   const depth = 3, height = 87;
   const timber = woodC('#926348');
   for (const [start, end] of leftShelfRanges) {
-    box(g, 0, start / 2, 0, depth, (end - start) / 2, height, timber);
-    wallL(g, depth, start, end, 0, height, libraryShelf(start, end, 37));
+    const narrow = end - start < 24;
+    const shelfDepth = narrow ? 2 : depth;
+    box(g, 0, start / 2, 0, shelfDepth, (end - start) / 2, height, timber);
+    const shelf = libraryShelf(start, end, narrow ? null : 37);
+    wallL(g, shelfDepth, start, end, 0, height, (u, z) => {
+      if (narrow && (z < 7 || z >= 83)) {
+        if (z === 6 || z === 85) return '#ba895d';
+        return z % 4 === 0 ? '#51362b' : '#785037';
+      }
+      return shelf(u, z);
+    });
+    if (narrow) {
+      box(g, 0, start / 2 - .5, height, shelfDepth + .5, (end - start) / 2 + 1, 1.5, timber);
+    }
   }
   for (const [start, end] of rightShelfRanges) {
     box(g, start / 2, 0, 0, (end - start) / 2, depth, height, timber);
@@ -474,7 +524,7 @@ function drawLibraryShelves(g) {
   }
 }
 
-const potionBookcases = [[3, 31], [80, 109]];
+const potionBookcases = [[3, 31], [87, 109]];
 const potionColors = ['#e77eac', '#74d7ed', '#91d467', '#be95ed', '#efa664'];
 const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
@@ -607,18 +657,7 @@ function drawPotionWorkshop(g) {
       if (arch > 21) return null;
       if (arch > 18 || y < 3) return arch > 20 || y === 0 ? '#593c34' : '#b68057';
       if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
-      const distantRidge = 19 + 6 * Math.sin(u * .17) + 4 * Math.cos(u * .32);
-      const nearRidge = 11 + 5 * Math.sin(u * .24 + 1);
-      const crown = nearRidge + 3 * Math.sin(u * .81) + 2 * Math.cos(u * 1.3);
-      if (y < crown) {
-        const leaves = hash(Math.floor(u / 2), Math.floor(y / 2));
-        if (y > crown - 3) return leaves > .46 ? '#8db680' : '#6e9d71';
-        return leaves > .72 ? '#619a76' : '#447d66';
-      }
-      if (y < distantRidge) return '#789f91';
-      if (Math.hypot(u - 86, (y - 36) * 1.4) < 5) return '#fff0bf';
-      if (y >= 32 && y < 35 && Math.sin(u * .19) > .68) return '#dde7dc';
-      return y > 33 ? '#9cc2c6' : '#bcd7cc';
+      return autumnSunset(u - 21, y / 49, false);
     });
     box(g, (center - 22) / 2, 0, 47, 22, 2, 2, timber);
   }
@@ -790,6 +829,9 @@ function buildStatic(sg, room) {
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) {
+    drawReadingWindow(sg);
+    box(sg, 0, 33, 26, 4, 21, 2.5, woodC('#89654c'));
+    box(sg, .5, 40, 28.5, 3, 8, 1.5, flat('#b37959', '#805247', '#64403c'));
     drawWallIvy(sg, [[0, 11, 28], [0, 31, 38], [0, 54, 24], [7, 0, 31], [52, 0, 36]]);
     drawLibraryShelves(sg);
   }
@@ -1042,13 +1084,43 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
     for (const da of [-2.7, 2]) for (const db of [-2.7, 2]) {
       box(g, a + da, b + db, 0, .8, .8, 13, darkWood);
     }
+    box(g, a - 3.3, b - 3.3, 11, 6.6, 6.6, 2, darkWood);
     box(g, a - 3.5, b - 3.5, 13, 7, 7, 2, wood);
+    line(g, ...P(a - 3.4, b + 3.45, 15), ...P(a + 3.4, b + 3.45, 15), '#ce9663');
+    box(g, a - 2.55, b - 1.65, 15, 4.45, 3.7, .5,
+      flat(row === 3 && column === 2 ? '#6c465c' : '#395651', '#553142', '#382831'));
     const pages = flat('#f0ddb1', '#a78057', '#c2a67c');
     box(g, a - 2.4, b - 1.5, 15, 2, 3.4, 1, pages);
     box(g, a - .25, b - 1.5, 15, 2, 3.4, 1, pages);
-    const [x, y] = P(a + 2, b - 2, 15);
-    rect(g, x - 2, y - 4, 4, 4, '#608d88');
+    for (let ln = 0; ln < 3; ln++) {
+      const pageB = b - .9 + ln * .65;
+      line(g, ...P(a - 2.05, pageB, 16), ...P(a - .8, pageB, 16), '#ad8d63');
+      line(g, ...P(a + .15, pageB, 16), ...P(a + (ln === 2 ? .95 : 1.35), pageB, 16), '#ad8d63');
+    }
+    const [x, y] = P(a + 2.2, b - 2.1, 15);
+    ell(g, x, y, 3, 1, '#654332');
+    rect(g, x - 2, y - 4, 4, 4, '#436866');
+    dot(g, x - 2, y - 2, '#8ab0a0');
     ell(g, x, y - 4, 2, 1, '#352930');
+    if (row === 3 && column === 2) line(g, x, y - 3, x + 5, y - 10, '#e4cba2');
+  } else if (type === 'reading chair') {
+    const fabric = woodC('#895450'), cushion = woodC('#ac7161');
+    box(g, a - 3.3, b - 3.3, 1, 6.6, 6.6, 6, fabric);
+    box(g, a - 2.45, b - 2.5, 6, 4.9, 5, 1.5, cushion);
+    box(g, a - 3, b - 3.3, 6, 6, 1.9, 12, fabric);
+    for (const side of [-3.3, 2]) {
+      box(g, a + side, b - 2.5, 7, 1.3, 5.6, 3, cushion);
+    }
+    line(g, ...P(a - 2.7, b - 1.4, 17), ...P(a + 2.7, b - 1.4, 17), '#c29270');
+  } else if (type === 'tea table') {
+    box(g, a - 1, b - 1, 0, 2, 2, 7, darkWood);
+    box(g, a - 2.6, b - 2.6, 7, 5.2, 5.2, 1.4, wood);
+    box(g, a - 1.9, b, 8.4, 2.1, 1.9, .75, flat('#ae9eb8', '#634d70', '#543b5e'));
+    const [x, y] = P(a + 1, b - 1.2, 8.4);
+    ell(g, x, y, 3, 1, '#d1b99e');
+    rect(g, x - 1, y - 3, 3, 3, '#ddc6af');
+    dot(g, x + 2, y - 2, '#ddc6af');
+    dot(g, x, y - 3, '#785349');
   } else if (type === 'chair') {
     for (const da of [-2, 1.4]) for (const db of [-2, 1.4]) {
       box(g, a + da, b + db, 0, .65, .65, 6, darkWood);
@@ -1064,7 +1136,14 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   }
   outline(g, '#241d27');
   const seat = librarySeats.find(({ tile }) => tile[0] === column && tile[1] === row);
-  return { canvas, depth: a + b, animate: seat ? t => drawSeatedWizard(t, seat) : null };
+  const animate = seat ? t => drawSeatedWizard(t, seat) : type === 'tea table' ? t => {
+    const [x, y] = P(a + 1, b - 1.2, 8.4);
+    const age = (t * .6) % 1;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .6;
+    dot(ctx, x + Math.sin(t * 3), y - 5 - age * 6, '#f0e7da');
+    ctx.globalAlpha = 1;
+  } : null;
+  return { canvas, depth: a + b, animate };
 }).sort((a, b) => a.depth - b.depth);
 
 function drawLibraryPortrait(t) {
@@ -1109,35 +1188,20 @@ function drawLibraryLights(t) {
     const [x, y] = P(a, b, 72);
     line(ctx, x, y - 37, x, y - 6, '#443139');
     glow(x, y, 29, 26, '255,189,100', .085 + .015 * Math.sin(t * 1.4 + a));
-    ell(ctx, x, y, 6, 6, '#d7a866');
-    ell(ctx, x, y - 1, 4, 4, '#fff0bc');
-    rect(ctx, x - 2, y - 8, 4, 3, '#966540');
+    ell(ctx, x, y, 6, 6, '#684a3a');
+    ell(ctx, x, y, 5, 5, '#d48e4d');
+    ell(ctx, x - 1, y, 3, 4, '#ffe5a6');
+    dot(ctx, x - 1, y + 1, '#fff5d9');
+    line(ctx, x + 2, y - 4, x + 2, y + 4, '#a87349');
+    rect(ctx, x - 3, y - 7, 6, 2, '#9e7150');
+    rect(ctx, x - 3, y + 5, 6, 2, '#835638');
   }
 }
 
 /* ---------- animaties ---------- */
-// hemel in het raam
-const stars = [];
-for (let i = 0; i < 26; i++) stars.push({ u: 25 + Math.floor(hash(i, 1) * 37), z: 62 + Math.floor(hash(i, 2) * 26), p: hash(i, 3) * 6.28, big: i % 6 === 0 });
-const skyBands = ['#27386e', '#202f62', '#1a2755', '#141e48', '#0e1639'];
-function skyPx(u, z, c) { if (u >= 24 && u < 64 && z >= 60 && z < 90) pxL(ctx, u, z, c); }
-function drawSky(t) {
-  wallL(ctx, 0, 24, 64, 60, 90, (u, z) => skyBands[Math.min(4, Math.floor((z - 60) / 6))]);
-  for (const s of stars) {
-    const v = Math.sin(t * 2.2 + s.p);
-    const c = v > .35 ? '#ffffff' : v > -.4 ? '#8aa0ff' : '#4a5a9a';
-    skyPx(s.u, s.z, c);
-    if (s.big && v > .35) { skyPx(s.u - 1, s.z, '#8aa0ff'); skyPx(s.u + 1, s.z, '#8aa0ff'); skyPx(s.u, s.z - 1, '#8aa0ff'); skyPx(s.u, s.z + 1, '#8aa0ff'); }
-  }
-  for (let du = -4; du <= 4; du++) for (let dz = -4; dz <= 4; dz++) {      // maan
-    if (du * du + dz * dz <= 16 && (du - 2) * (du - 2) + (dz - 1) * (dz - 1) > 11) skyPx(55 + du, 80 + dz, '#f4e9b0');
-  }
-  // vleermuis
-  const ub = 20 + ((t * 7) % 55), zb = Math.round(72 + Math.sin(t * 3) * 6), up = (Math.floor(t * 8) & 1) === 0;
-  const bu = Math.round(ub), k = '#04050c';
-  skyPx(bu, zb, k); skyPx(bu + 1, zb, k);
-  if (up) { skyPx(bu - 1, zb + 1, k); skyPx(bu - 2, zb + 2, k); skyPx(bu + 2, zb + 1, k); skyPx(bu + 3, zb + 2, k); skyPx(bu - 2, zb + 1, k); skyPx(bu + 3, zb + 1, k); }
-  else { skyPx(bu - 1, zb - 1, k); skyPx(bu - 2, zb - 1, k); skyPx(bu + 2, zb - 1, k); skyPx(bu + 3, zb - 1, k); skyPx(bu - 3, zb - 2, k); skyPx(bu + 4, zb - 2, k); }
+// Zelfde herfstlucht als in het leesraam en de potionkamer.
+function drawSky() {
+  wallL(ctx, 0, 24, 64, 60, 90, (u, z) => autumnSunset(u + 1, (z - 60) / 29));
 }
 
 // banieren
@@ -1891,7 +1955,8 @@ const libraryCatRoute = [
   [20, 30, 15, .7], [28, 28, 0, 1.7], [28, 40, 0, 2.8],
   [28, 40, 0, 2.1], [44, 40, 0, 1.2], [52, 40, 0, 1.6],
   [52, 28, 0, .7], [44, 30, 15, 3.8], [44, 30, 15, .7],
-  [44, 20, 0, 1.4], [34, 20, 0, 3]
+  [44, 20, 0, 1.4], [34, 20, 0, 1.5], [8, 20, 0, 1.2],
+  [8, 30, 0, .9], [2, 44, 30, 12], [2, 44, 30, .9], [8, 30, 0, 1.1]
 ];
 const libraryCatCycle = libraryCatRoute.reduce((total, point) => total + point[3], 0);
 
@@ -1911,6 +1976,14 @@ function libraryCatLayer(t) {
   const lift = z + (nextZ - z) * progress + (jumping ? 9 * Math.sin(Math.PI * progress) : 0);
   const [x, y] = P(ca, cb, lift);
   const face = nextA - a >= nextB - b ? 1 : -1;
+  if (!walking && !jumping && z === 30) {
+    return { depth: ca + cb + 3, animate: () => {
+      ell(ctx, x, y - 3, 6, 3, CAT_FUR);
+      ell(ctx, x - 1, y - 4, 4, 2, CAT_LIGHT);
+      ell(ctx, x + 4, y - 4, 2, 2, CAT_FUR);
+      dot(ctx, x + 5, y - 4, '#74626f');
+    } };
+  }
   return { depth: ca + cb + (lift > 0 ? 3 : 0), animate: () => drawLibraryCat(t, x, y, face, jumping, walking, progress) };
 }
 
@@ -2271,7 +2344,7 @@ function frame(ms) {
   }
   ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
-  if (currentRoom === rooms.tower) drawSky(t);
+  if (currentRoom === rooms.tower) drawSky();
   ctx.drawImage(currentRoom.canvas, 0, 0);
   if (showRackSprite) drawPotionRackSprite(ctx);
   drawTileBorder(hoveredTile, '#ffe083');
