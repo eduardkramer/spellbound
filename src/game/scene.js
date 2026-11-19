@@ -564,10 +564,10 @@ const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
 const rackStart = 2 * TILE_SIZE + 4;
 const rackEnd = 6 * TILE_SIZE;
-const rackWidth = rackEnd - rackStart;
 const rackDepth = 5;
 const rackHeight = 40;
 const rackBubbles = [];
+const stockRackBubbles = [];
 const rackGlass = mk();
 const rackBottleShapes = [
   ['..ccc..', '..gsg..', '..g.g..', '.gh..g.', 'gh...dg', 'gldlldg', 'gdllbdg', '.ddddd.', '..ggg..'],
@@ -576,7 +576,7 @@ const rackBottleShapes = [
   ['..ccc..', '..gsg..', '...g...', '..g.g..', '.gh..g.', 'gllkldg', '.gkbdg.', '..gdg..', '...g...']
 ];
 
-function drawRackBottle(g, a, z, shape, color) {
+function drawRackBottle(g, a, z, shape, color, bubbles) {
   const [x, y] = P(a, rackDepth - .5, z);
   const rows = rackBottleShapes[shape];
   const colors = {
@@ -596,10 +596,11 @@ function drawRackBottle(g, a, z, shape, color) {
     }
   });
   const surface = rows.findIndex(row => row.includes('l'));
-  rackBubbles.push([left + rows[surface].indexOf('l'), top + surface, sh(color, 1.62)]);
+  bubbles.push([left + rows[surface].indexOf('l'), top + surface, sh(color, 1.62)]);
 }
 
-function drawPotionRack(g) {
+function drawPotionRack(g, start = rackStart, end = rackEnd, bubbles = rackBubbles) {
+  const width = end - start;
   const trim = {
     top: (a, b) => {
       if (b >= rackDepth) return '#c19669';
@@ -615,7 +616,7 @@ function drawPotionRack(g) {
     right: '#573b30'
   };
   const post = flat('#a87b53', (u, z) => {
-    const edge = u >= (rackEnd - 2) * 2 ? u - (rackEnd - 2) * 2 : u - rackStart * 2;
+    const edge = u >= (end - 2) * 2 ? u - (end - 2) * 2 : u - start * 2;
     if (z < 2) return '#63432f';
     if (edge === 0) return '#69452f';
     if (edge === 3) return '#4b3228';
@@ -627,9 +628,9 @@ function drawPotionRack(g) {
     return hash(u, z >> 2) > .83 ? '#634735' : '#56402f';
   });
   const inner = flat('#49352f', '#332731', '#392a2c');
-  box(g, rackStart, 0, 0, rackWidth, 1.5, rackHeight, inner);
+  box(g, start, 0, 0, width, 1.5, rackHeight, inner);
   // De sokkel ligt onder de voorstijlen en loopt door tot tegen de muur.
-  box(g, rackStart, 0, 0, rackWidth, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
+  box(g, start, 0, 0, width, rackDepth, 2, flat('#a97c53', '#63432f', '#50372c'));
 
   // Op de middelste plank blijft ruimte voor het flesje op de werkbank.
   const stock = [
@@ -640,14 +641,14 @@ function drawPotionRack(g) {
   const palette = ['#ba6183', '#569aac', '#78a655', '#9e72b3', '#cd9351'];
   stock.forEach((row, index) => {
     const z = 3 + index * 12;
-    box(g, rackStart, 0, z - 2, rackWidth, rackDepth, 2, trim);
+    box(g, start, 0, z - 2, width, rackDepth, 2, trim);
     for (const [offset, shape, color] of row) {
-      drawRackBottle(g, rackStart + offset, z, shape, palette[color]);
+      drawRackBottle(g, start + offset, z, shape, palette[color], bubbles);
     }
   });
 
   // De linker stijl is slanker zodat de flessen dichter bij het hout staan.
-  for (const [a, stileWidth] of [[rackStart, 1], [rackEnd - 2, 2]]) {
+  for (const [a, stileWidth] of [[start, 1], [end - 2, 2]]) {
     box(g, a, 0, 0, stileWidth, rackDepth, rackHeight - 2, post);
     for (const z of [4, 16, 28, 36]) {
       const [x, y] = P(a + stileWidth / 2, rackDepth, z);
@@ -655,12 +656,12 @@ function drawPotionRack(g) {
       dot(g, x, y - 1, '#bf9b69');
     }
   }
-  box(g, rackStart - .5, 0, rackHeight - 2, rackWidth + 1, rackDepth + .5, 2, trim);
+  box(g, start - .5, 0, rackHeight - 2, width + 1, rackDepth + .5, 2, trim);
 }
 
-function drawRackDoors(g) {
-  const left = (rackStart + 1) * 2;
-  const right = (rackEnd - 2) * 2;
+function drawRackDoors(g, start = rackStart, end = rackEnd, reflections = true) {
+  const left = (start + 1) * 2;
+  const right = (end - 2) * 2;
   const middle = Math.floor((left + right) / 2);
   const top = rackHeight - 2;
   wallR(g, rackDepth, left, right, 2, top, (u, z) => {
@@ -671,6 +672,7 @@ function drawRackDoors(g) {
     if ((u === middle - 2 || u === middle + 1) && z >= 18 && z <= 20) {
       return z === 20 ? '#ecd29a' : '#a47a4a';
     }
+    if (!reflections) return 'rgba(131,194,181,.08)';
     const offset = u < middle ? u - left : u - middle;
     if (offset > 2 && offset < 14 && z === 23 + (offset >> 1)) {
       return 'rgba(205,236,230,.30)';
@@ -1026,7 +1028,7 @@ function stockroomFloor(a, b) {
   return sh('#66636a', .84 + hash(column, row) * .25 + beam * .3 + (grit > .91 ? .09 : 0));
 }
 
-const stockShelfRanges = [[6, 29], [34, 58], [64, 89]];
+const stockShelfStarts = [4, 34, 64];
 const stockBookcases = [[0, 3], [6, 9]];
 const pageStackTile = [5, 8];
 const stockLayout = [
@@ -1058,30 +1060,10 @@ function drawStockShelves(g) {
     wallL(g, 4, start * 2, end * 2, 0, 87, libraryShelf(start * 2, end * 2, null));
     box(g, 0, start - .5, 86, 4.5, end - start + 1, 2, timber);
   }
-  for (const [start, end] of stockShelfRanges) {
-    box(g, start, 0, 0, end - start, 5, 57, timber);
-    wallR(g, 5, start * 2, end * 2, 2, 56, (u, z) => {
-      const column = u - start * 2;
-      const shelf = (z - 2) % 14;
-      if (column < 3 || u >= end * 2 - 3 || shelf < 2) return shelf === 1 ? '#ac7b52' : '#745039';
-      const group = Math.floor(column / 9);
-      const tier = Math.floor((z - 2) / 14);
-      const item = column % 9;
-      const kind = (group + tier + start) % 5;
-      if (kind !== 4 && item >= 1 && item <= 6) {
-        const palette = ['#6e8ba0', '#9477ab', '#778951', '#ad7b4c'];
-        const narrow = kind < 2;
-        if (shelf === 10 && item >= 3 && item <= 4) return '#c39c73';
-        if (shelf >= 8 && shelf < 10 && item >= 3 && item <= 4) return '#a5b9b2';
-        if (shelf >= 2 && shelf < 8 && (!narrow || (item >= 2 && item <= 5))) {
-          if (item === (narrow ? 2 : 1)) return '#a9c1b6';
-          if (shelf === 5 && item >= 3 && item <= 4 && !narrow) return '#dac198';
-          return sh(palette[kind], shelf > 4 ? 1 : .75);
-        }
-      }
-      return '#352b35';
-    });
-    box(g, start - .5, 0, 56, end - start + 1, 5.5, 2, timber);
+  for (const start of stockShelfStarts) {
+    const end = start + rackEnd - rackStart;
+    drawPotionRack(g, start, end, stockRackBubbles);
+    drawRackDoors(g, start, end, false);
   }
 }
 
@@ -2198,6 +2180,8 @@ function wandLightIntensity() {
 
 function drawStockDarkness(x, y, wandTip, t) {
   const light = wandTip ? wandLightIntensity() : 0;
+  const tipRadius = 38 + 26 * light + Math.sin(t * 3) * 2;
+  const floorRadius = 33 + 19 * light;
   const mask = stockDarkness.getContext('2d');
   mask.clearRect(0, 0, W, H);
   mask.fillStyle = 'rgba(13, 12, 31, .81)';
@@ -2216,8 +2200,8 @@ function drawStockDarkness(x, y, wandTip, t) {
   reveal(...P(5, (STOCK_DOOR_ROW + .5) * TILE_SIZE, 14), 45, .7);
   if (light > 0) {
     const [tipX, tipY] = wandTip;
-    reveal(tipX, tipY, 38 + 26 * light + Math.sin(t * 3) * 2, light);
-    reveal(x, y - 4, 33 + 19 * light, .82 * light);
+    reveal(tipX, tipY, tipRadius, light);
+    reveal(x, y - 4, floorRadius, .82 * light);
   }
   mask.globalCompositeOperation = 'source-over';
 
@@ -2226,6 +2210,18 @@ function drawStockDarkness(x, y, wandTip, t) {
   ctx.drawImage(stockDarkness, 0, 0);
   ctx.restore();
   if (light > 0) {
+    ctx.save();
+    for (const [index, [px, py, color]] of stockRackBubbles.entries()) {
+      const phase = (t * .85 + index * .381) % 1;
+      if (phase >= .34) continue;
+      const tipExposure = 1 - Math.hypot(px - wandTip[0], py - wandTip[1]) / tipRadius;
+      const floorExposure = 1 - Math.hypot(px - x, py - (y - 4)) / floorRadius;
+      const exposure = Math.max(0, tipExposure, .82 * floorExposure);
+      if (exposure <= 0) continue;
+      ctx.globalAlpha = light * Math.min(1, exposure * 2) * Math.sin(phase / .34 * Math.PI);
+      dot(ctx, px, py, color);
+    }
+    ctx.restore();
     glow(...wandTip, 11, 10, '158,225,255', .16 * light);
     ctx.save();
     ctx.globalAlpha = light;
