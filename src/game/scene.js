@@ -507,8 +507,41 @@ function potionRackColor(u, z) {
   }
 }
 
+const workshopStone = brickFn({
+  mortar: '#232934', c: ['#414b59', '#4d5963', '#586470'],
+  hi: '#697783', lo: '#343d49'
+}, 22, 10);
+
+function drawWorkshopIvy(g) {
+  // Getekend vóór de meubels, zodat de ranken tegen het metselwerk blijven.
+  for (const [a, b, length] of [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]) {
+    let previous = P(a, b, 103);
+    for (let drop = 3; drop <= length; drop += 3) {
+      const sway = Math.sin(drop * .25 + a + b) * 3;
+      const [x, y] = P(a ? a + sway : a, b ? b + sway : b, 103 - drop);
+      line(g, ...previous, x, y, '#394936');
+      previous = [x, y];
+      const side = drop % 2 ? -1 : 1;
+      const size = drop < length * .65 ? 3 : 2;
+      const color = hash(a + b, drop) > .45 ? '#789c60' : '#56794e';
+      ell(g, x + side * 3, y + 2, size + 1, 2, '#2e4b3d');
+      ell(g, x + side * 3, y + 1, size, 2, color);
+      dot(g, x + side * 4, y, '#a5bd74');
+    }
+  }
+}
+
 function drawPotionWorkshop(g) {
-  const timber = flat('#aa7650', '#704831', '#563529');
+  const timber = {
+    top: (a, b) => {
+      const board = Math.floor(b * 2);
+      if (b * 2 - board < .22) return '#745139';
+      return sh('#ad8054', .9 + hash(Math.floor(a / 4), board) * .24);
+    },
+    left: (u, z) => sh('#805337', .82 + hash(u, Math.floor(z / 7)) * .26),
+    right: (u, z) => sh('#63402f', .82 + hash(u, Math.floor(z / 7)) * .22)
+  };
+  drawWorkshopIvy(g);
   for (const [start, end] of potionBookcases) {
     box(g, 0, start / 2, 0, 4, (end - start) / 2, 87, timber);
     wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
@@ -523,7 +556,12 @@ function drawPotionWorkshop(g) {
       if (x === 0 || x === -1 || y === 27 || y === 28) return '#77513e';
       const distantRidge = 19 + 6 * Math.sin(u * .17) + 4 * Math.cos(u * .32);
       const nearRidge = 11 + 5 * Math.sin(u * .24 + 1);
-      if (y < nearRidge) return hash(u, z) > .78 ? '#569072' : '#407762';
+      const crown = nearRidge + 3 * Math.sin(u * .81) + 2 * Math.cos(u * 1.3);
+      if (y < crown) {
+        const leaves = hash(Math.floor(u / 2), Math.floor(y / 2));
+        if (y > crown - 3) return leaves > .46 ? '#8db680' : '#6e9d71';
+        return leaves > .72 ? '#619a76' : '#447d66';
+      }
       if (y < distantRidge) return '#789f91';
       if (Math.hypot(u - 86, (y - 36) * 1.4) < 5) return '#fff0bf';
       if (y >= 32 && y < 35 && Math.sin(u * .19) > .68) return '#dde7dc';
@@ -606,6 +644,11 @@ function drawCauldron(t) {
   }
   ell(ctx, x, y - 15, 17, 15, '#252632');
   ell(ctx, x - 2, y - 15, 14, 13, '#3b3e4b');
+  ell(ctx, x - 9, y - 16, 4, 8, '#4d5662');
+  ell(ctx, x - 11, y - 17, 2, 6, '#646a70');
+  for (const dx of [-10, -5, 0, 5, 10]) {
+    dot(ctx, x + dx, y - 21 + Math.round((1 - Math.abs(dx) / 10) * 2), '#999485');
+  }
   ell(ctx, x, y - 11, 12, 7, '#303440');
   for (const side of [-1, 1]) {
     ell(ctx, x + side * 17, y - 21, 4, 4, '#787281');
@@ -636,7 +679,9 @@ function drawCauldron(t) {
 }
 
 function potionFloor(a, b) {
-  const column = Math.floor(a / TILE_SIZE), row = Math.floor(b / TILE_SIZE);
+  const row = Math.floor(b / 8);
+  const stagger = row % 2 ? 4 : 0;
+  const column = Math.floor((a + stagger) / 10);
   const variation = hash(column, row);
   const grain = hash(Math.floor(a * 2), Math.floor(b * 2));
   const edge = Math.min(a - 11, 39 - a, b - 15, 35 - b);
@@ -658,17 +703,17 @@ function potionFloor(a, b) {
     else if (edge < 2 || (diamond >= 5 && diamond < 6)) color = '#b78a63';
     else color = grain > .8 ? '#775369' : '#69475e';
   } else {
-    const seam = Math.min(a % TILE_SIZE, b % TILE_SIZE);
-    if (seam < .55) color = '#35334d';
-    else if (seam < 1.15) color = '#726b82';
-    else color = sh('#57566d', .85 + variation * .24 + (grain > .94 ? .13 : 0));
+    const seam = Math.min((a + stagger) % 10, b % 8);
+    if (seam < .55) color = '#343843';
+    else if (seam < 1.15) color = '#7c8081';
+    else color = sh('#606674', .78 + variation * .35 + (grain > .91 ? .13 : 0));
   }
   if (!daylight) return sh(color, contact);
   const rgb = color.startsWith('#')
     ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16))
     : color.slice(4, -1).split(',').map(Number);
-  const light = [151, 192, 192];
-  const amount = daylight * .55;
+  const light = [213, 225, 199];
+  const amount = daylight * .84;
   return 'rgb(' + rgb.map((channel, index) =>
     Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
 }
@@ -680,8 +725,8 @@ function buildStatic(sg, room) {
   const depth = potion ? POTION_ROWS * TILE_SIZE : N;
   const floor = potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
-  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : brL);
-  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : brR);
+  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : potion ? workshopStone : brL);
+  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : potion ? workshopStone : brR);
   topFace(sg, WH, -T, width, -T, 0, copingFn);
   topFace(sg, WH, -T, 0, 0, depth, copingFn);
   const mer = { top: copingFn, left: brOutL, right: brOutR };
