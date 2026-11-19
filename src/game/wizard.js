@@ -273,7 +273,7 @@ window.WIZARD = {
   castingHand(dir, strength) {
     const vectors = { se: [2, 1], sw: [-2, 1], ne: [2, -1], nw: [-2, -1] };
     const [dx, dy] = vectors[dir];
-    return { x: dx * 4 * strength, y: -13 + dy * 3 * strength };
+    return { x: dx * 3 * strength, y: -16 + dy * strength };
   },
   drawCastingPose(g, dir, x, y, strength, seated = false) {
     const hand = this.castingHand(dir, strength);
@@ -281,14 +281,14 @@ window.WIZARD = {
     const targetX = x + hand.x, targetY = y + hand.y;
     const back = dir.startsWith('n');
     const reach = strength * strength * (3 - 2 * strength);
-    const nearHand = [x + side * 7 * (1 - reach) + hand.x * reach,
-      y - 12 + (hand.y + 12) * reach];
-    const farHand = [x - side * (7 * (1 - reach) + reach) + hand.x * reach,
-      y - 12 + (hand.y + 11) * reach];
-    const nearShoulder = [x + side * 5, y - (back ? 20 : 18)];
-    const farShoulder = [x - side * 5, y - (back ? 19 : 20)];
-    const nearElbow = [x + side * (8 + 2 * reach), y - 14 + reach * 2];
-    const farElbow = [x - side * (7 - reach * 3), y - 13 + reach * 3];
+    const nearHand = [x + side * 6 * (1 - reach) + hand.x * reach,
+      y - 14 + (hand.y + 14) * reach];
+    const farHand = [x - side * (6 * (1 - reach) + reach) + hand.x * reach,
+      y - 14 + (hand.y + 13) * reach];
+    const nearShoulder = [x + side * 5, y - (back ? 20 : 19)];
+    const farShoulder = [x - side * 5, y - 20];
+    const nearElbow = [x + side * (6.5 + .5 * reach), y - 14 - reach];
+    const farElbow = [x - side * (6 - reach * 3), y - 14 - reach];
     const nearWrist = [nearHand[0] + side, nearHand[1] + 1];
     const farWrist = [farHand[0] - side * 2, farHand[1] + 1];
 
@@ -299,7 +299,7 @@ window.WIZARD = {
     // De vingers van de voorste hand sluiten over de staf; de duim blijft zichtbaar.
     g.save();
     g.translate(...nearHand);
-    g.rotate(side * reach * .25);
+    g.rotate(side * reach * .12);
     staffPixels((sx, sy, color) => dot(g, sx - 4.5, sy - 29, color), seated ? 34 : 44);
     drawStaffGlow(g, 1, -24.5, Date.now() / 1000);
     g.restore();
