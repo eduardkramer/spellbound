@@ -15,11 +15,14 @@ const POTION_COLUMNS = 8;
 const POTION_ROWS = 7;
 const POTION_DOOR_ROW = 3;
 const LIBRARY_POTION_DOOR_ROW = 4;
+const STOCK_COLUMNS = 12, STOCK_ROWS = 10;
+const STOCK_WIDTH = STOCK_COLUMNS * TILE_SIZE, STOCK_DEPTH = STOCK_ROWS * TILE_SIZE;
+const POTION_STOCK_DOOR_COLUMN = POTION_COLUMNS - 1, STOCK_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
-const W = 4 * (N + T) + 10, CX = W / 2, CY = 162;
-const H = CY + 2 * N + F + 12;
+const W = 4 * (STOCK_WIDTH + T) + 10, CX = W / 2, CY = 162;
+const H = CY + STOCK_WIDTH + STOCK_DEPTH + F + 12;
 
 const cv = document.getElementById('scene');
 const preview = cv.dataset?.preview !== undefined;
@@ -27,7 +30,7 @@ if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk(), secondC = mk(), potionC = mk();
+const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk();
 const rooms = {
   tower: { canvas: statC, exits: [
     { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' }
@@ -37,7 +40,13 @@ const rooms = {
     { tile: [ROOM_TILES - 1, LIBRARY_POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
   ] },
   potion: { canvas: potionC, exits: [
-    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' }
+    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
+    { tile: [POTION_STOCK_DOOR_COLUMN, 0], wallB: 0,
+      target: 'stockroom', arrival: [1, STOCK_DOOR_ROW], direction: 'se' }
+  ] },
+  stockroom: { canvas: stockC, exits: [
+    { tile: [0, STOCK_DOOR_ROW], wallA: 0, target: 'potion',
+      arrival: [POTION_STOCK_DOOR_COLUMN, 1], direction: 'nw' }
   ] }
 };
 
@@ -373,6 +382,15 @@ function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
   box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+}
+
+const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
+
+function drawStockPassage(g, { tile, wallB }) {
+  const center = (tile[0] + .5) * TILE_SIZE;
+  box(g, center - 6, wallB, 0, 12, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
+    (u, z) => stockArchColor(u - 2 * center, z));
 }
 
 function drawSidePassage(g, { wallA, tile }, foreground) {
@@ -1000,12 +1018,194 @@ function tintFloor(color, contact, amount) {
     Math.round((channel * (1 - amount) + light[index] * amount) * contact)).join(',') + ')';
 }
 
+function stockroomFloor(a, b) {
+  const column = Math.floor(a / 8), row = Math.floor(b / 8);
+  if (a % 8 < .55 || b % 8 < .55) return '#34343e';
+  const beam = Math.max(0, 1 - Math.abs(a - 35) / 24) * Math.max(0, 1 - Math.abs(b - 23) / 27);
+  const grit = hash(Math.floor(a * 2), Math.floor(b * 2));
+  return sh('#66636a', .84 + hash(column, row) * .25 + beam * .3 + (grit > .91 ? .09 : 0));
+}
+
+const stockShelfRanges = [[6, 29], [34, 58], [64, 89]];
+const stockBookcases = [[0, 3], [6, 9]];
+const stockLayout = [
+  [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
+  [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
+  [1, 6, 'table'], [2, 6, 'chair'], [4, 5, 'crystals'], [5, 5, 'herbs'],
+  [6, 5, 'crates'], [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
+  [2, 8, 'scrolls'], [3, 8, 'herbs'], [5, 8, 'books'], [6, 8, 'chair'],
+  [7, 8, 'table'], [9, 8, 'crates'], [10, 8, 'barrel'], [11, 8, 'chest']
+];
+const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
+
+function drawStockLanterns(t) {
+  for (const [x, y] of stockLanterns) {
+    glow(x, y, 36, 29, '255,170,92', .062 + .012 * Math.sin(t * 4 + x));
+    line(ctx, x, y - 12, x, y - 5, '#8c654e');
+    ell(ctx, x, y, 4, 5, '#503637');
+    ell(ctx, x, y, 3, 3, '#d39051');
+    dot(ctx, x, y - 1, '#fff1ad');
+    rect(ctx, x - 2, y + 4, 5, 1, '#976442');
+  }
+}
+
+function drawStockShelves(g) {
+  const timber = woodC('#83583c');
+  for (const [first, limit] of stockBookcases) {
+    const start = first * TILE_SIZE + 2, end = limit * TILE_SIZE - 2;
+    box(g, 0, start, 0, 4, end - start, 87, timber);
+    wallL(g, 4, start * 2, end * 2, 0, 87, libraryShelf(start * 2, end * 2, null));
+    box(g, 0, start - .5, 86, 4.5, end - start + 1, 2, timber);
+  }
+  for (const [start, end] of stockShelfRanges) {
+    box(g, start, 0, 0, end - start, 5, 57, timber);
+    wallR(g, 5, start * 2, end * 2, 2, 56, (u, z) => {
+      const column = u - start * 2;
+      const shelf = (z - 2) % 14;
+      if (column < 3 || u >= end * 2 - 3 || shelf < 2) return shelf === 1 ? '#ac7b52' : '#745039';
+      const group = Math.floor(column / 9);
+      const tier = Math.floor((z - 2) / 14);
+      const item = column % 9;
+      const kind = (group + tier + start) % 5;
+      if (kind !== 4 && item >= 1 && item <= 6) {
+        const palette = ['#6e8ba0', '#9477ab', '#778951', '#ad7b4c'];
+        const narrow = kind < 2;
+        if (shelf === 10 && item >= 3 && item <= 4) return '#c39c73';
+        if (shelf >= 8 && shelf < 10 && item >= 3 && item <= 4) return '#a5b9b2';
+        if (shelf >= 2 && shelf < 8 && (!narrow || (item >= 2 && item <= 5))) {
+          if (item === (narrow ? 2 : 1)) return '#a9c1b6';
+          if (shelf === 5 && item >= 3 && item <= 4 && !narrow) return '#dac198';
+          return sh(palette[kind], shelf > 4 ? 1 : .75);
+        }
+      }
+      return '#352b35';
+    });
+    box(g, start - .5, 0, 56, end - start + 1, 5.5, 2, timber);
+  }
+}
+
+function drawStockContainer(g, a, b, kind) {
+  const [x, y] = P(a, b, 0);
+  ell(g, x, y, 9, 4, '#4b434d');
+  ell(g, x, y, 6, 2, '#353039');
+  const furnitureWood = woodC('#9b6345'), darkWood = woodC('#673f2c');
+  if (kind === 'chair' || kind === 'table') {
+    const chair = kind === 'chair';
+    const height = chair ? 7 : 11;
+    const size = chair ? 4 : 6;
+    for (const da of [-size / 2, size / 2 - 1]) {
+      for (const db of [-size / 2, size / 2 - 1]) box(g, a + da, b + db, 0, 1, 1, height, darkWood);
+    }
+    box(g, a - size / 2, b - size / 2, height, size, size, 1.5, furnitureWood);
+    const surface = height + 1.5;
+    line(g, ...P(a - size / 2 + .5, b + size / 2 - .5, surface),
+      ...P(a + size / 2 - .5, b + size / 2 - .5, surface), '#c18d64');
+    line(g, ...P(a - 1.5, b + .55, surface), ...P(a + 1.5, b + .55, surface), '#85563d');
+    if (chair) {
+      box(g, a - 2, b - 2, height, 4, 1, 8, darkWood);
+      box(g, a - 2.2, b - 2.3, height + 6, 4.4, 1.5, 2, furnitureWood);
+      for (const da of [-1.4, 1.4]) dot(g, ...P(a + da, b - .8, height + 7), '#d0a47a');
+    } else {
+      box(g, a - 2.2, b - 1.75, height + 1.5, 3.5, 2.5, .75,
+        flat('#c1ad82', '#8a7559', '#a48a61'));
+      line(g, ...P(a - 1.7, b - .9, surface + .75), ...P(a + .5, b - .9, surface + .75), '#8f765d');
+    }
+    return;
+  }
+  if (kind === 'chest') {
+    box(g, a - 3, b - 2, 0, 6, 4, 5, darkWood);
+    box(g, a - 3.2, b - 2.2, 5, 6.4, 4.4, 2, furnitureWood);
+    box(g, a - 2.6, b - 1.8, 7, 5.2, 3.6, 1, furnitureWood);
+    for (const da of [-2, 2]) {
+      line(g, ...P(a + da, b + 2.25, 1), ...P(a + da, b + 2.25, 6), '#b28c59');
+    }
+    const [lx, ly] = P(a, b + 2.25, 4);
+    rect(g, lx - 1, ly - 1, 3, 2, '#d7b572');
+    dot(g, lx, ly, '#49312e');
+    line(g, ...P(a - 2.6, b + 2.25, 5), ...P(a + 2.6, b + 2.25, 5), '#59372b');
+    for (const da of [-2, 2]) {
+      dot(g, ...P(a + da, b + 2.25, 2), '#e2bb79');
+      dot(g, ...P(a + da, b + 2.25, 6), '#e2bb79');
+    }
+    return;
+  }
+  if (kind === 'barrel') {
+    ell(g, x, y - 5, 7, 6, '#72503d');
+    rect(g, x - 6, y - 12, 13, 9, '#876046');
+    for (const dx of [-4, 0, 4]) line(g, x + dx, y - 12, x + dx, y - 2, '#a77950');
+    for (const dy of [-9, -4]) rect(g, x - 6, y + dy, 13, 2, '#4c454d');
+    ell(g, x, y - 12, 7, 3, '#a47850');
+    ell(g, x, y - 12, 5, 2, '#634b3e');
+    line(g, x - 4, y - 12, x + 3, y - 11, '#8c6a4e');
+    for (const dy of [-8, -3]) {
+      dot(g, x - 4, y + dy, '#aaa0a1');
+      dot(g, x + 4, y + dy, '#81787e');
+    }
+    return;
+  }
+  if (kind === 'herbs') {
+    ell(g, x, y - 4, 6, 6, '#8f6c4f');
+    ell(g, x - 1, y - 5, 4, 5, '#b28e65');
+    ell(g, x, y - 10, 3, 2, '#79573f');
+    line(g, x - 3, y - 9, x + 2, y - 9, '#d8b986');
+    for (const [dx, dy] of [[-2,-10],[1,-11],[2,-10],[6,0],[8,1],[5,2]]) {
+      dot(g, x + dx, y + dy, dy < 0 ? '#a6ad65' : '#788c57');
+    }
+    for (const [dx, dy] of [[-3,-5],[-2,-4],[-3,-3]]) dot(g, x + dx, y + dy, '#d8b287');
+    line(g, x + 2, y - 6, x + 3, y - 3, '#76543e');
+    rect(g, x + 1, y - 5, 2, 2, '#c7a27b');
+    return;
+  }
+  const timber = woodC('#9b6b43');
+  box(g, a - 2.6, b - 2.6, 0, 5.2, 5.2, 8, timber);
+  box(g, a - 2.8, b - 2.8, 7, 5.6, 5.6, 1, woodC('#ae8156'));
+  line(g, ...P(a - 2, b + 2.6, 1), ...P(a + 2, b + 2.6, 7), '#bd8b5c');
+  line(g, ...P(a + 2.6, b - 2, 7), ...P(a + 2.6, b + 2, 1), '#81573d');
+  for (const z of [2, 5]) {
+    line(g, ...P(a - 2.5, b + 2.65, z), ...P(a + 2.5, b + 2.65, z), '#785339');
+  }
+  for (const da of [-2, 2]) for (const z of [1, 6]) {
+    dot(g, ...P(a + da, b + 2.7, z), '#c0a28a');
+  }
+  if (kind === 'crates') {
+    box(g, a - 1.6, b - 1.2, 8, 3.6, 3.2, 5, furnitureWood);
+    box(g, a - 1.8, b - 1.4, 12.5, 4, 3.6, .75, darkWood);
+  } else if (kind === 'books') {
+    const covers = ['#782d48', '#405e60', '#735086'];
+    for (const [index, cover] of covers.entries()) {
+      const offset = index % 2 ? -.5 : 0;
+      box(g, a - 2 + offset, b - 1.5, 8 + index * 1.4, 4, 3, 1.4,
+        flat(cover, '#bda781', '#8d7359'));
+      const spineZ = 8.6 + index * 1.4;
+      dot(g, ...P(a - 1.3 + offset, b + 1.55, spineZ), '#dbc18a');
+      dot(g, ...P(a + 1.2 + offset, b + 1.55, spineZ), '#ad9063');
+      line(g, ...P(a - 2 + offset, b + 1.55, 9 + index * 1.4),
+        ...P(a + 2 + offset, b + 1.55, 9 + index * 1.4), cover);
+    }
+  } else if (kind === 'glass') {
+    flask(g, x - 3, y - 7, '#89aaa0', 'tube', null);
+    flask(g, x + 3, y - 9, '#628c91', 'round', null);
+  } else if (kind === 'crystals') {
+    for (const [dx, dy, color] of [[-3, -7, '#b298db'], [0, -10, '#d2b6f5'], [3, -7, '#8975b6']]) {
+      line(g, x + dx, y + dy - 4, x + dx - 1, y + dy, color);
+      line(g, x + dx, y + dy - 3, x + dx + 1, y + dy, '#614f81');
+      dot(g, x + dx, y + dy - 4, '#ebd3fa');
+    }
+  } else {
+    ell(g, x - 4, y - 8, 2, 2, '#d7b87b');
+    line(g, x - 4, y - 10, x + 4, y - 9, '#ead095');
+    line(g, x - 4, y - 7, x + 4, y - 6, '#b58a5a');
+    dot(g, x + 1, y - 8, '#ac5559');
+  }
+}
+
 function buildStatic(sg, room) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
-  const width = potion ? POTION_COLUMNS * TILE_SIZE : N;
-  const depth = potion ? POTION_ROWS * TILE_SIZE : N;
-  const floor = potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  const stockroom = room === rooms.stockroom;
+  const width = stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
+  const depth = stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
+  const floor = stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
   wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
@@ -1025,9 +1225,14 @@ function buildStatic(sg, room) {
     drawLibraryShelves(sg);
   }
   if (potion) drawPotionWorkshop(sg);
-  if (!potion) drawPassage(sg, library);
+  if (stockroom) {
+    drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
+    drawStockShelves(sg);
+  }
+  if (room === rooms.tower || library) drawPassage(sg, library);
   for (const exit of room.exits) {
     if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
+    if (exit.wallB !== undefined) drawStockPassage(sg, exit);
   }
 }
 
@@ -1767,6 +1972,18 @@ rooms.potion.floor = [
   'X..XX...',
   'X.......'
 ];
+rooms.stockroom.floor = Array.from({ length: STOCK_ROWS }, (_, row) =>
+  Array(STOCK_COLUMNS).fill(row === 0 ? 'X' : '.'));
+for (const [first, limit] of stockBookcases) {
+  for (let row = first; row < limit; row++) rooms.stockroom.floor[row][0] = 'X';
+}
+for (const [a, b] of stockLayout) rooms.stockroom.floor[b][a] = 'X';
+const stockFurnishings = stockLayout.map(([column, row, kind]) => {
+  const canvas = mk();
+  const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
+  drawStockContainer(canvas.getContext('2d'), a, b, kind);
+  return { canvas, depth: a + b };
+});
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
 const skeletonMage = new Image();
@@ -2237,7 +2454,12 @@ if (!preview) {
       clearRoute();
       return;
     }
-    const clickedExit = currentRoom.exits.find(({ wallA, tile }) => {
+    const clickedExit = currentRoom.exits.find(({ wallA, wallB, tile }) => {
+      if (wallB !== undefined) {
+        const u = px + 2 * wallB;
+        const z = wallB + Math.floor(u / 2) - 1 - py;
+        return z >= 0 && z < 49 && stockArchColor(u - 2 * (tile[0] + .5) * TILE_SIZE, z);
+      }
       if (wallA === undefined) return false;
       const u = 2 * wallA - px - 1;
       const z = wallA + Math.floor(u / 2) - 1 - py;
@@ -2344,7 +2566,9 @@ function updateWizard(dt) {
       wizard.b = wizard.step.b;
       const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
       if (exit) {
+        const wasStockroom = currentRoom === rooms.stockroom;
         currentRoom = rooms[exit.target];
+        if (wasStockroom !== (currentRoom === rooms.stockroom)) fit();
         iceBalls.length = 0;
         castTime = 0;
         fireCharge = 0;
@@ -2357,7 +2581,8 @@ function updateWizard(dt) {
         heldKeys.clear();
         const hints = {
           library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
-          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. Use the arch to return.'
+          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
+          stockroom: 'Potion stockroom · Use the left arch to return to the potion room.'
         };
         movementHint.textContent = hints[exit.target] ?? defaultHint;
       }
@@ -2728,7 +2953,8 @@ function drawRoomOccupants(t, dt) {
   const [x, y] = P(a, b, 0);
   const roomFurnishings = currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
-    : currentRoom === rooms.tower ? furnishings : potionFurnishings;
+    : currentRoom === rooms.tower ? furnishings
+      : currentRoom === rooms.potion ? potionFurnishings : stockFurnishings;
   const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b, dt)].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
@@ -2815,8 +3041,10 @@ function frame(ms) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
       drawLibraryPortrait(t);
       drawLibraryLights(t);
-    } else {
+    } else if (currentRoom === rooms.potion) {
       drawPotionLight(t);
+    } else {
+      drawStockLanterns(t);
     }
     drawRoomOccupants(t, dt);
     // De voorste muur staat vóór de meubels en personages op de vloer.
@@ -2857,7 +3085,10 @@ function fit() {
   const x = center(sceneView.scrollLeft, sceneView.scrollWidth, sceneView.clientWidth);
   const y = center(sceneView.scrollTop, sceneView.scrollHeight, sceneView.clientHeight);
   const availableHeight = Math.min(innerHeight * .7, Math.max(140, innerHeight - 230));
-  const scale = Math.min(sceneView.offsetWidth / W, availableHeight / H) * zoom / 100;
+  const stockroom = currentRoom === rooms.stockroom;
+  const viewWidth = stockroom ? W : 4 * (N + T) + 10;
+  const viewHeight = stockroom ? H : CY + 2 * N + F + 12;
+  const scale = Math.min(sceneView.offsetWidth / viewWidth, availableHeight / viewHeight) * zoom / 100;
   cv.style.width = W * scale + 'px';
   cv.style.height = H * scale + 'px';
   sceneView.scrollLeft = sceneView.scrollWidth * x - sceneView.clientWidth / 2;
