@@ -475,8 +475,9 @@ const potionRackImage = new Image();
 function drawPotionRackSprite(g) {
   // De voetpunten van de voorste poten in de sprite van 230 × 150.
   const leftFoot = [4, 119], rightFoot = [215, 149];
-  const [leftX, leftY] = P(2 * TILE_SIZE, 4, 0);
-  const [rightX, rightY] = P(6 * TILE_SIZE, 4, 0);
+  const extraDepth = 2;
+  const [leftX, leftY] = P(2 * TILE_SIZE, 4 + extraDepth, 0);
+  const [rightX, rightY] = P(6 * TILE_SIZE, 4 + extraDepth, 0);
   const scale = (rightX - leftX) / (rightFoot[0] - leftFoot[0]);
   const slopeCorrection = (rightY - leftY) / (rightX - leftX)
     - (rightFoot[1] - leftFoot[1]) / (rightFoot[0] - leftFoot[0]);
@@ -484,6 +485,25 @@ function drawPotionRackSprite(g) {
   g.imageSmoothingEnabled = false;
   g.translate(leftX, leftY);
   g.transform(scale, scale * slopeCorrection, 0, scale, 0, 0);
+  // Verleng alleen het hout langs de achterkant, buiten het front met de flessen.
+  const depthX = 2 * extraDepth / scale;
+  const depthY = -extraDepth / scale - slopeCorrection * depthX;
+  const rearLeft = [13 - leftFoot[0], 1 - leftFoot[1]];
+  const rearRight = [229 - leftFoot[0], 37 - leftFoot[1]];
+  const rearBase = [229 - leftFoot[0], 140 - leftFoot[1]];
+  for (const [start, end, color] of [
+    [rearLeft, rearRight, '#a87349'],
+    [rearRight, rearBase, '#694333']
+  ]) {
+    g.beginPath();
+    g.moveTo(...start);
+    g.lineTo(...end);
+    g.lineTo(end[0] + depthX, end[1] + depthY);
+    g.lineTo(start[0] + depthX, start[1] + depthY);
+    g.closePath();
+    g.fillStyle = color;
+    g.fill();
+  }
   g.drawImage(potionRackImage, -leftFoot[0], -leftFoot[1]);
   g.restore();
 }
