@@ -384,13 +384,26 @@ function drawPassage(g, rear) {
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
 }
 
-function drawSidePassage(g, { wallA, tile }, foreground) {
+function drawSidePassage(g, { wallA, tile, target }, foreground) {
   const center = (tile[1] + .5) * TILE_SIZE;
+  if (target === 'stockroom' && !foreground) {
+    // De doorlopende stenen drempel draagt beide voeten van de boog.
+    box(g, wallA - 5, center - 8.5, 0, 9, 17, 1,
+      flat('#777991', '#51536a', '#555971'));
+    return;
+  }
   if (!foreground) {
     box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
     if (wallA !== 0) return;
   }
-  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => {
+    const dx = 2 * center - u;
+    if (target === 'stockroom' && z < 3) {
+      if (Math.abs(dx) > 11) return z === 2 ? '#7d85a4' : '#5c6384';
+      return z === 2 ? '#a58b69' : '#777991';
+    }
+    return passageColor(dx, z);
+  });
 }
 
 /* ---------- bibliotheek ---------- */
