@@ -359,9 +359,12 @@ function drawPassage(g, rear) {
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
 }
 
-function drawSidePassage(g, { wallA, tile }) {
+function drawSidePassage(g, { wallA, tile }, foreground) {
   const center = (tile[1] + .5) * TILE_SIZE;
-  box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+  if (!foreground) {
+    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+    if (wallA !== 0) return;
+  }
   wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
 }
 
@@ -488,7 +491,7 @@ function buildStatic(sg, room) {
   if (library) drawLibraryShelves(sg);
   if (!potion) drawPassage(sg, library);
   for (const exit of room.exits) {
-    if (exit.wallA !== undefined) drawSidePassage(sg, exit);
+    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
   }
 }
 
@@ -708,6 +711,12 @@ for (const room of Object.values(rooms)) {
   const background = room.canvas.getContext('2d');
   buildStatic(background, room);
   outline(background, '#14183a');
+  const frontExits = room.exits.filter(({ wallA }) => wallA > 0);
+  if (frontExits.length) {
+    room.foreground = mk();
+    const foreground = room.foreground.getContext('2d');
+    for (const exit of frontExits) drawSidePassage(foreground, exit, true);
+  }
 }
 buildFront();
 
@@ -1935,6 +1944,8 @@ function frame(ms) {
       drawLibraryLights(t);
     }
     drawRoomOccupants(t, dt);
+    // De voorste muur staat vóór de meubels en personages op de vloer.
+    if (currentRoom.foreground) ctx.drawImage(currentRoom.foreground, 0, 0);
     requestAnimationFrame(frame);
     return;
   }
