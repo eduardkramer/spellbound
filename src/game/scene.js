@@ -2051,6 +2051,8 @@ let destination = null;
 const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
 
 const questDialogue = document.getElementById('quest-dialogue');
+const resetQuestDialogue = document.getElementById('reset-quest-dialogue');
+const resetQuestChoice = document.getElementById('reset-quest-choice');
 const questObjective = document.getElementById('quest-objective');
 const questManager = preview ? null : createQuestManager(QUEST_DEFINITIONS, {
   getItem: key => localStorage.getItem(key),
@@ -2118,17 +2120,37 @@ function talkToSkeletonMage() {
   questDialogue.showModal();
 }
 
+function canResetQuest(quest) {
+  return ['active', 'ready', 'complete'].includes(questManager.status(quest));
+}
+
 document.getElementById('reset-quest')?.addEventListener('click', () => {
-  const quest = trackedQuest() ?? [...QUEST_DEFINITIONS].reverse().find(item => questManager.status(item) === 'complete');
-  if (!quest) return;
+  const quests = QUEST_DEFINITIONS.filter(canResetQuest);
+  const placeholder = quests.length ? 'Select a quest' : 'No quests to reset yet';
+  resetQuestChoice.replaceChildren(new Option(placeholder, ''),
+    ...quests.map(quest => new Option(quest.title, quest.id)));
+  document.getElementById('confirm-quest-reset').disabled = !quests.length;
+  clearRoute();
+  heldKeys.clear();
+  fireHeld = false;
+  resetQuestDialogue.showModal();
+});
+
+document.getElementById('reset-quest-form')?.addEventListener('submit', event => {
+  if (event.submitter?.value !== 'reset') return;
+  event.preventDefault();
+  const quest = QUEST_DEFINITIONS.find(item => item.id === resetQuestChoice.value);
+  if (!quest || !canResetQuest(quest)) return;
   questManager.reset(quest);
   if (quest === cauldronQuest) {
     cauldronHeat = 0;
     cauldronWarmup = 0;
   }
   renderQuestObjective();
-  cv.focus({ preventScroll: true });
+  resetQuestDialogue.close();
 });
+
+resetQuestDialogue?.addEventListener('close', () => cv.focus({ preventScroll: true }));
 
 questDialogue?.addEventListener('close', () => {
   if (questDialogue.returnValue === 'advance' && dialogueQuest) {
@@ -2148,7 +2170,7 @@ if (!preview) {
 
 function canSearchBookStack() {
   return currentRoom === rooms.stockroom && questManager?.status(pageQuest) === 'active' &&
-    !questDialogue?.open && !wizard.step &&
+    !questDialogue?.open && !resetQuestDialogue?.open && !wizard.step &&
     Math.abs(wizard.a - pageStackTile[0]) + Math.abs(wizard.b - pageStackTile[1]) === 1;
 }
 
@@ -2160,10 +2182,11 @@ function findMissingPage() {
 }
 searchBookStack?.addEventListener('click', findMissingPage);
 
-function drawMissingPage() {
+function drawMissingPage(t) {
   if (questManager?.status(pageQuest) !== 'active') return;
   const [a, b] = pageStackTile.map(tile => (tile + .5) * TILE_SIZE);
   const [x, y] = P(a + 1, b + 1.7, 11);
+  glow(x - 2, y + 2, 14, 9, '255,209,124', .045 + .012 * Math.sin(t * 2.3));
   rect(ctx, x - 1, y, 4, 2, '#efd79f');
   dot(ctx, x + 2, y, '#fff2c6');
 }
@@ -2213,7 +2236,7 @@ const castStrength = () => Math.max(fireCharge,
 
 function canBreatheFire() {
   return fireHeld && WIZARD.staffEquipped && !seatProgress &&
-    !chestInventory?.open && !questDialogue?.open && librarianDialogue.hidden;
+    !chestInventory?.open && !questDialogue?.open && !resetQuestDialogue?.open && librarianDialogue.hidden;
 }
 
 const fireSprite = new Image();
@@ -2406,7 +2429,7 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    if (questDialogue?.open) return;
+    if (questDialogue?.open || resetQuestDialogue?.open) return;
     if (key === 'e' && !event.repeat && canSearchBookStack()) {
       event.preventDefault();
       findMissingPage();
@@ -2587,7 +2610,7 @@ const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint ? movementHint.textContent : undefined;
 
 function updateWizard(dt) {
-  if (questDialogue?.open) return;
+  if (questDialogue?.open || resetQuestDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
