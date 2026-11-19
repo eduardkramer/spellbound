@@ -1918,7 +1918,7 @@ function warmCauldron(hit, dt) {
 
 function drawQuestMarker(t) {
   if (preview || questStage === 'complete' || !skeletonMage.naturalWidth) return;
-  const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight + 2);
+  const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
   const top = Math.round(y - 8 + Math.sin(t * 3));
   const color = { available: '#ffe15b', active: '#c4cfde', ready: '#f6b844' }[questStage];
   const rows = questStage === 'available'
