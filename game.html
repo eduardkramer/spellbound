@@ -108,6 +108,11 @@
   .inventory-slots{display:grid;gap:3px;padding:5px;border:2px solid #a87948;background:#35263b;
     box-shadow:inset 0 0 0 2px #231828;grid-template-columns:repeat(8,minmax(0,1fr))}
   #chest-slots{margin-top:6px}
+  #chest-inventory[data-stock-chest="true"] #chest-hotbar,
+  #chest-inventory[data-stock-chest="true"] #chest-help{display:none}
+  #chest-inventory[data-stock-chest="true"] #chest-status{
+    position:static;width:auto;height:auto;margin:8px 0 0;overflow:visible;clip-path:none;white-space:normal
+  }
   #chest-hotbar{margin-top:6px;grid-template-columns:repeat(6,minmax(0,1fr));background:#211c32;border-color:#9a8154}
   .inventory-slot{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;min-width:0;background:#483347;
     box-shadow:inset 0 0 0 2px #76546a,inset 0 -4px #302237}
