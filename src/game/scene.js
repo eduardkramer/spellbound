@@ -1626,6 +1626,8 @@ function drawStockContainer(g, a, b, kind, chairFacesBoard = false) {
 
 const hallWindows = [22, 82, 142, 202];
 const hallWindowBase = 18;
+const hallChandelier = new Image();
+hallChandelier.src = 'assets/sprites/hall-chandelier.png';
 const hallWallCandleShelves = {
   hall: [
     { b: 26.5, candles: [{ offset: -1.25, height: 4 }, { offset: 1.25, height: 6, lit: true }] },
@@ -1864,6 +1866,25 @@ function drawHallCandles(t, continuation) {
       if (lit) drawHallCandleFlame(...P(1.5, b + offset, 32.5 + height), t);
     }
   }
+}
+
+function drawHallChandelier(t) {
+  if (!hallChandelier.naturalWidth) return;
+  const alongHall = 55, height = 102;
+  const [wallX, wallY] = P(0, alongHall, height);
+  const [x, y] = P(HALL_WIDTH / 2, alongHall, height);
+
+  // The open ceiling view leaves the wall bracket visible.
+  rect(ctx, wallX - 1, wallY - 3, 3, 8, '#34292a');
+  dot(ctx, wallX, wallY - 2, '#ae8358');
+  line(ctx, wallX, wallY + 4, wallX + 12, wallY + 6, '#49362e');
+  line(ctx, wallX, wallY, x, y, '#34292a');
+  line(ctx, wallX + 1, wallY - 1, x, y - 1, '#8f6846');
+  dot(ctx, x, y, '#bc8c51');
+
+  const flicker = Math.sin(t * 6.7) * .65 + Math.sin(t * 11.2) * .35;
+  glow(x, y + 28, 23, 17, '255,186,102', .062 + .012 * flicker);
+  ctx.drawImage(hallChandelier, x - hallChandelier.naturalWidth / 2, y);
 }
 
 function hallFloor(a, b, continuation) {
@@ -4614,6 +4635,7 @@ function frame(ms) {
       } else {
         drawLibraryLights(t, hallLanterns);
         drawHallCandles(t, currentRoom === rooms.hallEnd);
+        if (currentRoom === rooms.hall) drawHallChandelier(t);
       }
     }
     drawRoomOccupants(t, dt);
