@@ -371,18 +371,20 @@ function passageColor(dx, z) {
   const curve = Math.hypot(dx, lift);
   if (curve > 17) return null;
   if (curve > 11) {
-    const grain = hash(Math.floor(distance * 2), Math.floor(z / 4));
+    const grain = hash(Math.floor(dx * 2 + Math.sin(z / 5)), Math.floor(z / 6));
     const foot = z < 5 || (z >= 27 && z <= 30);
     const keystone = z >= 44 && distance < 3;
     const stud = z < 26 && distance >= 13 && distance < 15 && [9, 16, 23].includes(z);
     const leaf = (keystone && (distance < .7 || (distance < 2.2 && (z === 45 || z === 47)))) ||
       (lift > 2 && Math.abs(curve - 14) < .65 && (z === 35 || z === 38 || z === 41));
     if (curve > 16.3) return '#4b2a24';
-    if (stud || leaf) return '#dfac5d';
+    if (stud || leaf) return dx < 0 ? '#efc17a' : '#c58b48';
+    if (z < 27 && distance >= 14 && distance < 14.7 && [10, 17, 24].includes(z)) return '#5c382b';
     if (curve > 15 || (foot && (z === 4 || z === 30))) return '#bd7943';
     if (curve < 12.2) return '#613624';
     if (foot || keystone) return '#945632';
-    return grain > .5 ? '#a3643c' : '#8c4e32';
+    if (curve > 14 && curve < 14.8) return '#724329';
+    return grain > .72 ? '#b47446' : grain < .28 ? '#79482e' : '#995b37';
   }
   if (z < 3) return '#c0884d';
   if (z < 7) return '#644033';
@@ -390,11 +392,32 @@ function passageColor(dx, z) {
   return '#27192c';
 }
 
-const passageThreshold = flat('#ab7547', '#70452d', '#845236');
+function drawDoorMat(g, a0, b0, width, depth) {
+  const acrossA = width > depth;
+  box(g, a0, b0, 0, width, depth, 1, {
+    top: (a, b) => {
+      const u = acrossA ? a - a0 : b - b0;
+      const v = acrossA ? b - b0 : a - a0;
+      const span = acrossA ? width : depth;
+      const length = acrossA ? depth : width;
+      const edge = Math.min(u, span - u, v, length - v);
+      const weave = (Math.floor(u * 2) + Math.floor(v * 2)) % 2;
+      if (edge < .5) return '#594035';
+      if (edge < 1.15) return weave ? '#d5ad69' : '#b68450';
+      if (edge < 1.6) return '#614339';
+      const x = u - span / 2, y = v - length / 2;
+      const leaf = Math.abs(x) / 2.6 + Math.abs(y - x * .24) / 1.15 < 1;
+      if (leaf) return Math.abs(y - x * .24) < .26 ? '#f0c47a' : '#c88755';
+      return weave ? '#936443' : '#885b40';
+    },
+    left: '#614239',
+    right: '#724a37'
+  });
+}
 
 function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
-  box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, passageThreshold);
+  drawDoorMat(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 14, 7);
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
 }
 
@@ -402,7 +425,7 @@ const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
 
 function drawStockPassage(g, { tile, wallB }) {
   const center = (tile[0] + .5) * TILE_SIZE;
-  box(g, center - 6, wallB, 0, 12, 7, 1, passageThreshold);
+  drawDoorMat(g, center - 6, wallB, 12, 7);
   wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
     (u, z) => stockArchColor(u - 2 * center, z));
 }
@@ -410,7 +433,7 @@ function drawStockPassage(g, { tile, wallB }) {
 function drawSidePassage(g, { wallA, tile }, foreground) {
   const center = (tile[1] + .5) * TILE_SIZE;
   if (!foreground) {
-    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, passageThreshold);
+    drawDoorMat(g, wallA === 0 ? 0 : wallA - 7, center - 7, 7, 14);
     if (wallA !== 0) return;
   }
   wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
