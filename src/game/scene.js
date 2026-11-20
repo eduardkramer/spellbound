@@ -1096,10 +1096,14 @@ const pageStackTile = [11, 9];
 const stockLayout = [
   [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
   [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
-  [1, 6, 'table'], [2, 6, 'chair'], [4, 5, 'crystals'], [5, 5, 'herbs'],
-  [6, 5, 'crates'], [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
-  [2, 8, 'scrolls'], [3, 8, 'herbs'], [...pageStackTile, 'books'], [6, 8, 'chair'],
-  [7, 8, 'table'], [9, 8, 'crates'], [10, 8, 'barrel'], [11, 8, 'chest']
+  // This row leaves a passage at the far end of the room.
+  [1, 5, 'table'], [2, 5, 'chair'], [3, 5, 'barrel'], [4, 5, 'crystals'],
+  [5, 5, 'herbs'], [6, 5, 'crates'], [7, 5, 'chest'], [8, 5, 'table'], [9, 5, 'crates'],
+  [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
+  // Leave the opposite end open for the return aisle along the front wall.
+  [2, 8, 'scrolls'], [3, 8, 'herbs'], [4, 8, 'crates'], [5, 8, 'books'],
+  [6, 8, 'chair'], [7, 8, 'table'], [8, 8, 'barrel'], [9, 8, 'crates'],
+  [10, 8, 'barrel'], [11, 8, 'chest'], [...pageStackTile, 'books']
 ];
 const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
 
