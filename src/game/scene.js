@@ -3368,14 +3368,14 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
 }
 
 const librarianStops = [
-  { a: 0, b: 2, action: 'shelve', face: -1 },
-  { a: 0, b: 4, action: 'shelve', face: -1 },
-  { a: 0, b: 7, action: 'shelve', face: -1 },
-  { a: 2, b: 0, action: 'shelve', face: 1 },
-  { a: 6, b: 0, action: 'shelve', face: 1 },
-  { a: 1, b: 3, action: 'read', face: 1 },
-  { a: 4, b: 3, action: 'read', face: 1 },
-  { a: 3, b: 6, action: 'read', face: 1 }
+  { a: 0, b: 2, face: -1 },
+  { a: 0, b: 4, face: -1 },
+  { a: 0, b: 7, face: -1 },
+  { a: 2, b: 0, face: 1 },
+  { a: 6, b: 0, face: 1 },
+  { a: 1, b: 3, face: 1 },
+  { a: 4, b: 3, face: 1 },
+  { a: 3, b: 6, face: 1 }
 ];
 const librarian = {
   a: 0, b: 2, stop: librarianStops[0], route: [], step: null,
@@ -3401,7 +3401,7 @@ function updateLibrarian(dt) {
     }
     librarian.stop = stop;
     librarian.route = route;
-    librarian.dwell = (stop.action === 'read' ? 3 : 2) + Math.random() * 2.8;
+    librarian.dwell = 2.4 + Math.random() * 2.8;
   }
   const move = librarian.route.pop();
   if (move) {
@@ -3424,9 +3424,8 @@ if (!preview) {
 }
 
 function librarianLayer() {
-  const { a, b, step, stop, elapsed, dwell } = librarian;
-  const action = step ? 'walk' : stop.action;
-  const progress = step ? elapsed : Math.min(1, elapsed / dwell);
+  const { a, b, step, stop, elapsed } = librarian;
+  const progress = step ? elapsed : 0;
   const da = (a + .5 + (step ? (step.a - a) * progress : 0)) * TILE_SIZE;
   const db = (b + .5 + (step ? (step.b - b) * progress : 0)) * TILE_SIZE;
   const [x, y] = P(da, db, 0);
@@ -3435,55 +3434,36 @@ function librarianLayer() {
   const face = watching ? Math.sign(wa - wb - da + db) || 1
     : step ? Math.sign(step.a - a - step.b + b) || 1 : stop.face;
   librarianHit = [x, y];
-  return { depth: da + db, animate: () => drawLibrarian(x, y, face, action, progress, watching, stop.face) };
+  return { depth: da + db, animate: () => drawLibrarian(x, y, face, progress) };
 }
 
 const librarianSprite = new Image();
-librarianSprite.src = 'data:image/png;base64,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';
+librarianSprite.src = 'data:image/png;base64,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';
 
-function drawLibrarian(x, y, face, action, progress, watching, shelfSide) {
-  const stride = action === 'walk' ? Math.round(Math.sin(progress * Math.PI * 6)) : 0;
+function drawLibrarian(x, y, face, progress) {
+  const stride = Math.round(Math.sin(progress * Math.PI * 6));
   ell(ctx, x, y, 6, 2, '#49392e');
   if (!librarianSprite.naturalWidth) return;
 
   const width = librarianSprite.naturalWidth;
   const height = librarianSprite.naturalHeight;
+  const left = -Math.floor(width / 2);
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y));
   ctx.scale(face < 0 ? -1 : 1, 1);
   ctx.imageSmoothingEnabled = false;
   if (stride === 0) {
-    ctx.drawImage(librarianSprite, -width / 2, -height);
+    ctx.drawImage(librarianSprite, left, -height);
   } else {
     const bodyHeight = height - 5;
     const split = Math.floor(width / 2);
-    ctx.drawImage(librarianSprite, 0, 0, width, bodyHeight, -width / 2, -height, width, bodyHeight);
-    ctx.drawImage(librarianSprite, 0, bodyHeight, split, 5, -width / 2 + stride, -5, split, 5);
+    ctx.drawImage(librarianSprite, 0, 0, width, bodyHeight, left, -height, width, bodyHeight);
+    ctx.drawImage(librarianSprite, 0, bodyHeight, split, 5, left + stride, -5, split, 5);
     ctx.drawImage(librarianSprite, split, bodyHeight, width - split, 5,
-      split - width / 2 - stride, -5, width - split, 5);
+      split + left - stride, -5, width - split, 5);
   }
   ctx.restore();
 
-  if (action === 'shelve' && !watching) {
-    const raise = Math.min(1, progress * 1.8);
-    const hand = y - 12 - Math.round(12 * raise);
-    line(ctx, x + shelfSide * 4, y - 16, x + shelfSide * 8, hand, '#4e5739');
-    if (progress < .76) drawLibrarianBook(x + shelfSide * 9, hand - 2, shelfSide);
-    dot(ctx, x + shelfSide * 8, hand, '#d8aa89');
-  } else if (action === 'walk') {
-    const handX = x + face * 4, handY = y - 13 + stride;
-    drawLibrarianBook(handX, handY - 1, face);
-    dot(ctx, handX, handY + 1, '#dac292');
-  }
-}
-
-function drawLibrarianBook(x, y, face) {
-  rect(ctx, x - 3, y - 4, 7, 8, '#32202c');
-  rect(ctx, x - 2, y - 3, 5, 5, '#88514b');
-  rect(ctx, x - 2, y + 2, 5, 1, '#e3d0aa');
-  const spine = x - face * 2;
-  rect(ctx, spine, y - 3, 1, 5, '#b7755a');
-  dot(ctx, spine + face * 2, y - 2, '#d2a96b');
 }
 
 const dittoPixels = [
