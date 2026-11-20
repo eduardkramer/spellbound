@@ -2442,6 +2442,7 @@ let wandLightFade = 0;
 let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
+const loreScroll = document.getElementById('lore-scroll');
 let requestedSeat = null, activeSeat = null;
 let requestedChest = false;
 let seatProgress = 0;
@@ -2924,7 +2925,7 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    if (questDialogue?.open || resetQuestDialogue?.open) return;
+    if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open) return;
     if (key === 'e' && !event.repeat && canSearchBookStack()) {
       event.preventDefault();
       findMissingPage();
@@ -3119,7 +3120,7 @@ function updateStockroomHint() {
 }
 
 function updateWizard(dt) {
-  if (questDialogue?.open || resetQuestDialogue?.open) return;
+  if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
