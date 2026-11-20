@@ -1092,7 +1092,7 @@ function stockroomFloor(a, b) {
 
 const stockShelfStarts = [4, 34, 64];
 const stockBookcases = [[0, 3], [6, 9]];
-const pageStackTile = [5, 8];
+const pageStackTile = [11, 9];
 const stockLayout = [
   [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
   [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
