@@ -1628,6 +1628,7 @@ const hallWindows = [22, 82, 142, 202];
 const hallWindowBase = 18;
 const hallChandelier = new Image();
 hallChandelier.src = 'assets/sprites/hall-chandelier.png';
+let hallChandelierBody;
 const hallWallCandleShelves = {
   hall: [
     { b: 26.5, candles: [{ offset: -1.25, height: 4 }, { offset: 1.25, height: 6, lit: true }] },
@@ -1870,21 +1871,34 @@ function drawHallCandles(t, continuation) {
 
 function drawHallChandelier(t) {
   if (!hallChandelier.naturalWidth) return;
-  const alongHall = 55, height = 102;
+  if (!hallChandelierBody) {
+    // Use the lower part of the sprite and match its metal to the hall fittings.
+    const bodyStart = 14;
+    hallChandelierBody = document.createElement('canvas');
+    const width = hallChandelierBody.width = hallChandelier.naturalWidth;
+    const height = hallChandelierBody.height = hallChandelier.naturalHeight - bodyStart;
+    const body = hallChandelierBody.getContext('2d');
+    body.drawImage(hallChandelier, 0, bodyStart, width, height, 0, 0, width, height);
+    body.globalCompositeOperation = 'source-atop';
+    rect(body, 0, 0, width, height, 'rgba(139,111,86,.34)');
+  }
+
+  const alongHall = 45, height = 102;
   const [wallX, wallY] = P(0, alongHall, height);
   const [x, y] = P(HALL_WIDTH / 2, alongHall, height);
 
   // The open ceiling view leaves the wall bracket visible.
-  rect(ctx, wallX - 1, wallY - 3, 3, 8, '#34292a');
-  dot(ctx, wallX, wallY - 2, '#ae8358');
-  line(ctx, wallX, wallY + 4, wallX + 12, wallY + 6, '#49362e');
-  line(ctx, wallX, wallY, x, y, '#34292a');
-  line(ctx, wallX + 1, wallY - 1, x, y - 1, '#8f6846');
-  dot(ctx, x, y, '#bc8c51');
+  rect(ctx, wallX - 1, wallY - 3, 3, 8, '#564237');
+  dot(ctx, wallX, wallY - 2, '#a58461');
+  line(ctx, wallX, wallY + 4, wallX + 12, wallY + 6, '#66503f');
+  line(ctx, wallX, wallY, x, y, '#564237');
+  line(ctx, wallX + 1, wallY - 1, x, y - 1, '#9b7857');
+  rect(ctx, x - 1, y, 2, 6, '#655041');
+  for (const offset of [0, 3]) dot(ctx, x - 1, y + offset, '#b18b63');
 
   const flicker = Math.sin(t * 6.7) * .65 + Math.sin(t * 11.2) * .35;
-  glow(x, y + 28, 23, 17, '255,186,102', .062 + .012 * flicker);
-  ctx.drawImage(hallChandelier, x - hallChandelier.naturalWidth / 2, y);
+  glow(x, y + 18, 24, 19, '255,185,106', .075 + .015 * flicker);
+  ctx.drawImage(hallChandelierBody, x - hallChandelierBody.width / 2, y + 6);
 }
 
 function hallFloor(a, b, continuation) {
