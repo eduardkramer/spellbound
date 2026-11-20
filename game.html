@@ -101,6 +101,12 @@
     padding:8px 10px 10px;overflow:auto;overscroll-behavior:contain;color:#fff1d3;
     border:3px solid #a87948;background:repeating-linear-gradient(#583727 0 10px,#503022 10px 12px,#653e2a 12px 13px);
     box-shadow:0 0 0 2px #211621,4px 5px #16111b,inset 0 0 0 2px #39241f}
+  #lore-scroll{box-sizing:border-box;width:min(430px,calc(100% - 32px));
+    padding:18px 22px;color:#38252a;background:#f0d49d;border:3px double #845a43;
+    box-shadow:4px 5px #201726;line-height:1.55}
+  #lore-scroll::backdrop{background:#171326a6}
+  #lore-scroll h2{margin:0;font-size:18px}
+  #lore-scroll button{width:auto;padding:0 12px}
   .chest-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 6px 5px 10px;
     background:#684128;border-block:2px solid #b88750;box-shadow:inset 0 -3px #442a22}
   .chest-heading h2{margin:0;color:#ffe0a0;font-size:16px;text-shadow:2px 2px #39251c}
@@ -212,6 +218,13 @@
   <div id="chest-slots" class="inventory-slots" role="group" aria-label="Chest"></div>
   <div id="chest-hotbar" class="inventory-slots" role="group" aria-label="Hotbar"></div>
   <p id="chest-status" class="visually-hidden" role="status"></p>
+</dialog>
+<dialog id="lore-scroll" aria-labelledby="lore-scroll-title">
+  <h2 id="lore-scroll-title">A Note for the Feast</h2>
+  <p>The brew should be ready by dusk. I’ve set the silver cup aside for our guest of honour. He always did insist on a toast before anyone else could speak.</p>
+  <p>One last thing for the steward. If the hall falls quiet before the second toast, let it.</p>
+  <p>— The Skeleton Mage</p>
+  <form method="dialog"><button autofocus>Close</button></form>
 </dialog>
 <script src="src/audio/tracks.js"></script>
 <script src="src/game/wizard.js"></script>
