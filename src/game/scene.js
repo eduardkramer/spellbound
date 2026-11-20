@@ -205,11 +205,11 @@ function brickFn(p, bw = 14, bh = 6) {
     return c;
   };
 }
-const palInL = { mortar: '#26274a', c: ['#3f437f', '#464b88', '#4d5393'], hi: '#5d63a3', lo: '#363a70' };
-const palInR = { mortar: '#2b2b52', c: ['#4d4a86', '#55528f', '#5e5a98'], hi: '#6f6ba8', lo: '#403d78' };
-const palChim = { mortar: '#3a3558', c: ['#6c668e', '#7a749a', '#837da3'], hi: '#9791b5', lo: '#58527a' };
+const palInL = { mortar: '#242d36', c: ['#3d4855', '#485460', '#515f6a'], hi: '#667480', lo: '#323e4a' };
+const palInR = { mortar: '#2a2e35', c: ['#4b5059', '#555d66', '#5e666e'], hi: '#727e86', lo: '#3a424d' };
+const palChim = { mortar: '#3e3636', c: ['#686266', '#797377', '#827c7e'], hi: '#a09897', lo: '#545055' };
 const palOut = { mortar: '#2e4472', c: ['#456296', '#4f70a4', '#5a7cb0'], hi: '#7da0cd', lo: '#3a5586' };
-const brL = brickFn(palInL), brR = brickFn(palInR), brC = brickFn(palChim);
+const brL = brickFn(palInL, 22, 10), brR = brickFn(palInR, 22, 10), brC = brickFn(palChim, 12, 7);
 const brOutL = brickFn(scalePal(palOut, .88)), brOutR = brickFn(scalePal(palOut, 1.08));
 const brOut = brickFn(palOut);
 
@@ -240,26 +240,23 @@ function shadedTowerFloor(a, b) {
   // Hetzelfde kruis als in het glas, geprojecteerd vanaf de linkerwand.
   const u = 44 + 2 * (b - 24 + a * .33);
   const z = 60 + (a - 4) * .85;
-  const inGlass = u >= 24 && u < 64 && z >= 60 && z < 90;
-  const frame = u >= 43 && u < 45 || z >= 74 && z < 76;
-  const sunset = inGlass && !frame ? .19 * (1 - a / 44) : 0;
+  const sunset = towerWindowGlass(u, z) ? .24 * (1 - a / 44) : 0;
   return tintFloor(color, 1 - (1 - shade) * .72, sunset);
 }
 
 function floorFn(a, b) {
-  if (a >= 12 && a < 30 && b >= 4 && b < 40) {                 // tapijt
-    const la = a - 12, lb = b - 4;
-    if (b >= 38.8) return (Math.floor(la * 1.5) & 1) ? '#e8d9a0' : '#bda86a';      // franje
-    if (la < 1.2 || la > 16.8) return '#5b1221';
-    if (la < 2 || la > 16) return '#d6a83c';
-    if (la < 3 || la > 15) return lb % 4 < 1 ? '#c99054' : '#862333';
-    if (lb < 1.2 || lb >= 33.5) return '#a97643';
-    const d = Math.abs(((lb % 8) + 8) % 8 - 4) + Math.abs(la - 9);
-    if (d < 3.2) return '#c43a4a';
-    if (d < 4.2) return '#7d1a28';
-    return hash(Math.floor(a * 2), Math.floor(b * 2)) > .9 ? '#a82838' : '#9c2030';
+  if (a >= 10 && a < 37 && b >= 7 && b < 42) {
+    const edge = Math.min(a - 10, 37 - a, b - 7, 42 - b);
+    if (b < 8.2 || b >= 40.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
+    if (edge < 1.4) return '#3c4441';
+    if (edge < 2.15) return '#ad9160';
+    if (edge < 3.25) return (Math.floor(a * 2) + Math.floor(b * 2)) % 5 === 0 ? '#a0845d' : '#596455';
+    const diamond = Math.abs(a - 23.5) + Math.abs((b - 7) % 12 - 6);
+    if (Math.abs(diamond - 4.25) < .45) return '#ae9468';
+    if (diamond < 2) return '#758171';
+    return hash(Math.floor(a * 2), Math.floor(b * 2)) > .81 ? '#53685f' : '#4b625a';
   }
-  if (b >= N - .8 || a >= N - .8) return '#6a6aa0';  // voorrand
+  if (b >= N - .8 || a >= N - .8) return '#747e87';
   const width = 4, length = 4;
   const column = Math.floor(a / width), row = Math.floor(b / width);
   const phase = (column + row) % (length * 2);
@@ -301,8 +298,8 @@ function facadeFn(br, span) {
 }
 
 /* ---------- hout / boekenkast / raam ---------- */
-const woodEdge = (u, z) => (z >= 90 || (u === 22 && z > 6)) ? '#9a6038' : (hash(u, 3) > .8 ? '#6a3c22' : '#5c331d');
-const woodMid = (u, z) => (hash(u >> 1, z) > .85 ? '#744327' : '#66391f');
+const woodEdge = (u, z) => (u === 22 || z === 7) ? '#9b704c' : (hash(u, z >> 2) > .8 ? '#755138' : '#674630');
+const woodMid = (u, z) => (hash(u >> 1, z) > .85 ? '#835c3f' : '#6f4b34');
 const bookCols = ['#8c2f39', '#2f6e4f', '#3b4f9a', '#b08a3a', '#6a3a8a', '#c0603a', '#2a7a8a', '#7a7a8e'];
 const bookRows = [];
 for (let r = 0; r < 4; r++) {
@@ -317,10 +314,13 @@ for (let r = 0; r < 4; r++) {
 }
 function bookFn(u, z) {
   const r = Math.floor((z - 8) / 12), lz = (z - 8) - r * 12;
-  if (lz < 2) return '#5a3320';
+  if (lz < 2) return lz === 1 ? '#966846' : '#62412e';
   const b = bookRows[r] && bookRows[r][u];
-  if (b && lz - 2 < b.h) return b.first ? sh(b.c, 1.3) : ((lz - 2) === b.h - 1 ? sh(b.c, 1.2) : b.c);
-  return '#1d1830';
+  if (b && lz - 2 < b.h) {
+    if (!b.first && (lz === 4 || lz === b.h) && hash(u >> 1, r) > .65) return '#af8f62';
+    return b.first || lz === b.h + 1 ? sh(b.c, 1.14) : sh(b.c, .84);
+  }
+  return '#28262c';
 }
 function hatFn(u, z) {
   const hu = u - 11;
@@ -336,26 +336,51 @@ function hatFn(u, z) {
   if (z === 87 && hu === 0) return '#222';
   return null;
 }
+
+function towerWindowArch(u, z) {
+  return Math.hypot(u - 44, Math.max(0, z - 76));
+}
+
+function towerWindowCross(u, z) {
+  return u >= 43 && u < 45 || z >= 72 && z < 74;
+}
+
+function towerWindowGlass(u, z) {
+  return z >= 60 && towerWindowArch(u, z) < 18 && !towerWindowCross(u, z);
+}
+
+function towerPanel(u, z) {
+  if (z >= 28) return null;
+  if (z < 3 || z === 25 || z >= 27 || u % 16 < 2) return '#433d36';
+  if (z === 26 || u % 16 === 2) return '#766b53';
+  return hash(u >> 2, z >> 1) > .86 ? '#4e6257' : '#46594f';
+}
+
 function leftFn(u, z) {
-  if (u >= 22 && u < 66 && z >= 6 && z < 92) {
-    if (u < 24 || u >= 64 || z < 8 || z >= 90) return woodEdge(u, z);
-    if (z >= 56 && z < 60) return woodMid(u, z);
-    if (z >= 60) {
-      if ((u >= 43 && u < 45) || (z >= 74 && z < 76)) return woodMid(u, z);
-      return null;                                  // glas (hier komt de hemel doorheen)
+  if (z >= 60) {
+    const arch = towerWindowArch(u, z);
+    if (arch < 18) return towerWindowCross(u, z) ? (u === 43 || z === 73 ? '#967852' : '#614832') : null;
+    if (arch < 22) {
+      if (arch >= 21 || z % 7 === 0 && z <= 76) return '#35404a';
+      if (arch < 19) return '#8e928a';
+      return arch >= 20 ? '#606d76' : '#717f86';
     }
+  }
+  if (u >= 22 && u < 66 && z >= 6 && z < 60) {
+    if (u < 24 || u >= 64 || z < 8) return woodEdge(u, z);
+    if (z >= 56 && z < 60) return woodMid(u, z);
     if (u >= 43 && u < 45) return woodMid(u, z);
     return bookFn(u, z);
   }
   const h = hatFn(u, z); if (h) return h;
-  return towerWallStone(brL, u, z);
+  return towerPanel(u, z) ?? towerWallStone(brL, u, z);
 }
 
 /* ---------- haard / schoorsteen / portret ---------- */
 const soot = (u, z) => (((u + (((z >> 3) & 1) * 4)) % 8 === 0) ? '#221829' : '#17111f');
 function portraitFn(u, z) {
   if (u < 34 || u >= 50 || z < 66 || z >= 94)
-    return (u === 32 || u === 51 || z === 64 || z === 95) ? '#f3cf6a' : '#b17a24';
+    return (u === 32 || u === 51 || z === 64 || z === 95) ? '#caaa72' : '#8d6744';
   const pu = u - 34, pz = z - 66, cx = 7.5, d = Math.abs(pu - cx);
   if (pz >= 18 && pz < 28) {
     const hw = (27.5 - pz) * .55 + .5;
@@ -370,22 +395,23 @@ function portraitFn(u, z) {
   return pz > 14 ? '#241a44' : '#1a1330';
 }
 const fireOpen = (u, z) => {
-  if (u < 30 || u >= 54 || z >= 40) return false;
-  const du = Math.abs(u - 42), zm = du <= 8 ? 40 : 40 - (du - 8) * 2.5;
-  return z < zm;
+  return Math.hypot(u - 42, Math.max(0, z - 28)) < 12;
 };
 function rightFn(u, z) {
   if (fireOpen(u, z)) return soot(u, z);
   if (u >= 22 && u < 62 && z < 54) {
-    if (u < 24 || u >= 60 || z >= 52) return '#9a94b8';
+    if (u < 24 || u >= 60 || z >= 52) return '#96908b';
+    if (fireOpen(u + 2, z) || fireOpen(u - 2, z) || fireOpen(u, z - 2)) {
+      return (u + z) % 7 === 0 ? '#4c4546' : '#a49a8d';
+    }
     return brC(u, z);
   }
   if (u >= 26 && u < 58 && z >= 54) {
     if (u >= 32 && u < 52 && z >= 64 && z < 96) return portraitFn(u, z);
-    if (u < 28 || u >= 56) return '#8c86ac';
+    if (u < 28 || u >= 56) return '#888280';
     return brC(u, z);
   }
-  return towerWallStone(brR, u, z);
+  return towerPanel(u, z) ?? towerWallStone(brR, u, z);
 }
 
 function towerWallStone(brick, u, z) {
@@ -2227,6 +2253,10 @@ function buildStatic(sg, room, doorStyle) {
   if (room !== rooms.hall) box(sg, -T, depth - 8, WH, T, 8, 10, mer);
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, openHallEntrance ? 0 : -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
+  if (room === rooms.tower) {
+    drawWallIvy(sg, [[0, 32.5, 21]]);
+    drawFramedPaintings(sg, [[wallL, [[80, 72, 20, 24, 'moon', ['#b6956a', '#856348', '#574337']]]]]);
+  }
   if (library) {
     drawReadingWindow(sg);
     box(sg, 0, 33, 26, 4, 21, 2.5, woodC('#89654c'));
@@ -2297,12 +2327,19 @@ function buildFront() {
   const iron = flat('#4a4a5a', '#2e2e3c', '#222230');
 
   // haard
-  box(g, 10, 0, 0, 22, 6, 2, flat('#8d88b0', '#6c678f', '#58537a'));
+  const hearthStone = flat('#908882', '#72676a', '#605b60');
+  box(g, 9.5, 0, 0, 23, 6.5, 1.2, flat('#6e6664', '#544c50', '#493f48'));
+  box(g, 10, 0, 1.2, 22, 6, .8, hearthStone);
+  for (const a of [14, 20, 26]) line(g, ...P(a, 4.5, 2), ...P(a, 6, 2), '#65585a');
   // schoorsteenmantel + consoles
   box(g, 9, 0, 52, 24, 4, 4, woodD);
   box(g, 8.75, 0, 55, 24.5, 4.5, 1, wood);
   wallR(g, 4, 18, 66, 52, 54, (u, z) =>
     z === 53 && hash(u >> 1, z) > .32 ? '#a67448' : '#503123');
+  for (const a of [11, 21, 31]) {
+    const [x, y] = P(a, 4.1, 53);
+    dot(g, x, y, '#b48757');
+  }
   box(g, 10.5, 0, 48, 1.6, 2.5, 4, woodD); box(g, 29.5, 0, 48, 1.6, 2.5, 4, woodD);
 
   // ijzeren haardscherm
@@ -2409,7 +2446,8 @@ function buildFront() {
   [x, y] = P(2.6, 38.4, 46); flask(g, x, y, '#ff6fa8', 'tube');
 
   // Vensterbank en tussenplank voor de kat.
-  box(g, 0, 10, 92, 3.5, 25, 3, wood);
+  box(g, 0, 11, 58, 3.5, 22, 2, flat('#9c998e', '#696b68', '#7c817c'));
+  line(g, ...P(3.55, 12, 60), ...P(3.55, 32, 60), '#b4ad98');
   box(g, 0, 35, 68, 5.5, 12, 2, wood);
   box(g, 0, 43, 64, 3, 1.5, 4, woodD);
 
@@ -2424,10 +2462,10 @@ function buildFront() {
     rect(g, bx - 1, by - 24, 2, 22, '#23232f'); dot(g, bx + 1, by - 20, '#3c3c4e'); ell(g, bx, by - 8, 2, 1, '#3c3c4e');
     line(g, bx, by - 22, bx - 8, by - 28, '#23232f'); line(g, bx, by - 22, bx + 8, by - 28, '#23232f');
     line(g, bx, by - 22, bx, by - 30, '#23232f');
-    for (const [dx, ty] of [[-8, by - 28], [0, by - 30], [8, by - 28]]) {
+    for (const [dx, ty, height, lit] of [[-8, by - 28, 6, true], [0, by - 30, 4, false], [8, by - 28, 5, true]]) {
       rect(g, bx + dx - 2, ty, 5, 2, '#2c2c3a');
-      rect(g, bx + dx - 1, ty - 6, 3, 6, '#e9a4b8'); dot(g, bx + dx - 1, ty - 6, '#fbd0dc'); dot(g, bx + dx + 1, ty - 3, '#c9708a');
-      cand.push([bx + dx, ty - 7]);
+      drawHallCandleWax(g, bx + dx, ty, height);
+      if (lit) cand.push([bx + dx, ty - height - 2]);
     } }
 
   store(40, t => {
@@ -2678,7 +2716,7 @@ function drawLibraryLights(t, lanterns = libraryLanterns) {
 /* ---------- animaties ---------- */
 // Zelfde herfstlucht als in het leesraam en de potionkamer.
 function drawSky() {
-  wallL(ctx, 0, 24, 64, 60, 90, (u, z) => autumnSunset(u + 1, (z - 60) / 29));
+  wallL(ctx, 0, 26, 62, 60, 94, (u, z) => towerWindowGlass(u, z) ? autumnSunset(u + 1, (z - 60) / 34) : null);
 }
 
 function windowPixels(paint, start, bottom, inGlass) {
@@ -2732,11 +2770,9 @@ function drawRoomWindowLife(t) {
       drawWindowLeaves(t, (x, y, color) => pixel(center - 13 + x, y, color), 27, 67, 6 + index);
     }
   } else if (currentRoom === rooms.tower) {
-    const pixel = windowPixels(wallL, 24, 60, (u, z) =>
-      u >= 24 && u < 64 && z >= 60 && z < 90 &&
-      !(u >= 43 && u < 45) && !(z >= 74 && z < 76));
-    drawWindowBirds(t, pixel, 40, 29, 1);
-    drawWindowLeaves(t, pixel, 40, 29, 1);
+    const pixel = windowPixels(wallL, 26, 60, towerWindowGlass);
+    drawWindowBirds(t, pixel, 36, 34, 1);
+    drawWindowLeaves(t, pixel, 36, 34, 1);
   } else if (currentRoom === rooms.library) {
     const pixel = windowPixels(wallL, 70, 31, readingWindowGlass);
     drawWindowBirds(t, pixel, 35, 53, 2);
@@ -2763,22 +2799,22 @@ function drawRoomWindowLife(t) {
 
 // banieren
 function banner(t, u0, w, phase) {
-  const zt = 102, zb = 62;
+  const zt = 99, zb = 67;
   for (let u = u0 - 1; u < u0 + w + 1; u++) { pxR(ctx, u, zt + 1, '#3a2414'); pxR(ctx, u, zt, '#6b4224'); }
   for (let z = zt - 1; z >= zb; z--) {
     const k = (zt - z) / (zt - zb), sw = Math.round(Math.sin(t * 1.7 + phase + k * 1.6) * k * 1.8);
     for (let u = 0; u < w; u++) {
       const zbot = zb + Math.round((w / 2 - Math.abs(u + .5 - w / 2)) * .9);
       if (z < zbot) continue;
-      let c = u < 2 ? '#5d9a2c' : u >= w - 2 ? '#a6dc5a' : '#86c040';
-      if (z <= zt - 4 && z >= zt - 5) c = '#d9b640';
-      if (z === zbot) c = '#4f8a26';
+      let c = u < 2 || u >= w - 2 ? '#a38a5d' : u % 5 === 0 ? '#586d62' : '#4e645a';
+      if (z === zt - 5) c = '#b69a66';
+      if (z === zbot) c = '#91805b';
       pxR(ctx, u0 + u + sw, z, c);
     }
     // maansikkel
     if (z >= zt - 20 && z <= zt - 14) {
       const m = u0 + Math.floor(w / 2) + sw, dz = z - (zt - 17);
-      for (let du = -3; du <= 3; du++) if (du * du + dz * dz <= 9 && (du - 1) * (du - 1) + dz * dz > 5) pxR(ctx, m + du, z, '#f0d060');
+      for (let du = -3; du <= 3; du++) if (du * du + dz * dz <= 9 && (du - 1) * (du - 1) + dz * dz > 5) pxR(ctx, m + du, z, '#d9be84');
     }
   }
 }
@@ -2829,7 +2865,7 @@ function flame(x, y, t, seed) {
   dot(ctx, x, y, '#fff0a0'); dot(ctx, x, y - 1, '#ffe27a');
   dot(ctx, x + sw, y - 2, '#ffb030'); if (tall) dot(ctx, x + sw, y - 3, '#ff7a20');
 }
-const CAT_PERCHES = [[2.6, 25.5, 95], [3.5, 39, 70], [3.5, 45, 46], [3.5, 39, 70]];
+const CAT_PERCHES = [[2.6, 25.5, 60], [3.5, 39, 70], [3.5, 45, 46], [3.5, 39, 70]];
 const CAT_REST = 7, CAT_JUMP = .8;
 const CAT_FUR = '#14141f', CAT_LIGHT = '#363655', CAT_PAW = '#28283b';
 
@@ -4743,7 +4779,7 @@ function frame(ms) {
     requestAnimationFrame(frame);
     return;
   }
-  banner(t, 7, 12, 0); banner(t, 65, 12, 1.7); banner(t, 105, 14, 3);
+  banner(t, 7, 12, 0); banner(t, 89, 14, 3);
   drawPortrait(t);
   drawFire(t, dt);
   drawRoomOccupants(t, dt);
