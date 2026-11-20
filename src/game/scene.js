@@ -14,6 +14,8 @@ const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
 const POTION_COLUMNS = 8;
 const POTION_ROWS = 7;
 const POTION_DOOR_ROW = 3;
+const LIBRARY_COLUMNS = 14, LIBRARY_ROWS = 12;
+const LIBRARY_WIDTH = LIBRARY_COLUMNS * TILE_SIZE, LIBRARY_DEPTH = LIBRARY_ROWS * TILE_SIZE;
 const LIBRARY_POTION_DOOR_ROW = 4;
 const STOCK_COLUMNS = 12, STOCK_ROWS = 10;
 const STOCK_WIDTH = STOCK_COLUMNS * TILE_SIZE, STOCK_DEPTH = STOCK_ROWS * TILE_SIZE;
@@ -21,8 +23,8 @@ const POTION_STOCK_DOOR_COLUMN = POTION_COLUMNS - 1, STOCK_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
-const W = 4 * (STOCK_WIDTH + T) + 10, CX = W / 2, CY = 162;
-const H = CY + STOCK_WIDTH + STOCK_DEPTH + F + 12;
+const W = 4 * (Math.max(STOCK_WIDTH, LIBRARY_WIDTH, LIBRARY_DEPTH) + T) + 10, CX = W / 2, CY = 162;
+const H = CY + Math.max(STOCK_WIDTH + STOCK_DEPTH, LIBRARY_WIDTH + LIBRARY_DEPTH) + F + 12;
 
 const cv = document.getElementById('scene');
 const preview = cv.dataset?.preview !== undefined;
@@ -37,10 +39,10 @@ const rooms = {
   ] },
   library: { canvas: secondC, exits: [
     { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' },
-    { tile: [ROOM_TILES - 1, LIBRARY_POTION_DOOR_ROW], wallA: N, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
+    { tile: [LIBRARY_COLUMNS - 1, LIBRARY_POTION_DOOR_ROW], wallA: LIBRARY_WIDTH, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' }
   ] },
   potion: { canvas: potionC, exits: [
-    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [ROOM_TILES - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
+    { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [LIBRARY_COLUMNS - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
     { tile: [POTION_STOCK_DOOR_COLUMN, 0], wallB: 0,
       target: 'stockroom', arrival: [1, STOCK_DOOR_ROW], direction: 'se' }
   ] },
@@ -483,16 +485,22 @@ const librarySeats = [
   readingSeat,
   { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
   { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
-  { tile: [4, 7], approach: [3, 7], direction: 'ne', height: 7, hit: [9, 16] }
+  { tile: [4, 7], approach: [3, 7], direction: 'ne', height: 7, hit: [9, 16] },
+  { tile: [9, 6], approach: [8, 6], direction: 'ne', height: 7, hit: [9, 16] },
+  { tile: [11, 9], approach: [10, 9], direction: 'ne', height: 7, hit: [9, 16] },
+  { tile: [5, 10], approach: [4, 10], direction: 'ne', height: 7, hit: [9, 16] }
 ];
 
 const libraryLayout = [
   [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
   [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant'],
-  [1, 5, 'reading chair'], [0, 4, 'tea table']
+  [1, 5, 'reading chair'], [0, 4, 'tea table'],
+  [9, 5, 'desk'], [9, 6, 'chair'], [11, 8, 'desk'], [11, 9, 'chair'],
+  [5, 9, 'desk'], [5, 10, 'chair'], [2, 10, 'plant'], [12, 2, 'plant'], [12, 10, 'plant']
 ];
-const leftShelfRanges = [[4, 64], [115, 126]];
-const rightShelfRanges = [[8, 48], [98, 126]];
+const leftShelfRanges = [[4, 64], [115, 126], [132, 184]];
+const rightShelfRanges = [[8, 48], [98, 126], [133, 172], [179, 216]];
+const libraryLanterns = [[10, 10], [46, 16], [14, 48], [78, 25], [89, 68], [37, 76]];
 
 function shadedLibraryFloor(a, b) {
   const color = libraryFloor(a, b);
@@ -507,8 +515,7 @@ function shadedLibraryFloor(a, b) {
     const centerB = (row + .5) * TILE_SIZE + 1.5;
     shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
   }
-  const lamplight = Math.max(0, 1 - Math.hypot((a - 39) / 20, (b - 22) / 17),
-    1 - Math.hypot((a - 13) / 17, (b - 44) / 16));
+  const lamplight = Math.max(0, ...libraryLanterns.map(([la, lb]) => 1 - Math.hypot((a - la) / 20, (b - lb) / 17)));
   const adjusted = shade * (1 + lamplight * .32);
   if (!lamplight) return sh(color, adjusted);
   const channels = color.startsWith('#')
@@ -521,11 +528,12 @@ function shadedLibraryFloor(a, b) {
 }
 
 function libraryFloor(a, b) {
-  if (a >= 9 && a < 58 && b >= 15 && b < 58) {
-    const edge = Math.min(a - 9, 58 - a, b - 15, 58 - b);
+  const annex = a >= 65 && a < 104 && b >= 39 && b < 86;
+  if (annex || (a >= 9 && a < 58 && b >= 15 && b < 58)) {
+    const edge = annex ? Math.min(a - 65, 104 - a, b - 39, 86 - b) : Math.min(a - 9, 58 - a, b - 15, 58 - b);
     if (edge < .8 || (edge > 1.8 && edge < 2.7)) return '#bea875';
     if (edge < 4) return '#485b48';
-    const pattern = Math.abs(a - 33.5) + Math.abs(b - 36.5);
+    const pattern = annex ? Math.abs(a - 84.5) + Math.abs(b - 62.5) : Math.abs(a - 33.5) + Math.abs(b - 36.5);
     const weave = hash(Math.floor(a * 2), Math.floor(b * 2));
     if (Math.abs(pattern - 13) < .85 || Math.abs(pattern - 16) < .55) return '#91a17a';
     return weave > .86 ? '#68795d' : '#52674d';
@@ -1521,8 +1529,8 @@ function buildStatic(sg, room, doorStyle) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
   const stockroom = room === rooms.stockroom;
-  const width = stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
-  const depth = stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
+  const width = library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
+  const depth = library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
   const floor = stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
@@ -1934,7 +1942,7 @@ function drawLibraryPortrait(t) {
 }
 
 function drawLibraryLights(t) {
-  for (const [a, b] of [[10, 10], [46, 16], [14, 48]]) {
+  for (const [a, b] of libraryLanterns) {
     const [x, y] = P(a, b, 72);
     line(ctx, x, y - 37, x, y - 6, '#443139');
     glow(x, y, 29, 26, '255,189,100', .085 + .015 * Math.sin(t * 1.4 + a));
@@ -2379,7 +2387,9 @@ const towerFloor = [
   'X.......',
   '........'
 ];
-const libraryFloorMap = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILES).fill('.'));
+const libraryFloorMap = Array.from({ length: LIBRARY_ROWS }, () => Array(LIBRARY_COLUMNS).fill('.'));
+for (let row = ROOM_TILES; row < LIBRARY_ROWS; row++) libraryFloorMap[row][0] = 'X';
+for (let column = ROOM_TILES; column < LIBRARY_COLUMNS; column++) libraryFloorMap[0][column] = 'X';
 for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
 rooms.tower.floor = towerFloor;
 rooms.library.floor = libraryFloorMap;
@@ -3775,8 +3785,11 @@ function positionCamera() {
 
 function fit() {
   const stockroom = currentRoom === rooms.stockroom;
-  roomWidth = stockroom ? W : 4 * (N + T) + 10;
-  roomHeight = stockroom ? H : CY + 2 * N + F + 12;
+  const library = currentRoom === rooms.library;
+  const width = library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : N;
+  const depth = library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : N;
+  roomWidth = 4 * (Math.max(width, depth) + T) + 10;
+  roomHeight = CY + width + depth + F + 12;
   const fitScale = Math.min(sceneView.clientWidth / roomWidth, sceneView.clientHeight / roomHeight);
   cameraScale = fitScale * zoom / 100;
   cv.style.width = W * cameraScale + 'px';
