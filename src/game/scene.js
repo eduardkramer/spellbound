@@ -2932,6 +2932,7 @@ for (const row of classroomRows) for (const column of classroomBanks) {
   rooms.classroom.floor[row].fill('X', column, column + 4);
   rooms.classroom.floor[row + 1].fill('X', column, column + 4);
 }
+rooms.classroom.floor[0][0] = 'X'; // Owl perch
 rooms.classroom.floor[1].fill('X', 4, 8);
 rooms.classroom.floor[2][10] = 'X';
 rooms.classroom.floor[0][10] = rooms.classroom.floor[0][11] = 'X';
@@ -4238,43 +4239,55 @@ for (const row of classroomRows) for (const column of classroomBanks) {
   }
 }
 
-// A small tabletop perch at the end of the teacher's desk.
-function drawClassroomOwl(g, a, b, surface) {
-  const [x, y] = P(a, b, surface);
-  ell(g, x + 1, y + 1, 6, 2, '#785139');
-  box(g, a - 1.8, b - 1.2, surface, 3.6, 2.4, 1.5, woodC('#674531'));
-  rect(g, x - 1, y - 12, 3, 11, '#543a31');
-  rect(g, x - 1, y - 11, 1, 9, '#ab7c52');
-  line(g, x - 6, y - 12, x + 6, y - 14, '#51372d');
-  line(g, x - 6, y - 13, x + 6, y - 15, '#ad8155');
-  line(g, x + 4, y - 15, x + 6, y - 18, '#775035');
+// The stand occupies the rear corner tile, clear of the doorway and dais.
+const owlStand = mk();
+{
+  const g = owlStand.getContext('2d');
+  const a = 6, b = 6;
+  const [x, y] = P(a, b, 0);
+  ell(g, x + 2, y + 1, 8, 3, 'rgba(40,28,27,.37)');
+  box(g, a - 2.5, b - 2, 0, 5, 4, 2, woodC('#694935'));
+  rect(g, x - 1, y - 22, 3, 20, '#52392f');
+  line(g, x - 1, y - 21, x - 1, y - 4, '#a17852');
+  line(g, x - 6, y - 22, x + 7, y - 24, '#4d372d');
+  line(g, x - 6, y - 23, x + 7, y - 25, '#ad855d');
+  line(g, x + 5, y - 25, x + 8, y - 28, '#876244');
 
-  const feathers = {
-    X: '#392c2b', B: '#654333', b: '#906347', t: '#c29a70',
-    c: '#e0c39a', o: '#edbd63', k: '#282426', g: '#cc9550'
+  // Tawny owl in three-quarter view. The long wing covers the right flank.
+  const plumage = {
+    X: '#392e2b', d: '#584032', b: '#79553d', r: '#986b49',
+    t: '#b78c64', p: '#d3b28b', c: '#e2caa3', k: '#292328', g: '#b19871'
   };
   const rows = [
-    '...XXXXXXX...',
-    '..XBbbtbbBX..',
-    '.XBttbbbttBX.',
-    '.XtcctbtcctX.',
-    '.XcokcBckocX.',
-    '.XtcctgtcctX.',
-    '..XtttBtttX..',
-    '..XBbctcbBX..',
-    '.XBbtbcbtbBX.',
-    '.XBbbtbtbbBX.',
-    '.XXBbtctbBXX.',
-    '..XBbbtbbbX..',
-    '...XBbtbbX...',
-    '....XBXBX....',
-    '....gg.gg....'
+    '.....ddbbbd......',
+    '...dbrrtrrbbd....',
+    '..dbtrbrtrbrbd...',
+    '..brpptbpttrbd...',
+    '.dbtcpprppttbd...',
+    '.drpckptpkctbd...',
+    '.dbpkktbpkktbd...',
+    '..brpptgpttrbd...',
+    '..dbtttgttbrbd...',
+    '...dbtpptrbbbd...',
+    '...brptpttrbrbd..',
+    '..drptbptptbrtbd.',
+    '..dbpbtpbtprbrbd.',
+    '..dbtptptbtbtrbd.',
+    '...btbptpttrbrbd.',
+    '...drttbptbrbrbd.',
+    '....btptrtbbrbdb.',
+    '....dbrtbtbbrbd..',
+    '.....dbttbdbbd...',
+    '......gg.ggbbd...',
+    '......g..g.dbXd..',
+    '............dd...'
   ];
   rows.forEach((row, dy) => {
     for (let dx = 0; dx < row.length; dx++) {
-      if (row[dx] !== '.') dot(g, x + dx - 6, y + dy - 28, feathers[row[dx]]);
+      if (row[dx] !== '.') dot(g, x + dx - 8, y + dy - 44, plumage[row[dx]]);
     }
   });
+  classroomFurnishings.push({ canvas: owlStand, depth: a + b });
 }
 
 const classroomFront = mk();
@@ -4293,7 +4306,6 @@ for (const panel of [36, 45, 54]) {
 }
 box(teacherDesk, 43, 10, 14.5, 10, 4, .75, flat('#e7d3a6', '#a68257', '#bf9c6e'));
 line(teacherDesk, ...P(48, 10, 15.25), ...P(48, 14, 15.25), '#ad8960');
-drawClassroomOwl(teacherDesk, 59, 11, 14.5);
 classroomFurnishings.push({ canvas: classroomFront, depth: 60 });
 
 const classroomDemo = mk();
