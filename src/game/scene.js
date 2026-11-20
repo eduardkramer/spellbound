@@ -1683,6 +1683,36 @@ function hallFloor(a, b, continuation) {
   return stockroomFloor(a, b);
 }
 
+function drawHallConnector(g, b) {
+  const stone = flat('#85929e', '#424956', '#596674');
+  const trim = flat('#99a4aa', '#525b66', '#727e88');
+  const postDepth = 2.5;
+  for (const a of [0, HALL_WIDTH - 2.5]) {
+    box(g, a, b, 0, 2.5, postDepth, 54, stone);
+    box(g, a, b, 0, 2.5, postDepth, 4, trim);
+    box(g, a, b, 50, 2.5, postDepth, 4, trim);
+    wallR(g, b + postDepth, a * 2, a * 2 + 5, 4, 50, (u, z) => {
+      if (z % 8 === 0) return '#444953';
+      if (u === a * 2 || z % 8 === 7) return '#8b969d';
+      return '#697581';
+    });
+  }
+  const center = HALL_WIDTH;
+  for (const depth of [0, postDepth]) {
+    wallR(g, b + depth, 0, HALL_WIDTH * 2, 53, 77, (u, z) => {
+      const dx = (u - center) / center;
+      const rise = Math.sqrt(Math.max(0, 1 - dx * dx));
+      const inner = 53 + rise * 17;
+      const outer = 57 + rise * 19;
+      if (z < inner || z >= outer) return null;
+      if (depth === 0) return '#48525e';
+      if (z < inner + 1) return '#3e4650';
+      if (z > outer - 2 || Math.abs(u - center) < 2) return '#a3a7a3';
+      return Math.floor(u / 7) % 2 ? '#77828b' : '#879197';
+    });
+  }
+}
+
 function buildStatic(sg, room, doorStyle) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
@@ -1714,6 +1744,7 @@ function buildStatic(sg, room, doorStyle) {
     drawLibraryClock(sg);
   }
   if (hall) drawHallDecor(sg, room === rooms.hallEnd);
+  if (openHallEntrance) drawHallConnector(sg, 0);
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
     drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
@@ -1989,9 +2020,10 @@ for (const [roomName, room] of Object.entries(rooms)) {
   buildStatic(background, room, doorStyle);
   outline(background, '#14183a');
   const frontExits = room.exits.filter(({ wallA, wallB }) => wallA > 0 || wallB > 0);
-  if (frontExits.length) {
+  if (frontExits.length || room === rooms.hall) {
     room.foreground = mk();
     const foreground = room.foreground.getContext('2d');
+    if (room === rooms.hall) drawHallConnector(foreground, HALL_DEPTH - 2.5);
     for (const exit of frontExits) {
       if (exit.wallA > 0) drawSidePassage(foreground, exit, true, doorStyle);
       if (exit.wallB > 0) drawAcrossPassage(foreground, exit, doorStyle, true);
