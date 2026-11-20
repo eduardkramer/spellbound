@@ -366,21 +366,35 @@ function towerWallStone(brick, u, z) {
 }
 
 function passageColor(dx, z) {
-  const curve = Math.hypot(dx, Math.max(0, z - 31));
+  const distance = Math.abs(dx);
+  const lift = Math.max(0, z - 31);
+  const curve = Math.hypot(dx, lift);
   if (curve > 17) return null;
-  if (curve > 12) {
-    const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
-    return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
+  if (curve > 11) {
+    const grain = hash(Math.floor(distance * 2), Math.floor(z / 4));
+    const foot = z < 5 || (z >= 27 && z <= 30);
+    const keystone = z >= 44 && distance < 3;
+    const stud = z < 26 && distance >= 13 && distance < 15 && [9, 16, 23].includes(z);
+    const leaf = (keystone && (distance < .7 || (distance < 2.2 && (z === 45 || z === 47)))) ||
+      (lift > 2 && Math.abs(curve - 14) < .65 && (z === 35 || z === 38 || z === 41));
+    if (curve > 16.3) return '#4b2a24';
+    if (stud || leaf) return '#dfac5d';
+    if (curve > 15 || (foot && (z === 4 || z === 30))) return '#bd7943';
+    if (curve < 12.2) return '#613624';
+    if (foot || keystone) return '#945632';
+    return grain > .5 ? '#a3643c' : '#8c4e32';
   }
-  if (curve > 11) return '#242849';
-  if (z < 3) return '#d6af67';
-  if (z < 9) return '#4d4261';
-  return '#171933';
+  if (z < 3) return '#c0884d';
+  if (z < 7) return '#644033';
+  if (dx > 8.5 && z < 32) return '#4b2a2b';
+  return '#27192c';
 }
+
+const passageThreshold = flat('#ab7547', '#70452d', '#845236');
 
 function drawPassage(g, rear) {
   const center = EXIT_CENTER * 2;
-  box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, passageThreshold);
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
 }
 
@@ -388,7 +402,7 @@ const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
 
 function drawStockPassage(g, { tile, wallB }) {
   const center = (tile[0] + .5) * TILE_SIZE;
-  box(g, center - 6, wallB, 0, 12, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  box(g, center - 6, wallB, 0, 12, 7, 1, passageThreshold);
   wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
     (u, z) => stockArchColor(u - 2 * center, z));
 }
@@ -396,7 +410,7 @@ function drawStockPassage(g, { tile, wallB }) {
 function drawSidePassage(g, { wallA, tile }, foreground) {
   const center = (tile[1] + .5) * TILE_SIZE;
   if (!foreground) {
-    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, passageThreshold);
     if (wallA !== 0) return;
   }
   wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
