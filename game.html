@@ -27,26 +27,26 @@
 
   #scene-view{width:100%;max-height:70vh;overflow:auto;scrollbar-color:var(--line) var(--bg)}
   #scene{margin-inline:auto}
-  #zoom{display:flex;align-items:center;gap:6px}
+  #zoom{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
   #librarian-dialogue{margin:0 auto 12px;padding:12px 16px;max-width:440px;
     border:2px solid #b79259;background:#30263a;color:#fff1d3;box-shadow:3px 3px #20192a}
   #librarian-dialogue p{margin:6px 0 10px}
   #close-librarian-dialogue{width:auto;padding:0 10px}
-  #reset-quest{width:auto;padding:0 10px;font-size:12px}
+  #reset-quest,#teleport-room{width:auto;padding:0 10px;font-size:12px}
   #quest-log{max-width:95%;color:var(--txt);font-size:12px}
   #quest-log summary{cursor:pointer;color:var(--gold)}
   #quest-log ul{margin:6px 0;padding-left:20px}
   #search-book-stack{width:auto;padding:0 10px;font-size:12px}
   #search-book-stack[hidden],#quest-action[hidden]{display:none}
-  #reset-quest-choice{display:block;width:100%;margin:8px 0 12px}
+  #reset-quest-choice,#teleport-room-choice{display:block;width:100%;margin:8px 0 12px}
   #reset-quest-dialogue button:disabled{opacity:.45;cursor:default}
   #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
-  #quest-dialogue,#reset-quest-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
-  #quest-dialogue::backdrop,#reset-quest-dialogue::backdrop{background:#12102599}
-  #quest-dialogue h2,#reset-quest-dialogue h2{margin:0 0 8px;font-size:18px}
-  #quest-dialogue button,#reset-quest-dialogue button{width:auto;padding:0 12px}
+  #quest-dialogue,#reset-quest-dialogue,#teleport-room-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
+  #quest-dialogue::backdrop,#reset-quest-dialogue::backdrop,#teleport-room-dialogue::backdrop{background:#12102599}
+  #quest-dialogue h2,#reset-quest-dialogue h2,#teleport-room-dialogue h2{margin:0 0 8px;font-size:18px}
+  #quest-dialogue button,#reset-quest-dialogue button,#teleport-room-dialogue button{width:auto;padding:0 12px}
   #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
 
   /* ---- muziekspeler ---- */
@@ -146,6 +146,7 @@
     <button type="button" id="zoom-reset">100%</button>
     <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
     <button type="button" id="reset-quest">Reset quest</button>
+    <button type="button" id="teleport-room">Teleport</button>
   </div>
   <div id="scene-view">
     <canvas id="scene" tabindex="0" aria-label="Wizard’s room" aria-describedby="movement-hint"></canvas>
@@ -193,6 +194,20 @@
     </div>
   </div>
 </div>
+<dialog id="teleport-room-dialogue" aria-labelledby="teleport-room-title">
+  <h2 id="teleport-room-title">Teleport</h2>
+  <form id="teleport-room-form" method="dialog">
+    <label for="teleport-room-choice">Choose a room</label>
+    <select id="teleport-room-choice" required autofocus>
+      <option value="tower">Main Room</option>
+      <option value="library">Library</option>
+      <option value="potion">Potion Room</option>
+      <option value="stockroom">Potion Stockroom</option>
+    </select>
+    <button value="teleport">Teleport</button>
+    <button value="cancel" formnovalidate>Cancel</button>
+  </form>
+</dialog>
 <dialog id="reset-quest-dialogue" aria-labelledby="reset-quest-title">
   <h2 id="reset-quest-title">Reset quest</h2>
   <form id="reset-quest-form" method="dialog">
