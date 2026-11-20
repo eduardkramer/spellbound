@@ -32,9 +32,10 @@
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
   .npc-dialogue{
-    --dialogue-offset:clamp(56px,14dvh,144px);
-    position:fixed;inset:auto 0 var(--dialogue-offset);margin:0 auto;z-index:3;
-    width:min(720px,calc(100% - 32px));max-height:calc(100dvh - var(--dialogue-offset) - 16px);
+    --dialogue-center:57.5dvh;
+    position:fixed;inset:var(--dialogue-center) 0 auto;margin:0 auto;z-index:3;
+    transform:translateY(-50%);
+    width:min(720px,calc(100% - 32px));max-height:calc(2 * (100dvh - var(--dialogue-center) - 16px));
     box-sizing:border-box;overflow:auto;border:2px solid #b48d57;padding:14px;
     color:#f5e6ce;background:
       linear-gradient(#d5ad6c,#d5ad6c) left top / 14px 3px no-repeat,
