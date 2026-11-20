@@ -1454,7 +1454,7 @@ function drawStockShelves(g) {
   }
 }
 
-function drawStockContainer(g, a, b, kind) {
+function drawStockContainer(g, a, b, kind, chairFacesBoard = false) {
   const [x, y] = P(a, b, 0);
   ell(g, x, y, 9, 4, '#4b434d');
   ell(g, x, y, 6, 2, '#353039');
@@ -1517,9 +1517,10 @@ function drawStockContainer(g, a, b, kind) {
       ...P(a + size / 2 - .5, b + size / 2 - .5, surface), '#c18d64');
     line(g, ...P(a - 1.5, b + .55, surface), ...P(a + 1.5, b + .55, surface), '#85563d');
     if (chair) {
-      box(g, a - 2, b - 2, height, 4, 1, 8, darkWood);
-      box(g, a - 2.2, b - 2.3, height + 6, 4.4, 1.5, 2, furnitureWood);
-      for (const da of [-1.4, 1.4]) dot(g, ...P(a + da, b - .8, height + 7), '#d0a47a');
+      const backB = b + (chairFacesBoard ? 1 : -2);
+      box(g, a - 2, backB, height, 4, 1, 8, darkWood);
+      box(g, a - 2.2, backB - .3, height + 6, 4.4, 1.5, 2, furnitureWood);
+      for (const da of [-1.4, 1.4]) dot(g, ...P(a + da, backB + 1.2, height + 7), '#d0a47a');
     } else {
       box(g, a - 2.2, b - 1.75, height + 1.5, 3.5, 2.5, .75,
         flat('#c1ad82', '#8a7559', '#a48a61'));
@@ -1913,6 +1914,18 @@ function classroomFloor(a, b) {
   return sh('#ad8058', .8 + hash(plank, 42) * .19 + light * .25 + (grain > .87 ? .08 : 0));
 }
 
+const classroomRunes = [
+  ['..#..', '.#.#.', '#...#', '.###.', '..#..', '..#..', '..#..'],
+  ['#...#', '.#.#.', '..#..', '.#.#.', '#...#', '..#..', '.###.'],
+  ['..#..', '.#.#.', '#.#.#', '..#..', '..#..', '.#.#.', '#...#']
+];
+
+function classroomRunePixel(index, x, y, scale = 1) {
+  const row = 3 - Math.round(y / scale);
+  const column = 2 + Math.round(x / scale);
+  return classroomRunes[index][row]?.[column] === '#';
+}
+
 function drawClassroomDecor(g) {
   const oak = woodC('#95653f');
   box(g, 23, 2, 0, 50, 18, 1.5, woodC('#916344'));
@@ -1921,24 +1934,32 @@ function drawClassroomDecor(g) {
     z < 3 || z > 26 || u % 15 < 2 ? '#53483c' : '#41554d');
   wallR(g, 0, 0, CLASSROOM_WIDTH * 2, 0, 30, (u, z) =>
     z < 3 || z > 26 || u % 15 < 2 ? '#57493b' : '#485c51');
-  box(g, 23, 0, 34, 50, 2, 35, oak);
-  wallR(g, 2, 48, 144, 36, 67, (u, z) => {
-    if (u < 50 || u >= 142 || z < 38 || z >= 65) return '#a77f55';
-    const x = u - 95, y = z - 51;
-    const ring = Math.hypot(x, y);
-    if (Math.abs(ring - 9) < .55 || Math.abs(x) + Math.abs(y) === 6) return '#d5d7b7';
-    if (Math.abs(x) < 27 && Math.abs(x) > 16 && z % 5 === 0) return '#9ba993';
-    return hash(u, z) > .85 ? '#405952' : '#344b45';
+  const boardWood = woodC('#815337');
+  box(g, 17, 0, 30, 59, 3.5, 47, boardWood);
+  wallR(g, 3.5, 34, 152, 30, 77, (u, z) => {
+    const edge = Math.min(u - 34, 151 - u, z - 30, 76 - z);
+    if (edge === 0) return '#4b372f';
+    if (edge === 1) return u < 80 || z >= 75 ? '#c19362' : '#97663f';
+    if (edge < 4) return hash(u, z) > .72 ? '#a5774f' : '#89603f';
+    for (const [index, center] of [62, 93, 124].entries()) {
+      const x = u - center, y = z - 56;
+      if (classroomRunePixel(index, x, y, 2)) return '#e0dfbe';
+      if (Math.abs(Math.hypot(x, y) - 11) < .5) return '#849a87';
+      if (Math.abs(x) < 7 && (z === 39 || (z === 42 && x < 3))) return '#abb59a';
+    }
+    const dust = hash(Math.floor(u / 3), Math.floor(z / 2));
+    return dust > .82 ? '#456056' : z < 42 ? '#31433e' : '#394f47';
   });
-  box(g, 22.5, 0, 33, 51, 3.5, 1.5, woodC('#ae7d52'));
-  box(g, 33, 2, 34.5, 3, .8, .6, flat('#eadbb8', '#a1937e', '#cebfa3'));
+  box(g, 16.5, 0, 29, 60, 5, 1.25, woodC('#aa794f'));
+  box(g, 33, 4, 30.25, 3, .8, .6, flat('#eadbb8', '#a1937e', '#cebfa3'));
+  box(g, 61, 3.6, 30.25, 2.3, 1, .7, flat('#887359', '#5f4c3e', '#6d5946'));
   box(g, 78, 0, 0, 16, 3, 48, oak);
   wallR(g, 3, 156, 188, 0, 48, libraryShelf(156, 188, null));
   for (const [start, shade] of [[12, '#b8a078'], [104, '#78898a']]) {
     wallL(g, 0, start, start + 24, 39, 67, (u, z) => {
       const x = u - start, y = z - 39;
       if (y < 2 || y > 25 || x === 0 || x === 23) return '#755038';
-      if (Math.abs(x - 12) + Math.abs(y - 15) === 7 || (y < 8 && y % 3 === 0 && x > 3 && x < 20)) return '#e6d3a3';
+      if (classroomRunePixel(start < 50 ? 0 : 2, x - 12, y - 15, 2) || (y < 8 && y % 3 === 0 && x > 3 && x < 20)) return '#e6d3a3';
       return shade;
     });
   }
@@ -3715,7 +3736,7 @@ function enterRoom(exit) {
     library: 'Library · The back arch leads to the main room. The front arches lead to the potion room and the hall.',
     hall: 'Hall · Click the far edge to continue. The arch leads back to the library.',
     hallEnd: 'Hall · The side door leads to a classroom. The open arch leads back.',
-    classroom: 'Classroom · The door leads back to the hall.',
+    classroom: 'Runes Classroom · The door leads back to the hall.',
     potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
     stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
   };
@@ -4143,6 +4164,7 @@ for (const row of classroomRows) for (const column of classroomBanks) {
   const canvas = mk(), g = canvas.getContext('2d');
   const a = column * TILE_SIZE, b = row * TILE_SIZE;
   const oak = woodC('#a57147'), frame = woodC('#714734');
+  ell(g, ...P(a + 16, b + 4, 0), 25, 5, 'rgba(45,30,30,.22)');
   for (const end of [1.5, 28.5]) box(g, a + end, b + 2, 0, 1.2, 4, 11, frame);
   box(g, a + 1, b + 3.9, 8, 30, 1.1, 3, frame);
   for (let section = 0; section < 8; section++) {
@@ -4153,12 +4175,14 @@ for (const row of classroomRows) for (const column of classroomBanks) {
     if (hash(row, column + offset) < .3) continue;
     box(g, a + offset - 1.6, b + 2.6, 12.5, 3.2, 2.2, .55, flat('#dcca9d', '#9b7851', '#bf996a'));
     line(g, ...P(a + offset, b + 2.7, 13.05), ...P(a + offset, b + 4.55, 13.05), '#8a6a4c');
+    dot(g, ...P(a + offset + .9, b + 3.4, 13.1), '#755250');
+    dot(g, ...P(a + offset + 1.15, b + 4, 13.1), '#9c775d');
   }
   classroomFurnishings.push({ canvas, depth: a + 16 + b + 4 });
   for (let seat = 0; seat < 4; seat++) {
     const chair = mk();
     const chairA = a + (seat + .5) * TILE_SIZE, chairB = b + 12;
-    drawStockContainer(chair.getContext('2d'), chairA, chairB, 'chair');
+    drawStockContainer(chair.getContext('2d'), chairA, chairB, 'chair', true);
     classroomFurnishings.push({ canvas: chair, depth: chairA + chairB });
   }
 }
@@ -4191,7 +4215,9 @@ classroomFurnishings.push({ canvas: classroomDemo, depth: 104, animate: t => {
     line(ctx, ...corners[i], ...corners[(i + 1) % corners.length], '#a1ddeb');
     dot(ctx, ...corners[i], '#eaf9ff');
   }
-  line(ctx, x, y - 7, x, y + 7, '#7fbccf');
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -2; dx <= 2; dx++) {
+    if (classroomRunePixel(0, dx, -dy)) dot(ctx, x + dx, y + dy, '#eaf9ff');
+  }
   dot(ctx, x + 10 * Math.sin(t * 1.5), y + 4 * Math.cos(t * 1.5), '#eaf9ff');
 } });
 
