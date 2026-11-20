@@ -1519,6 +1519,10 @@ function drawStockContainer(g, a, b, kind, chairFacesBoard = false) {
     if (chair) {
       const backB = b + (chairFacesBoard ? 1 : -2);
       box(g, a - 2, backB, height, 4, 1, 8, darkWood);
+      if (chairFacesBoard) {
+        box(g, a - 1.6, backB + .9, height + 2, 3.2, .4, 3.7, woodC('#936343'));
+        dot(g, ...P(a, backB + 1.4, height + 4), '#c59f63');
+      }
       box(g, a - 2.2, backB - .3, height + 6, 4.4, 1.5, 2, furnitureWood);
       for (const da of [-1.4, 1.4]) dot(g, ...P(a + da, backB + 1.2, height + 7), '#d0a47a');
     } else {
@@ -1906,12 +1910,31 @@ const classroomBanks = [1, 7];
 const classroomLanterns = [[18, 3], [72, 3], [3, 69], [89, 67]];
 
 function classroomFloor(a, b) {
-  const plank = Math.floor(b / 3.5);
-  const seam = (a + plank % 3 * 6) % 17;
-  if (b % 3.5 < .35 || seam < .32) return '#674b40';
+  // A woven runner follows the clear aisle between the two banks of desks.
+  const hem = Math.min(a - 42, 54 - a, b - 23, 85 - b);
+  let base = '#a77852', finish = 1;
+  if (hem >= 0) {
+    const diamond = Math.abs(a - 48) + Math.abs((b - 23) % 12 - 6);
+    base = hem < .6 ? '#715637' : hem < 1.2 || Math.abs(diamond - 3) < .45
+      ? '#bd9d66' : '#446259';
+    finish += hash(Math.floor(a * 2), Math.floor(b)) * .08;
+  } else {
+    const row = Math.floor(b / 4);
+    const run = a + hash(row, 7) * 19;
+    const joint = run % 21, across = b % 4;
+    const board = hash(Math.floor(run / 21), row);
+    const grain = Math.sin(across * 7 + Math.sin(run * .21 + board * 9) * .85);
+    finish = .88 + board * .17 + (grain > .55 ? -.06 : 0);
+    if (across < .32 || joint < .38) finish *= .60;
+    else if (across < .7 || joint < .75) finish *= 1.13;
+    else if (joint < 1.65 && Math.abs(across - 1) < .28) base = '#715441';
+  }
+  let shade = Math.min(1, .77 + Math.min(a, b) * .045);
+  for (const row of classroomRows) for (const column of classroomBanks) {
+    shade = Math.min(shade, contactShade(a, b, column * TILE_SIZE + 16, row * TILE_SIZE + 5, 17, 5));
+  }
   const light = Math.max(0, 1 - Math.hypot((a - 47) / 55, (b - 13) / 38));
-  const grain = hash(Math.floor(a / 4), Math.floor(b * 2));
-  return sh('#ad8058', .8 + hash(plank, 42) * .19 + light * .25 + (grain > .87 ? .08 : 0));
+  return sh(base, Math.round((finish + light * .16) * shade * 64) / 64);
 }
 
 const classroomRunes = [
@@ -1940,7 +1963,12 @@ function drawClassroomDecor(g) {
     const edge = Math.min(u - 34, 151 - u, z - 30, 76 - z);
     if (edge === 0) return '#4b372f';
     if (edge === 1) return u < 80 || z >= 75 ? '#c19362' : '#97663f';
-    if (edge < 4) return hash(u, z) > .72 ? '#a5774f' : '#89603f';
+    const corner = Math.min(u - 34, 151 - u) + Math.min(z - 30, 76 - z);
+    if (corner <= 8) return corner === 6 ? '#795536' : '#c29b5e';
+    if (edge === 2) return '#ac7d51';
+    if (edge === 3) return '#674531';
+    if (edge === 4) return '#272f2c';
+    if (z === 68 && u > 48 && u < 138) return '#6f8273';
     for (const [index, center] of [62, 93, 124].entries()) {
       const x = u - center, y = z - 56;
       if (classroomRunePixel(index, x, y, 2)) return '#e0dfbe';
@@ -1951,6 +1979,8 @@ function drawClassroomDecor(g) {
     return dust > .82 ? '#456056' : z < 42 ? '#31433e' : '#394f47';
   });
   box(g, 16.5, 0, 29, 60, 5, 1.25, woodC('#aa794f'));
+  line(g, ...P(17, 4.9, 30.25), ...P(76, 4.9, 30.25), '#c89968');
+  box(g, 35, 3.9, 30.25, 1.6, .65, .7, flat('#d4b188', '#986f58', '#b99672'));
   box(g, 33, 4, 30.25, 3, .8, .6, flat('#eadbb8', '#a1937e', '#cebfa3'));
   box(g, 61, 3.6, 30.25, 2.3, 1, .7, flat('#887359', '#5f4c3e', '#6d5946'));
   box(g, 78, 0, 0, 16, 3, 48, oak);
@@ -4165,18 +4195,27 @@ for (const row of classroomRows) for (const column of classroomBanks) {
   const a = column * TILE_SIZE, b = row * TILE_SIZE;
   const oak = woodC('#a57147'), frame = woodC('#714734');
   ell(g, ...P(a + 16, b + 4, 0), 25, 5, 'rgba(45,30,30,.22)');
-  for (const end of [1.5, 28.5]) box(g, a + end, b + 2, 0, 1.2, 4, 11, frame);
+  box(g, a + 2, b + 3.6, 3, 27, 1, 1.4, frame);
+  for (const end of [1.5, 28.5]) {
+    box(g, a + end - .4, b + 1.5, 0, 2.2, 5.1, 1.6, frame);
+    box(g, a + end, b + 2, 1.6, 1.3, 4, 9.4, frame);
+  }
   box(g, a + 1, b + 3.9, 8, 30, 1.1, 3, frame);
   for (let section = 0; section < 8; section++) {
     const curve = Math.floor(Math.abs(section - 3.5) / 2) * .65;
     box(g, a + .5 + section * 3.9, b + 1 + curve, 11, 3.9, 5.15, 1.5, oak);
+    const from = a + .5 + section * 3.9, lip = b + 6.15 + curve;
+    line(g, ...P(from, lip, 12.5), ...P(from + 3.6, lip, 12.5), '#ca9668');
+    if (section % 3 === 0) line(g, ...P(from + .4, lip - 1, 12.5), ...P(from + 3, lip - 1, 12.5), '#956341');
   }
   for (const offset of [6, 17, 26]) {
     if (hash(row, column + offset) < .3) continue;
-    box(g, a + offset - 1.6, b + 2.6, 12.5, 3.2, 2.2, .55, flat('#dcca9d', '#9b7851', '#bf996a'));
-    line(g, ...P(a + offset, b + 2.7, 13.05), ...P(a + offset, b + 4.55, 13.05), '#8a6a4c');
-    dot(g, ...P(a + offset + .9, b + 3.4, 13.1), '#755250');
-    dot(g, ...P(a + offset + 1.15, b + 4, 13.1), '#9c775d');
+    const cover = offset === 17 ? '#784957' : '#476254';
+    box(g, a + offset - 1.9, b + 2.4, 12.5, 3.9, 2.7, .5, flat(cover, '#543c34', '#594336'));
+    box(g, a + offset - 1.6, b + 2.6, 13, 3.2, 2.2, .55, flat('#dcca9d', '#9b7851', '#bf996a'));
+    line(g, ...P(a + offset, b + 2.7, 13.55), ...P(a + offset, b + 4.55, 13.55), '#8a6a4c');
+    dot(g, ...P(a + offset + .9, b + 3.4, 13.55), '#755250');
+    dot(g, ...P(a + offset + 1.15, b + 4, 13.55), '#9c775d');
   }
   classroomFurnishings.push({ canvas, depth: a + 16 + b + 4 });
   for (let seat = 0; seat < 4; seat++) {
@@ -4195,6 +4234,11 @@ box(teacherDesk, 33.2, 9, 3, 29.6, 6.6, 7, woodC('#825238'));
 box(teacherDesk, 32, 8, 12.5, 32, 8, 2, woodC('#b78253'));
 for (const panel of [36, 45, 54]) {
   box(teacherDesk, panel, 15.5, 4, 6, .65, 6, woodC('#a67049'));
+}
+line(teacherDesk, ...P(32.2, 16, 14.5), ...P(63.8, 16, 14.5), '#d6a174');
+for (const panel of [36, 45, 54]) {
+  line(teacherDesk, ...P(panel + .4, 16.15, 9.5), ...P(panel + 5.6, 16.15, 9.5), '#c18c5e');
+  dot(teacherDesk, ...P(panel + 3, 16.2, 8), '#dbb777');
 }
 box(teacherDesk, 43, 10, 14.5, 10, 4, .75, flat('#e7d3a6', '#a68257', '#bf9c6e'));
 line(teacherDesk, ...P(48, 10, 15.25), ...P(48, 14, 15.25), '#ad8960');
