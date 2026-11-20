@@ -24,6 +24,7 @@ const HALL_ENTRANCE_COLUMN = 1;
 const HALL_CLASSROOM_DOOR_ROW = 7, CLASSROOM_DOOR_ROW = 3;
 const CLASSROOM_COLUMNS = 12, CLASSROOM_ROWS = 11;
 const CLASSROOM_WIDTH = CLASSROOM_COLUMNS * TILE_SIZE, CLASSROOM_DEPTH = CLASSROOM_ROWS * TILE_SIZE;
+const TEACHER_CHAIR_A = 45, TEACHER_CHAIR_B = 5;
 const hallEdge = (row, arrivalRow, target, direction) =>
   Array.from({ length: HALL_COLUMNS }, (_, column) => ({
     tile: [column, row], target, arrival: [column, arrivalRow], direction
@@ -2992,6 +2993,7 @@ for (const row of classroomRows) for (const column of classroomBanks) {
   rooms.classroom.floor[row + 1].fill('X', column, column + 4);
 }
 rooms.classroom.floor[0][0] = 'X'; // Owl perch
+rooms.classroom.floor[0][Math.floor(TEACHER_CHAIR_A / TILE_SIZE)] = 'X';
 rooms.classroom.floor[1].fill('X', 4, 8);
 rooms.classroom.floor[2][10] = 'X';
 rooms.classroom.floor[0][10] = rooms.classroom.floor[0][11] = 'X';
@@ -4373,23 +4375,76 @@ const owlStand = mk();
   } });
 }
 
-const classroomFront = mk();
-const teacherDesk = classroomFront.getContext('2d');
-const deskWood = woodC('#955e3f');
-box(teacherDesk, 32.5, 8.5, 1.5, 31, 7, 11, deskWood);
-box(teacherDesk, 33.2, 9, 3, 29.6, 6.6, 7, woodC('#825238'));
-box(teacherDesk, 32, 8, 12.5, 32, 8, 2, woodC('#b78253'));
-for (const panel of [36, 45, 54]) {
-  box(teacherDesk, panel, 15.5, 4, 6, .65, 6, woodC('#a67049'));
+const teacherChair = mk();
+drawStockContainer(teacherChair.getContext('2d'), TEACHER_CHAIR_A, TEACHER_CHAIR_B, 'chair');
+classroomFurnishings.push({ canvas: teacherChair, depth: TEACHER_CHAIR_A + TEACHER_CHAIR_B });
+
+function drawTeacherDesk(g) {
+  const frame = woodC('#744b36'), walnut = woodC('#97613e'), trim = woodC('#ad7850');
+  const surface = 15.5;
+  ell(g, ...P(48, 12, 1.5), 29, 5, 'rgba(46,28,24,.28)');
+
+  // Drawers open toward the teacher's chair. Pupils see the framed modesty panel.
+  for (const a of [33, 61]) {
+    for (const b of [8.75, 14]) {
+      box(g, a - .25, b - .25, 1.5, 2.25, 2, 1.25, frame);
+      box(g, a, b, 2.75, 1.55, 1.35, 9.75, walnut);
+    }
+  }
+  box(g, 54, 9, 3.75, 7, 6, 8.75, frame);
+  for (const z of [5, 8.75]) {
+    box(g, 54.5, 8.4, z, 6, .65, 2.75, trim);
+    line(g, ...P(56.75, 8.4, z + 1.25), ...P(58.25, 8.4, z + 1.25), '#d2ab70');
+  }
+  box(g, 34.5, 14.45, 4.5, 27, .75, 8, frame);
+  for (const a of [36, 44.5, 53]) {
+    box(g, a, 15.2, 5.5, 7, .35, 5.75, walnut);
+    line(g, ...P(a + .5, 15.55, 10.5), ...P(a + 6.5, 15.55, 10.5), '#b68255');
+    line(g, ...P(a + .5, 15.55, 6.25), ...P(a + 6.5, 15.55, 6.25), '#5d4031');
+  }
+  const [carvingX, carvingY] = P(48, 15.6, 8.25);
+  line(g, carvingX - 3, carvingY - 1, carvingX, carvingY - 2, '#c3945f');
+  line(g, carvingX, carvingY - 2, carvingX + 3, carvingY + 1, '#c3945f');
+  line(g, carvingX + 3, carvingY + 1, carvingX, carvingY + 2, '#6e4833');
+  line(g, carvingX, carvingY + 2, carvingX - 3, carvingY - 1, '#6e4833');
+  box(g, 32.5, 8.25, 12.25, 31, 7.5, 1.4, frame);
+  box(g, 32, 8, 13.65, 32, 8, 1.85, trim);
+  line(g, ...P(32.5, 15.75, surface), ...P(63.5, 15.75, surface), '#dbad7e');
+
+  // Bound reference books and an open rune workbook.
+  const pages = flat('#ead6ab', '#b68e60', '#c6a374');
+  box(g, 34.5, 9, surface, 6.4, 4.9, 1.4, flat('#536660', '#384d47', '#30423d'));
+  box(g, 35, 9.65, surface + .3, 5.75, 4.45, .75, pages);
+  box(g, 35, 10, surface + 1.4, 5.45, 3.7, .9, flat('#87534d', '#653c40', '#54333a'));
+  line(g, ...P(35.5, 10.5, surface + 2.3), ...P(39.5, 10.5, surface + 2.3), '#cda06a');
+  box(g, 42, 9.2, surface, 10.2, 5.8, .65, flat('#514452', '#463442', '#382d38'));
+  const pageTop = surface + 1.45;
+  box(g, 42.35, 9.45, surface + .65, 4.6, 5.25, .8, pages);
+  box(g, 47.05, 9.45, surface + .65, 4.8, 5.25, .8, pages);
+  line(g, ...P(47, 9.6, pageTop), ...P(47, 14.7, pageTop), '#90714e');
+  for (const b of [10.5, 11.6, 12.7, 13.8]) {
+    line(g, ...P(43, b, pageTop), ...P(b === 13.8 ? 45 : 46, b, pageTop), '#ab8b65');
+  }
+  line(g, ...P(49.45, 10.5, pageTop), ...P(49.45, 13.85, pageTop), '#785258');
+  line(g, ...P(48.35, 12.45, pageTop), ...P(49.45, 10.5, pageTop), '#785258');
+  line(g, ...P(49.45, 10.5, pageTop), ...P(50.55, 12.45, pageTop), '#785258');
+
+  // A feather in a glass inkwell and two practice stones.
+  box(g, 58.7, 9.85, surface, 2.3, 2.2, 2.25, flat('#68778a', '#3a475b', '#303b50'));
+  box(g, 59.35, 10.4, surface + 2.25, 1.15, 1.15, .7, flat('#282938', '#71615d', '#4c464a'));
+  const [inkX, inkY] = P(59.9, 10.9, surface + 2.95);
+  line(g, inkX, inkY, inkX + 5, inkY - 12, '#e4d3ad');
+  line(g, inkX + 1, inkY - 4, inkX + 4, inkY - 10, '#aa947f');
+  line(g, inkX + 3, inkY - 6, inkX + 6, inkY - 11, '#f1e3bc');
+  for (const [a, b, color] of [[55, 13, '#798a83'], [57.6, 13.6, '#8e8377']]) {
+    box(g, a, b, surface, 1.85, 1.45, 1.15, flat(color, '#50595a', '#434849'));
+    line(g, ...P(a + .55, b + .45, surface + 1.15), ...P(a + 1.2, b + 1, surface + 1.15), '#ced1ad');
+  }
 }
-line(teacherDesk, ...P(32.2, 16, 14.5), ...P(63.8, 16, 14.5), '#d6a174');
-for (const panel of [36, 45, 54]) {
-  line(teacherDesk, ...P(panel + .4, 16.15, 9.5), ...P(panel + 5.6, 16.15, 9.5), '#c18c5e');
-  dot(teacherDesk, ...P(panel + 3, 16.2, 8), '#dbb777');
-}
-box(teacherDesk, 43, 10, 14.5, 10, 4, .75, flat('#e7d3a6', '#a68257', '#bf9c6e'));
-line(teacherDesk, ...P(48, 10, 15.25), ...P(48, 14, 15.25), '#ad8960');
-classroomFurnishings.push({ canvas: classroomFront, depth: 60 });
+
+const teacherDesk = mk();
+drawTeacherDesk(teacherDesk.getContext('2d'));
+classroomFurnishings.push({ canvas: teacherDesk, depth: 60 });
 
 const classroomDemo = mk();
 const demo = classroomDemo.getContext('2d');
