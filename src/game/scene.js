@@ -365,41 +365,114 @@ function towerWallStone(brick, u, z) {
   return texture > .91 ? sh(color, 1.12) : texture < .08 ? sh(color, .89) : color;
 }
 
-function passageColor(dx, z) {
-  const curve = Math.hypot(dx, Math.max(0, z - 31));
-  if (curve > 17) return null;
-  if (curve > 12) {
-    const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
-    return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
+const doorStyles = {
+  tower: {
+    wood: '#995b37', light: '#bd7943', dark: '#613624', metal: '#efc17a',
+    cloth: '#75404d', thread: '#d5ad69', emblem: (x, y) => Math.abs(x) + 2 * Math.abs(y) < 2.6
+  },
+  library: {
+    wood: '#72503c', light: '#a6784f', dark: '#4b332b', metal: '#d6b47a',
+    cloth: '#52634d', thread: '#b7a676', emblem: (x, y) => Math.abs(x) < 2.5 && Math.abs(y) < .85 + .13 * Math.abs(x)
+  },
+  potion: {
+    wood: '#9c6545', light: '#c38455', dark: '#644338', metal: '#92b7a0',
+    cloth: '#5d505f', thread: '#ac959f', emblem: (x, y) => x * x + (y * 2) ** 2 < 4.5
+  },
+  stockroom: {
+    wood: '#665044', light: '#8c7156', dark: '#45362e', metal: '#9e9281',
+    cloth: '#766352', thread: '#a28d6f', emblem: (x, y) => Math.abs(y - x * .23) < .35 && Math.abs(x) < 2.7
   }
-  if (curve > 11) return '#242849';
-  if (z < 3) return '#d6af67';
-  if (z < 9) return '#4d4261';
-  return '#171933';
+};
+
+function passageColor(dx, z, style = doorStyles.tower) {
+  const distance = Math.abs(dx);
+  const lift = Math.max(0, z - 31);
+  const curve = Math.hypot(dx, lift);
+  if (curve > 17) return null;
+  if (curve > 11) {
+    const grain = hash(Math.floor(dx * 2 + Math.sin(z / 5)), Math.floor(z / 6));
+    const foot = z < 5 || (z >= 27 && z <= 30);
+    const keystone = z >= 44 && distance < 3;
+    const stud = z < 26 && distance >= 13 && distance < 15 && [9, 16, 23].includes(z);
+    const leaf = (keystone && (distance < .7 || (distance < 2.2 && (z === 45 || z === 47)))) ||
+      (lift > 2 && Math.abs(curve - 14) < .65 && (z === 35 || z === 38 || z === 41));
+    if (curve > 16.3) return sh(style.dark, .77);
+    if (stud || leaf) return dx < 0 ? style.metal : sh(style.metal, .8);
+    if (z < 27 && distance >= 14 && distance < 14.7 && [10, 17, 24].includes(z)) return style.dark;
+    if (curve > 15 || (foot && (z === 4 || z === 30))) return style.light;
+    if (curve < 12.2) return style.dark;
+    if (foot || keystone) return sh(style.wood, .94);
+    if (curve > 14 && curve < 14.8) return sh(style.dark, 1.14);
+    return grain > .72 ? sh(style.wood, 1.15) : grain < .28 ? sh(style.wood, .83) : style.wood;
+  }
+  if (z < 3) return style.light;
+  if (z < 7) return '#644033';
+  if (dx > 8.5 && z < 32) return '#4b2a2b';
+  return '#27192c';
 }
 
-function drawPassage(g, rear) {
+function drawDoorMat(g, a0, b0, width, depth, style) {
+  const acrossA = width > depth;
+  box(g, a0, b0, 0, width, depth, 1, {
+    top: (a, b) => {
+      const u = acrossA ? a - a0 : b - b0;
+      const v = acrossA ? b - b0 : a - a0;
+      const span = acrossA ? width : depth;
+      const length = acrossA ? depth : width;
+      const edge = Math.min(u, span - u, v, length - v);
+      const weave = (Math.floor(u * 2) + Math.floor(v * 2)) % 2;
+      if (edge < .5) return '#594035';
+      if (edge < 1.15) return weave ? style.thread : sh(style.thread, .78);
+      if (edge < 1.6) return '#614339';
+      const x = u - span / 2, y = v - length / 2;
+      if (style.emblem(x, y)) return Math.abs(x) < .3 ? sh(style.thread, 1.16) : style.thread;
+      return weave ? style.cloth : sh(style.cloth, .89);
+    },
+    left: '#614239',
+    right: '#724a37'
+  });
+}
+
+function drawPassage(g, rear, style) {
   const center = EXIT_CENTER * 2;
-  box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
-  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+  drawDoorMat(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 14, 7, style);
+  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z, style));
 }
 
-const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
+const stockArchColor = (offset, z, style) => passageColor(offset * 17 / 15, z, style);
 
-function drawStockPassage(g, { tile, wallB }) {
+function drawStockPassage(g, { tile, wallB }, style) {
   const center = (tile[0] + .5) * TILE_SIZE;
-  box(g, center - 6, wallB, 0, 12, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  drawDoorMat(g, center - 6, wallB, 12, 7, style);
   wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
-    (u, z) => stockArchColor(u - 2 * center, z));
+    (u, z) => stockArchColor(u - 2 * center, z, style));
 }
 
-function drawSidePassage(g, { wallA, tile }, foreground) {
+function closedStockDoorColor(offset, z) {
+  if (Math.hypot(offset * 17 / 15, Math.max(0, z - 31)) > 11 || z < 3) return null;
+  const plank = (offset + 12) % 5;
+  if (z >= 13 && z <= 15 || z >= 29 && z <= 31) {
+    if (z === 14 || z === 30) return Math.abs(offset) === 7 ? '#d2ad70' : '#53453c';
+    return '#3d3030';
+  }
+  if (offset === 4 && z >= 20 && z <= 23) return z === 22 ? '#ead08e' : '#77583e';
+  if (plank === 0) return '#4c3027';
+  if (plank === 1) return '#aa6f49';
+  return hash(offset, Math.floor(z / 4)) > .65 ? '#96603e' : '#805039';
+}
+
+const closedStockDoor = mk();
+const stockDoorCenter = (POTION_STOCK_DOOR_COLUMN + .5) * TILE_SIZE * 2;
+wallR(closedStockDoor.getContext('2d'), 0, stockDoorCenter - 15, stockDoorCenter + 16, 0, 49,
+  (u, z) => closedStockDoorColor(u - stockDoorCenter, z));
+
+function drawSidePassage(g, { wallA, tile }, foreground, style) {
   const center = (tile[1] + .5) * TILE_SIZE;
   if (!foreground) {
-    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+    drawDoorMat(g, wallA === 0 ? 0 : wallA - 7, center - 7, 7, 14, style);
     if (wallA !== 0) return;
   }
-  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z, style));
 }
 
 /* ---------- bibliotheek ---------- */
@@ -1444,7 +1517,7 @@ function drawStockContainer(g, a, b, kind) {
   }
 }
 
-function buildStatic(sg, room) {
+function buildStatic(sg, room, doorStyle) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
   const stockroom = room === rooms.stockroom;
@@ -1475,10 +1548,10 @@ function buildStatic(sg, room) {
     drawStockPaintings(sg);
     drawStockShelves(sg);
   }
-  if (room === rooms.tower || library) drawPassage(sg, library);
+  if (room === rooms.tower || library) drawPassage(sg, library, doorStyle);
   for (const exit of room.exits) {
-    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
-    if (exit.wallB !== undefined) drawStockPassage(sg, exit);
+    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false, doorStyle);
+    if (exit.wallB !== undefined) drawStockPassage(sg, exit, doorStyle);
   }
 }
 
@@ -1738,15 +1811,16 @@ const loadingScreen = document.getElementById('game-loading');
 const loadingProgress = document.getElementById('game-loading-progress');
 if (loadingProgress) loadingProgress.value = 1;
 
-for (const room of Object.values(rooms)) {
+for (const [roomName, room] of Object.entries(rooms)) {
+  const doorStyle = doorStyles[roomName];
   const background = room.canvas.getContext('2d');
-  buildStatic(background, room);
+  buildStatic(background, room, doorStyle);
   outline(background, '#14183a');
   const frontExits = room.exits.filter(({ wallA }) => wallA > 0);
   if (frontExits.length) {
     room.foreground = mk();
     const foreground = room.foreground.getContext('2d');
-    for (const exit of frontExits) drawSidePassage(foreground, exit, true);
+    for (const exit of frontExits) drawSidePassage(foreground, exit, true, doorStyle);
   }
 }
 buildFront();
@@ -2449,7 +2523,8 @@ let requestedChest = false;
 let seatProgress = 0;
 let route = [];
 let destination = null;
-const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
+const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.' &&
+  (currentRoom !== rooms.potion || a !== POTION_STOCK_DOOR_COLUMN || b !== 0 || isStockroomUnlocked());
 
 const questDialogue = document.getElementById('quest-dialogue');
 const resetQuestDialogue = document.getElementById('reset-quest-dialogue');
@@ -2465,6 +2540,11 @@ const searchBookStack = document.getElementById('search-book-stack');
 let cauldronHeat = 0;
 let cauldronWarmup = isCauldronLit() ? 1 : 0;
 let dialogueQuest = null;
+
+function isStockroomUnlocked() {
+  const stage = questManager?.status(pageQuest);
+  return stage === 'active' || stage === 'ready' || stage === 'complete';
+}
 
 function isCauldronLit() {
   const stage = questManager?.status(cauldronQuest);
@@ -3121,6 +3201,7 @@ function updateStockroomHint() {
 }
 
 function enterRoom(exit) {
+  if (exit.target === 'stockroom' && !isStockroomUnlocked()) return;
   currentRoom = rooms[exit.target];
   iceBalls.length = 0;
   castTime = 0;
@@ -3143,6 +3224,9 @@ function enterRoom(exit) {
 
 const teleportChoice = document.getElementById('teleport-room-choice');
 document.getElementById('teleport-room')?.addEventListener('click', () => {
+  const stockroomOption = teleportChoice.querySelector('[value="stockroom"]');
+  stockroomOption.disabled = !isStockroomUnlocked();
+  stockroomOption.textContent = stockroomOption.disabled ? 'Potion Stockroom (locked)' : 'Potion Stockroom';
   teleportChoice.value = Object.keys(rooms).find(key => rooms[key] === currentRoom);
   heldKeys.clear();
   fireHeld = false;
@@ -3153,7 +3237,7 @@ document.getElementById('teleport-room-form')?.addEventListener('submit', event 
   if (event.submitter?.value !== 'teleport') return;
   const target = teleportChoice.value;
   const entrance = Object.values(rooms).flatMap(room => room.exits).find(exit => exit.target === target);
-  if (!entrance || rooms[target] === currentRoom) return;
+  if (!entrance || rooms[target] === currentRoom || (target === 'stockroom' && !isStockroomUnlocked())) return;
   event.preventDefault();
   chestInventory?.close();
   wizard.step = null;
@@ -3202,6 +3286,11 @@ function updateWizard(dt) {
   if (wizard.step) {
     wizard.step.elapsed += dt;
     if (wizard.step.elapsed >= STEP_TIME) {
+      if (!isWalkable(wizard.step.a, wizard.step.b)) {
+        wizard.step = null;
+        clearRoute();
+        return;
+      }
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
       const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
@@ -3604,6 +3693,7 @@ function frame(ms) {
   ctx.drawImage(currentRoom.canvas, 0, 0);
   drawRoomWindowLife(t);
   if (currentRoom === rooms.potion) {
+    if (!isStockroomUnlocked()) ctx.drawImage(closedStockDoor, 0, 0);
     drawRackBubbles(t);
     ctx.drawImage(rackGlass, 0, 0);
   }
