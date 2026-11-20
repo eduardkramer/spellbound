@@ -8,7 +8,8 @@
   :root{--bg:#12163a;--bg2:#1a1f4d;--line:#6f7fd0;--dim:#7f8ad8;--txt:#dfe4ff;--gold:#f0c75a;--pink:#ff7fbf}
   html,body{margin:0;height:100%;background:#0c0f24;color:var(--txt);font-family:ui-monospace,Menlo,Consolas,monospace}
   body{background:radial-gradient(ellipse at 50% 35%,#1d2150 0%,#0c0f24 70%)}
-  #wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px;box-sizing:border-box}
+  #wrap{height:100dvh;min-height:520px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;box-sizing:border-box}
+  #wrap > :not(#scene-view){flex-shrink:0}
   #wrap[aria-busy="true"]{visibility:hidden}
   #game-loading{position:fixed;inset:0;z-index:10;display:grid;place-items:center;
     background:radial-gradient(ellipse at 50% 42%,#252653 0%,#0c0f24 72%)}
@@ -25,8 +26,8 @@
   #game-loading-progress::-moz-progress-bar{background:var(--gold)}
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 
-  #scene-view{width:100%;max-height:70vh;overflow:auto;scrollbar-color:var(--line) var(--bg)}
-  #scene{margin-inline:auto}
+  #scene-view{position:relative;width:100%;flex:1 1 0;min-height:120px;overflow:hidden}
+  #scene{position:absolute;top:0;left:0}
   #zoom{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
@@ -143,7 +144,7 @@
 <div id="wrap" aria-busy="true">
   <div id="zoom" role="group" aria-label="Game controls">
     <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
-    <button type="button" id="zoom-reset">100%</button>
+    <button type="button" id="zoom-reset" title="Fit the room">Fit</button>
     <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
     <button type="button" id="reset-quest">Reset quest</button>
     <button type="button" id="teleport-room">Teleport</button>
