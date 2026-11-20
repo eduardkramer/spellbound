@@ -495,7 +495,7 @@ const libraryLayout = [
   ...studySeats.map(({ tile }) => [...tile, 'chair'])
 ];
 const leftShelfRanges = [[4, 64], [115, 126], [132, 184]];
-const rightShelfRanges = [[8, 48], [98, 126], [133, 151], [179, 216]];
+const rightShelfRanges = [[8, 48], [98, 126], [133, 151], [187, 222]];
 const libraryLanterns = [[10, 10], [46, 16], [14, 48], [78, 25], [89, 68], [37, 76]];
 
 function shadedLibraryFloor(a, b) {
@@ -647,15 +647,23 @@ function drawLibraryClock(g) {
     const x = u - libraryClockCenter, d = Math.abs(x);
     if (z >= 61 && d > 11 - Math.floor((z - 61) / 2)) return null;
     if (d >= 10 || z === 24 || z === 69) return '#3b262c';
+    if (z === 26 || z === 62 || (d === 9 && z > 28 && z < 60)) return x <= 0 ? '#d18b62' : '#a36348';
+    if (z === 27 || z === 63) return '#603733';
     if (z < 29 || z >= 61 || z === 43) return z % 3 === 0 ? '#b26848' : '#8f4938';
-    if (z < 43 && d < 7) return d === 6 || z === 29 ? '#785441' : '#342a34';
+    if (z < 43 && d < 7) {
+      if (d === 6 || z === 29 || z === 42) return '#a4794d';
+      return x === -5 && z > 33 ? '#574554' : '#342a34';
+    }
     const r = Math.hypot(x, z - 52);
     if (r <= 8) {
       if (r > 7) return '#a3774b';
-      if ((x === 0 && Math.abs(z - 52) === 6) || (z === 52 && d === 6)) return '#654835';
+      const dy = Math.abs(z - 52);
+      if ((d === 0 && dy === 6) || (dy === 0 && d === 6)) return '#654835';
+      if (d >= 2 && dy >= 2 && Math.abs(r - 6) < .38) return '#98775b';
       return r > 5.9 ? '#c6a47b' : '#e4cba0';
     }
-    return x < 0 ? '#97583e' : '#774033';
+    if (d === 8) return x < 0 ? '#bc7850' : '#613634';
+    return hash(u, Math.floor(z / 5)) > .7 ? '#a96346' : x < 0 ? '#97583e' : '#774033';
   });
 }
 
