@@ -1628,16 +1628,24 @@ const hallEndFrames = [
 
 function drawHallDecor(g, continuation) {
   for (const center of hallWindows) {
-    wallL(g, 0, center - 16, center + 17, hallWindowBase, 89, (u, z) => {
+    wallL(g, 0, center - 18, center + 19, hallWindowBase, 91, (u, z) => {
       const y = z - hallWindowBase;
       const arch = Math.hypot(u - center, Math.max(0, y - 54));
-      if (arch > 16) return null;
-      if (arch > 15) return '#34333d';
-      if (arch > 13 || y < 3) return arch > 14 ? '#8e684b' : '#b58a5e';
+      if (arch > 18) return null;
+      if (arch > 17) return '#38414b';
+      if (arch > 15) {
+        const joint = y < 54 ? y % 8 === 0 : Math.floor(Math.atan2(y - 54, u - center) * 9) % 4 === 0;
+        return joint ? '#4e535b' : arch > 16 ? '#8e9396' : '#666c75';
+      }
+      if (arch > 13 || y < 3) return u < center ? '#45434b' : '#5f5758';
       if (!hallWindowGlass(u, z)) return '#6b5144';
+      if (Math.abs(u - center) === 13 || y === 3) return sh(autumnSunset(u + (continuation ? HALL_DEPTH * 2 : 0), y / 67), .78);
       return autumnSunset(u + (continuation ? HALL_DEPTH * 2 : 0), y / 67);
     });
-    box(g, 0, (center - 16) / 2, hallWindowBase - 1, 2.5, 16, 2, woodC('#946744'));
+    box(g, 0, (center - 17) / 2, hallWindowBase - 2, 3.25, 17, 3,
+      flat('#a3a09a', '#565b63', '#737982'));
+    box(g, 2.75, (center - 18) / 2, hallWindowBase, .75, 18, 1,
+      flat('#b4aea0', '#676969', '#858684'));
   }
   for (const [u, z, width, height, subject] of (continuation ? hallEndFrames : hallFrames)) {
     wallL(g, 0, u, u + width, z, z + height, (column, level) => {
@@ -1655,6 +1663,21 @@ function drawHallDecor(g, continuation) {
     box(g, 0, b - 2.5, 31, 3, 5, 1.5, flat('#a87b48', '#624537', '#865c3f'));
     box(g, 1, b - 1.4, 32.5, 1, 1, 4, flat('#ead9b6', '#a99170', '#c1ab87'));
     box(g, 1, b + .5, 32.5, 1, 1, 5, flat('#f0dec0', '#b19a75', '#d3bc96'));
+  }
+}
+
+function drawHallFloorLight(g) {
+  for (const center of hallWindows) {
+    const windowB = center / 2;
+    topFace(g, .05, 2, HALL_WIDTH, Math.max(0, windowB - 13), Math.min(HALL_DEPTH, windowB + 16), (a, b) => {
+      const across = b - windowB - a * .24;
+      const width = 5.8 + a * .065;
+      const edge = Math.max(0, Math.min(1, (width - Math.abs(across)) / 2.4));
+      const reach = Math.max(0, Math.min(1, (a - 2) / 5, (HALL_WIDTH - a) / 6));
+      const mullion = Math.abs(across) < .55 || Math.abs(a - 17) < .8 ? .24 : 1;
+      const strength = edge * reach * mullion * .23;
+      return strength > .015 ? `rgba(255,173,104,${strength.toFixed(2)})` : null;
+    });
   }
 }
 
@@ -1723,6 +1746,7 @@ function buildStatic(sg, room, doorStyle) {
   const depth = hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
   const floor = hall ? (a, b) => hallFloor(a, b, openHallEntrance) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
+  if (hall) drawHallFloorLight(sg);
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
   const mer = { top: copingFn, left: brOutL, right: brOutR };
   if (!openHallEntrance) {
