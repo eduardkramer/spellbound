@@ -2281,6 +2281,7 @@ function flask(g, x, y, liq, type, collection = flasks) {
 const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
 const TABLE_A = 48, TABLE_B = 44;
+const TABLE_RADIUS_X = 15, TABLE_RADIUS_Y = 7;
 const CHEST_TILE = [6, 0];
 let chestOpening = 0;
 
@@ -2475,8 +2476,8 @@ function buildFront() {
   { const [tx, ty] = P(TABLE_A, TABLE_B, 0);
     ell(g, tx, ty - 1, 9, 4, '#3e2414'); ell(g, tx, ty - 2, 8, 3, '#5a3320');
     rect(g, tx - 1, ty - 18, 3, 16, '#5a3320'); rect(g, tx - 1, ty - 18, 1, 16, '#7a4a2a');
-    ell(g, tx, ty - 17, 15, 7, '#4a2a16');
-    ell(g, tx, ty - 19, 15, 7, '#b0723e'); ell(g, tx, ty - 19, 13, 6, '#94582e');
+    ell(g, tx, ty - 17, TABLE_RADIUS_X, TABLE_RADIUS_Y, '#4a2a16');
+    ell(g, tx, ty - 19, TABLE_RADIUS_X, TABLE_RADIUS_Y, '#b0723e'); ell(g, tx, ty - 19, 13, 6, '#94582e');
     // paars boek
     box(g, TABLE_A - 3.5, TABLE_B - 2.5, 19, 5, 4, 2.5, flat('#7a46ac', '#5a2e88', '#3f1f66'));
     // inktpot + veer
@@ -3579,6 +3580,17 @@ function drawFireBreathSmoke(t, length) {
   }
 }
 
+function blocksFireBreath(a, b, startA, startB) {
+  const column = Math.floor(a / TILE_SIZE), row = Math.floor(b / TILE_SIZE);
+  if ((column !== startA || row !== startB) && !isWalkable(column, row)) return true;
+  if (currentRoom !== rooms.tower) return false;
+
+  // Include the tabletop rim and the slime sitting near its outer edge.
+  const offsetA = a - TABLE_A, offsetB = b - TABLE_B;
+  const x = 2 * (offsetA - offsetB), y = offsetA + offsetB;
+  return (x / (TABLE_RADIUS_X + 7)) ** 2 + (y / (TABLE_RADIUS_Y + 2)) ** 2 <= 1;
+}
+
 function fireBreathLayers(t, a, b, dt) {
   if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) {
     warmCauldron(false, dt);
@@ -3594,8 +3606,8 @@ function fireBreathLayers(t, a, b, dt) {
   let visibleReach = reach;
   let hitsCauldron = false;
   for (let distance = 0; distance < reach; distance += .5) {
-    const column = Math.floor((originA + distance * da) / TILE_SIZE);
-    const row = Math.floor((originB + distance * db) / TILE_SIZE);
+    const pointA = originA + distance * da, pointB = originB + distance * db;
+    const column = Math.floor(pointA / TILE_SIZE), row = Math.floor(pointB / TILE_SIZE);
     if (currentRoom === rooms.potion && (cauldronA - a) * da + (cauldronB - b) * db > 0 &&
         Math.abs(column + .5 - cauldronA / TILE_SIZE) < 1 &&
         Math.abs(row + .5 - cauldronB / TILE_SIZE) < 1) {
@@ -3603,8 +3615,11 @@ function fireBreathLayers(t, a, b, dt) {
       visibleReach = distance + 2;
       break;
     }
-    if ((column !== startA || row !== startB) && !isWalkable(column, row)) {
-      visibleReach = distance;
+    const halfWidth = Math.min(2.5, distance * .18);
+    if (blocksFireBreath(pointA, pointB, startA, startB) ||
+        blocksFireBreath(pointA - halfWidth * db, pointB + halfWidth * da, startA, startB) ||
+        blocksFireBreath(pointA + halfWidth * db, pointB - halfWidth * da, startA, startB)) {
+      visibleReach = Math.max(0, distance - .5);
       break;
     }
   }
