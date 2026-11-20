@@ -1094,16 +1094,20 @@ const stockShelfStarts = [4, 34, 64];
 const stockBookcases = [[0, 3], [6, 9]];
 const pageStackTile = [11, 9];
 const stockLayout = [
-  [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
-  [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
-  // This row leaves a passage at the far end of the room.
-  [1, 5, 'table'], [2, 5, 'chair'], [3, 5, 'barrel'], [4, 5, 'crystals'],
-  [5, 5, 'herbs'], [6, 5, 'crates'], [7, 5, 'chest'], [8, 5, 'table'], [9, 5, 'crates'],
-  [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
-  // Leave the opposite end open for the return aisle along the front wall.
-  [2, 8, 'scrolls'], [3, 8, 'herbs'], [4, 8, 'crates'], [5, 8, 'books'],
-  [6, 8, 'chair'], [7, 8, 'table'], [8, 8, 'barrel'], [9, 8, 'crates'],
-  [10, 8, 'barrel'], [11, 8, 'chest'], [...pageStackTile, 'books']
+  // Keep the entrance aisle clear all the way to the shelves.
+  [2, 2, 'table'], [3, 2, 'books'], [4, 2, 'still'], [5, 2, 'chest'],
+  [6, 2, 'herbs'], [7, 2, 'glass'], [8, 2, 'rug'], [9, 2, 'crates'], [10, 2, 'barrel'],
+  [2, 3, 'chair'], [2, 4, 'crates'],
+  // The inner aisles open on alternating ends.
+  [4, 4, 'basket'], [5, 4, 'scrolls'], [6, 4, 'glass'], [7, 4, 'crates'],
+  [8, 4, 'crystals'], [9, 4, 'still'], [10, 4, 'chest'], [11, 4, 'rug'],
+  [1, 5, 'table'], [2, 5, 'barrel'],
+  [1, 6, 'chest'], [2, 6, 'herbs'], [3, 6, 'basket'], [4, 6, 'crates'],
+  [5, 6, 'mortar'], [6, 6, 'books'], [7, 6, 'chair'], [8, 6, 'glass'],
+  [9, 6, 'herbs'], [10, 6, 'chest'],
+  [2, 8, 'scrolls'], [3, 8, 'basket'], [4, 8, 'crates'], [5, 8, 'rug'],
+  [6, 8, 'chair'], [7, 8, 'table'], [8, 8, 'barrel'], [9, 8, 'mortar'],
+  [10, 8, 'crates'], [11, 8, 'chest'], [...pageStackTile, 'books']
 ];
 const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
 
@@ -1138,6 +1142,51 @@ function drawStockContainer(g, a, b, kind) {
   ell(g, x, y, 9, 4, '#4b434d');
   ell(g, x, y, 6, 2, '#353039');
   const furnitureWood = woodC('#9b6345'), darkWood = woodC('#673f2c');
+  if (kind === 'still') {
+    box(g, a - 3, b - 2.5, 0, 6, 5, 2, darkWood);
+    ell(g, x - 2, y - 7, 6, 6, '#78463b');
+    ell(g, x - 3, y - 8, 4, 4, '#b67650');
+    line(g, x - 5, y - 9, x - 3, y - 11, '#e0aa74');
+    rect(g, x - 3, y - 15, 3, 4, '#bb8059');
+    line(g, x - 2, y - 15, x + 5, y - 15, '#d79865');
+    line(g, x + 5, y - 15, x + 7, y - 8, '#a35e45');
+    ell(g, x + 7, y - 5, 3, 4, '#466866');
+    dot(g, x + 6, y - 6, '#8aaba0');
+    return;
+  }
+  if (kind === 'basket') {
+    ell(g, x, y - 3, 9, 5, '#80553d');
+    ell(g, x, y - 6, 9, 4, '#bd8958');
+    ell(g, x, y - 6, 7, 3, '#60463c');
+    for (const [dx, dy, color] of [[-4, -7, '#a57b64'], [-1, -8, '#cfb788'], [3, -6, '#80678d'], [5, -7, '#abb17a']]) {
+      ell(g, x + dx, y + dy, 2, 2, color);
+    }
+    for (const dx of [-6, -3, 0, 3, 6]) dot(g, x + dx, y - 3, '#d2a06a');
+    return;
+  }
+  if (kind === 'rug') {
+    for (const [db, color] of [[-2, '#68506d'], [1, '#74657d']]) {
+      const start = P(a - 3, b + db, 3);
+      const end = P(a + 3, b + db, 3);
+      line(g, ...start, ...end, '#493746');
+      line(g, start[0], start[1] - 2, end[0], end[1] - 2, color);
+      ell(g, ...end, 3, 3, '#ad8e77');
+      ell(g, ...end, 1, 1, color);
+      const [tieX, tieY] = P(a + 1, b + db, 3);
+      line(g, tieX, tieY - 4, tieX, tieY + 2, '#d3b579');
+    }
+    return;
+  }
+  if (kind === 'mortar') {
+    box(g, a - 2.5, b - 2.5, 0, 5, 5, 3, darkWood);
+    ell(g, x, y - 5, 7, 5, '#555564');
+    ell(g, x, y - 8, 7, 3, '#92919a');
+    ell(g, x, y - 8, 5, 2, '#494754');
+    dot(g, x - 2, y - 8, '#8b9b64');
+    line(g, x, y - 8, x + 6, y - 15, '#ada7a0');
+    line(g, x + 1, y - 8, x + 7, y - 15, '#7a7481');
+    return;
+  }
   if (kind === 'chair' || kind === 'table') {
     const chair = kind === 'chair';
     const height = chair ? 7 : 11;
