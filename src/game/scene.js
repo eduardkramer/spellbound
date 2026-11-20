@@ -3565,6 +3565,20 @@ const fireSprite = new Image();
 fireSprite.src = 'assets/sprites/fire-breath.png';
 const fireFrameWidth = 88, fireFrameHeight = 38, fireFrameCount = 16;
 
+function drawFireBreathSmoke(t, length) {
+  if (length < 12) return;
+  for (let index = 0; index < 4; index++) {
+    const age = (t * 1.35 + index / 4) % 1;
+    const radius = 1 + Math.floor(age * 3);
+    const x = length * (.68 + age * .23) + Math.sin(age * 5 + index) * 2;
+    const y = -3 - age * 18 - index % 2 * 3;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .46;
+    rect(ctx, x - radius, y, 2 * radius + 1, 2, '#786b6b');
+    rect(ctx, x - radius + 1, y - 1, 2 * radius - 1, 1, '#a2968d');
+    dot(ctx, x + radius - 1, y + 2, '#655a60');
+  }
+}
+
 function fireBreathLayers(t, a, b, dt) {
   if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) {
     warmCauldron(false, dt);
@@ -3602,6 +3616,8 @@ function fireBreathLayers(t, a, b, dt) {
   const ux = dx / projected, uy = dy / projected;
   const side = Math.sign(dx);
   const scale = .73;
+  const widthScale = .92;
+  const visibleLength = visibleReach * projected;
   const frame = Math.floor(t / .06) % fireFrameCount;
   return [{
     depth: originA + originB,
@@ -3611,11 +3627,12 @@ function fireBreathLayers(t, a, b, dt) {
       ctx.translate(x, y);
       ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
       ctx.beginPath();
-      ctx.rect(0, -fireFrameHeight * scale, visibleReach * projected, fireFrameHeight * scale * 2);
+      ctx.rect(0, -fireFrameHeight * widthScale, visibleLength, fireFrameHeight * widthScale * 2);
       ctx.clip();
       ctx.drawImage(fireSprite, frame % 4 * fireFrameWidth, Math.floor(frame / 4) * fireFrameHeight,
-        fireFrameWidth, fireFrameHeight, -5 * scale, -24 * scale,
-        fireFrameWidth * scale, fireFrameHeight * scale);
+        fireFrameWidth, fireFrameHeight, -5 * scale, -24 * widthScale,
+        fireFrameWidth * scale, fireFrameHeight * widthScale);
+      drawFireBreathSmoke(t, visibleLength);
       ctx.restore();
     }
   }];
