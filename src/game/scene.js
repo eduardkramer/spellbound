@@ -3121,9 +3121,7 @@ function updateStockroomHint() {
 }
 
 function enterRoom(exit) {
-  const wasStockroom = currentRoom === rooms.stockroom;
   currentRoom = rooms[exit.target];
-  if (wasStockroom !== (currentRoom === rooms.stockroom)) fit();
   iceBalls.length = 0;
   castTime = 0;
   fireCharge = 0;
@@ -3140,6 +3138,7 @@ function enterRoom(exit) {
     stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
   };
   movementHint.textContent = hints[exit.target] ?? defaultHint;
+  fit();
 }
 
 const teleportChoice = document.getElementById('teleport-room-choice');
@@ -3649,6 +3648,7 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
+  if (!preview && zoom > 100) positionCamera();
   updateWandLight(dt);
   updateStockroomHint();
   if (searchBookStack) searchBookStack.hidden = !canSearchBookStack();
@@ -3711,26 +3711,47 @@ const zoomOut = document.getElementById('zoom-out');
 const zoomIn = document.getElementById('zoom-in');
 const zoomReset = document.getElementById('zoom-reset');
 const MIN_ZOOM = 75, MAX_ZOOM = 200, ZOOM_STEP = 25;
-let zoom = 150;
+let zoom = 100;
+let cameraScale = 1;
+let roomWidth, roomHeight;
+
+function positionCamera() {
+  const { clientWidth, clientHeight } = sceneView;
+  const step = wizard.step;
+  const progress = step ? step.elapsed / STEP_TIME : 0;
+  const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
+  const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
+  const [x, y] = P(a, b, 16);
+  const roomLeft = (W - roomWidth) / 2;
+  const offset = (viewport, start, length, focus) => {
+    const scaled = length * cameraScale;
+    if (scaled <= viewport) return (viewport - scaled) / 2 - start * cameraScale;
+    const withinRoom = (focus - start) * cameraScale - viewport / 2;
+    return -start * cameraScale - Math.max(0, Math.min(scaled - viewport, withinRoom));
+  };
+  const left = Math.round(offset(clientWidth, roomLeft, roomWidth, x));
+  const top = Math.round(offset(clientHeight, 0, roomHeight, y));
+  const transform = `translate(${left}px, ${top}px)`;
+  if (cv.style.transform !== transform) {
+    cv.style.transform = transform;
+    clearHover();
+  }
+}
 
 function fit() {
-  clearHover();
-  const center = (offset, total, visible) => visible < total ? (offset + visible / 2) / total : .5;
-  const x = center(sceneView.scrollLeft, sceneView.scrollWidth, sceneView.clientWidth);
-  const y = center(sceneView.scrollTop, sceneView.scrollHeight, sceneView.clientHeight);
-  const availableHeight = Math.min(innerHeight * .7, Math.max(140, innerHeight - 230));
   const stockroom = currentRoom === rooms.stockroom;
-  const viewWidth = stockroom ? W : 4 * (N + T) + 10;
-  const viewHeight = stockroom ? H : CY + 2 * N + F + 12;
-  const scale = Math.min(sceneView.offsetWidth / viewWidth, availableHeight / viewHeight) * zoom / 100;
-  cv.style.width = W * scale + 'px';
-  cv.style.height = H * scale + 'px';
-  sceneView.scrollLeft = sceneView.scrollWidth * x - sceneView.clientWidth / 2;
-  sceneView.scrollTop = sceneView.scrollHeight * y - sceneView.clientHeight / 2;
+  roomWidth = stockroom ? W : 4 * (N + T) + 10;
+  roomHeight = stockroom ? H : CY + 2 * N + F + 12;
+  const fitScale = Math.min(sceneView.clientWidth / roomWidth, sceneView.clientHeight / roomHeight);
+  cameraScale = fitScale * zoom / 100;
+  cv.style.width = W * cameraScale + 'px';
+  cv.style.height = H * cameraScale + 'px';
+  clearHover();
+  positionCamera();
   zoomOut.disabled = zoom === MIN_ZOOM;
   zoomIn.disabled = zoom === MAX_ZOOM;
-  zoomReset.textContent = zoom + '%';
-  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' percent. Reset to 100 percent.');
+  zoomReset.textContent = zoom === 100 ? 'Fit' : zoom + '%';
+  zoomReset.setAttribute('aria-label', `Zoom ${zoom} percent. Fit the full room.`);
 }
 function setZoom(value) {
   zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
@@ -3739,7 +3760,7 @@ function setZoom(value) {
 zoomOut.addEventListener('click', () => setZoom(zoom - ZOOM_STEP));
 zoomIn.addEventListener('click', () => setZoom(zoom + ZOOM_STEP));
 zoomReset.addEventListener('click', () => setZoom(100));
-sceneView.addEventListener('scroll', clearHover, { passive: true });
-addEventListener('resize', fit); fit();
+new ResizeObserver(fit).observe(sceneView);
+fit();
 
 })();
