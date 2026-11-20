@@ -4282,12 +4282,36 @@ const owlStand = mk();
     '......g..g.dbXd..',
     '............dd...'
   ];
-  rows.forEach((row, dy) => {
-    for (let dx = 0; dx < row.length; dx++) {
-      if (row[dx] !== '.') dot(g, x + dx - 8, y + dy - 44, plumage[row[dx]]);
-    }
-  });
-  classroomFurnishings.push({ canvas: owlStand, depth: a + b });
+  const turnedHead = [
+    '.....ddbbbd......',
+    '...dbrrtrrbbd....',
+    '..dbtrbrtrbrbd...',
+    '..brrbpptbtpbd...',
+    '.dbbrptcpptctd...',
+    '.drbrptckptkcd...',
+    '.dbbrptkkbtktd...',
+    '..brbrppttgtbd...',
+    '..dbrrttptgrbd...',
+    '...dbtrpptbbbd...'
+  ];
+  classroomFurnishings.push({ canvas: owlStand, depth: a + b, animate(t) {
+    const glance = t % 9;
+    const turned = glance >= 5.2 && glance < 7;
+    const lean = glance >= 5 && glance < 7.2 ? 1 : 0;
+    const raised = Math.sin(t * 2.1) > .35 ? 1 : 0;
+    const blink = t % 4.3 < .16;
+    rows.forEach((rest, dy) => {
+      const head = dy < turnedHead.length;
+      const row = head && turned ? turnedHead[dy] : rest;
+      const top = y + dy - 44 - (dy <= 10 ? raised : 0);
+      for (let dx = 0; dx < row.length; dx++) {
+        const pixel = row[dx];
+        if (pixel === '.') continue;
+        const color = blink && pixel === 'k' ? plumage[dy === 5 ? 't' : 'b'] : plumage[pixel];
+        rect(ctx, x + dx - 8 + (head ? lean : 0), top, 1, dy === 10 ? 1 + raised : 1, color);
+      }
+    });
+  } });
 }
 
 const classroomFront = mk();
