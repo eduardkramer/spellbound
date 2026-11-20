@@ -1911,7 +1911,66 @@ function drawHallConnector(g, b) {
 
 const classroomRows = [4, 6, 8];
 const classroomBanks = [1, 7];
-const classroomLanterns = [[18, 3], [72, 3], [3, 69], [89, 67]];
+// Room-local pixel sprite. The bronze backplate sits flush against each wall.
+const classroomSconce = document.createElement('canvas');
+classroomSconce.width = 14;
+classroomSconce.height = 26;
+{
+  const g = classroomSconce.getContext('2d');
+  const palette = ["#182726","#21a18b","#1a8978","#3ad7b0","#13625b","#563729","#574232","#596b58","#a7fedc","#87583a","#6c4531","#9ec8b3","#60a796","#613d2d","#4a8273","#107469","#392621","#442c24","#88b1a1","#271b1a","#552c1e","#0d5852","#33221d","#7c5237","#314b3f","#955c39","#926340"];
+  const keys = 'abcdefghijklmnopqrstuvwxyzA';
+  const rows = [
+    '..........a...',
+    '.........aba..',
+    '.........cde..',
+    '...fg...hibea.',
+    '..ajk...lmece.',
+    '..fkn..omeecp.',
+    '.qjgrf.pmmpse.',
+    'tkkfffupbslmv.',
+    'fjqrrqwpcespe.',
+    'rfqffqqbbemce.',
+    'qfffffacbbmbp.',
+    'wkfwwfjvbbpbex',
+    'wnnqqqfgpchvgf',
+    'wfrrqtafvyzag.',
+    'wnqkftwkzjfjjq',
+    'qffArt.wfkjkr.',
+    'qffkjj..fkknr.',
+    'qffnrxj..fnw..',
+    'qnqrwtnkrjf...',
+    'wfqfrttfnfw...',
+    'qkqqwakkt.....',
+    'tkkgqqkwjk....',
+    '.tkffrzfkk....',
+    '.tfkr.fjxw....',
+    '..qk..........',
+    '..tt..........'
+  ];
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] !== '.') dot(g, x, y, palette[keys.indexOf(row[x])]);
+    }
+  });
+  line(g, 8, 5, 10, 7, '#aff6d5');
+  line(g, 11, 5, 10, 7, '#aff6d5');
+  line(g, 10, 7, 10, 10, '#b3ffe1');
+  line(g, 2, 5, 3, 4, '#ba8859');
+  line(g, 7, 18, 9, 16, '#ac784c');
+}
+
+function drawClassroomLights(t) {
+  for (const [a, b, z] of [[12, 0, 65], [76, 0, 93], [0, 44, 67]]) {
+    const [x, y] = P(a, b, z);
+    const facing = a === 0 ? 1 : -1;
+    glow(x + 7 * facing, y - 5, 20, 18, '114,209,180', .067 + .01 * Math.sin(t * 1.3 + a));
+    ctx.save();
+    ctx.translate(x, y - 13);
+    ctx.scale(facing, 1);
+    ctx.drawImage(classroomSconce, -3, 0);
+    ctx.restore();
+  }
+}
 
 function classroomFloor(a, b) {
   // A woven runner follows the clear aisle between the two banks of desks.
@@ -4466,7 +4525,7 @@ function frame(ms) {
         drawStockPaintings(ctx, t, true);
         drawStockLanterns(t);
       } else if (currentRoom === rooms.classroom) {
-        drawLibraryLights(t, classroomLanterns);
+        drawClassroomLights(t);
       } else {
         drawLibraryLights(t, hallLanterns);
         drawHallCandles(t);
