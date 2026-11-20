@@ -640,10 +640,20 @@ function drawReadingWindow(g) {
   });
 }
 
-const libraryClockCenter = 165;
+const libraryClockCenter = 168;
+const libraryClockDepth = 2.5;
 
 function drawLibraryClock(g) {
-  wallR(g, 0, libraryClockCenter - 11, libraryClockCenter + 12, 24, 70, (u, z) => {
+  const a = libraryClockCenter / 2;
+  const walnut = woodC('#7f4836');
+  const molding = flat('#bd8256', '#60372c', '#87523b');
+  box(g, a - 5.5, 0, 25, 11.5, libraryClockDepth, 36, walnut);
+  box(g, a - 5.5, 0, 24, 11.5, libraryClockDepth, 3, molding);
+  for (let z = 61; z < 70; z += 2) {
+    const inset = Math.floor((z - 61) / 2) / 2;
+    box(g, a - 5.5 + inset, 0, z, 11.5 - inset * 2, libraryClockDepth, Math.min(2, 70 - z), walnut);
+  }
+  wallR(g, libraryClockDepth, libraryClockCenter - 11, libraryClockCenter + 12, 24, 70, (u, z) => {
     const x = u - libraryClockCenter, d = Math.abs(x);
     if (z >= 61 && d > 11 - Math.floor((z - 61) / 2)) return null;
     if (d >= 10 || z === 24 || z === 69) return '#3b262c';
@@ -652,7 +662,8 @@ function drawLibraryClock(g) {
     if (z < 29 || z >= 61 || z === 43) return z % 3 === 0 ? '#b26848' : '#8f4938';
     if (z < 43 && d < 7) {
       if (d === 6 || z === 29 || z === 42) return '#a4794d';
-      return x === -5 && z > 33 ? '#574554' : '#342a34';
+      if (x === -5 && z > 33) return '#695563';
+      return z < 32 ? '#291f29' : '#342a34';
     }
     const r = Math.hypot(x, z - 52);
     if (r <= 8) {
@@ -668,15 +679,15 @@ function drawLibraryClock(g) {
 }
 
 function animateLibraryClock(t) {
-  const [faceX, faceY] = P(libraryClockCenter / 2, 0, 52);
+  const [faceX, faceY] = P(libraryClockCenter / 2, libraryClockDepth, 52);
   const angle = t / 45 - .85;
   line(ctx, faceX, faceY, faceX + Math.sin(angle) * 5, faceY - Math.cos(angle) * 5, '#674632');
   line(ctx, faceX, faceY, faceX + 3, faceY + 2, '#493237');
   dot(ctx, faceX, faceY, '#875c3a');
 
   const swing = Math.sin(t * 3.2) * 3.1;
-  const [pivotX, pivotY] = P(libraryClockCenter / 2, 0, 41);
-  const [bobX, bobY] = P((libraryClockCenter + swing) / 2, 0, 33);
+  const [pivotX, pivotY] = P(libraryClockCenter / 2, libraryClockDepth, 41);
+  const [bobX, bobY] = P((libraryClockCenter + swing) / 2, libraryClockDepth, 33);
   line(ctx, pivotX, pivotY, bobX, bobY, '#b78b55');
   ell(ctx, bobX, bobY, 3, 2, '#d8ae6e');
   dot(ctx, bobX - 1, bobY - 1, '#f3d29b');
