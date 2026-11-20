@@ -4238,6 +4238,45 @@ for (const row of classroomRows) for (const column of classroomBanks) {
   }
 }
 
+// A small tabletop perch at the end of the teacher's desk.
+function drawClassroomOwl(g, a, b, surface) {
+  const [x, y] = P(a, b, surface);
+  ell(g, x + 1, y + 1, 6, 2, '#785139');
+  box(g, a - 1.8, b - 1.2, surface, 3.6, 2.4, 1.5, woodC('#674531'));
+  rect(g, x - 1, y - 12, 3, 11, '#543a31');
+  rect(g, x - 1, y - 11, 1, 9, '#ab7c52');
+  line(g, x - 6, y - 12, x + 6, y - 14, '#51372d');
+  line(g, x - 6, y - 13, x + 6, y - 15, '#ad8155');
+  line(g, x + 4, y - 15, x + 6, y - 18, '#775035');
+
+  const feathers = {
+    X: '#392c2b', B: '#654333', b: '#906347', t: '#c29a70',
+    c: '#e0c39a', o: '#edbd63', k: '#282426', g: '#cc9550'
+  };
+  const rows = [
+    '...XXXXXXX...',
+    '..XBbbtbbBX..',
+    '.XBttbbbttBX.',
+    '.XtcctbtcctX.',
+    '.XcokcBckocX.',
+    '.XtcctgtcctX.',
+    '..XtttBtttX..',
+    '..XBbctcbBX..',
+    '.XBbtbcbtbBX.',
+    '.XBbbtbtbbBX.',
+    '.XXBbtctbBXX.',
+    '..XBbbtbbbX..',
+    '...XBbtbbX...',
+    '....XBXBX....',
+    '....gg.gg....'
+  ];
+  rows.forEach((row, dy) => {
+    for (let dx = 0; dx < row.length; dx++) {
+      if (row[dx] !== '.') dot(g, x + dx - 6, y + dy - 28, feathers[row[dx]]);
+    }
+  });
+}
+
 const classroomFront = mk();
 const teacherDesk = classroomFront.getContext('2d');
 const deskWood = woodC('#955e3f');
@@ -4254,6 +4293,7 @@ for (const panel of [36, 45, 54]) {
 }
 box(teacherDesk, 43, 10, 14.5, 10, 4, .75, flat('#e7d3a6', '#a68257', '#bf9c6e'));
 line(teacherDesk, ...P(48, 10, 15.25), ...P(48, 14, 15.25), '#ad8960');
+drawClassroomOwl(teacherDesk, 59, 11, 14.5);
 classroomFurnishings.push({ canvas: classroomFront, depth: 60 });
 
 const classroomDemo = mk();
