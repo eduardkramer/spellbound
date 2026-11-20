@@ -44,7 +44,7 @@ const rooms = {
   library: { canvas: secondC, exits: [
     { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' },
     { tile: [LIBRARY_COLUMNS - 1, LIBRARY_POTION_DOOR_ROW], wallA: LIBRARY_WIDTH, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' },
-    { tile: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 1], wallB: LIBRARY_DEPTH,
+    { tile: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 1], wallB: LIBRARY_DEPTH, archHalfWidth: 19,
       target: 'hall', arrival: [HALL_ENTRANCE_COLUMN, 1], direction: 'sw' }
   ] },
   hall: { canvas: hallC, exits: [
@@ -451,16 +451,17 @@ function drawPassage(g, rear, style) {
   wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z, style));
 }
 
-const stockArchColor = (offset, z, style) => passageColor(offset * 17 / 15, z, style);
+const acrossArchColor = (offset, z, halfWidth = 15, style) => passageColor(offset * 17 / halfWidth, z, style);
 
-function drawAcrossPassage(g, { tile, wallB }, style, foreground = false) {
+function drawAcrossPassage(g, { tile, wallB, archHalfWidth = 15 }, style, foreground = false) {
   const center = (tile[0] + .5) * TILE_SIZE;
   if (!foreground) {
-    drawDoorMat(g, center - 6, wallB === 0 ? 0 : wallB - 7, 12, 7, style);
+    const matWidth = archHalfWidth - 3;
+    drawDoorMat(g, center - matWidth / 2, wallB === 0 ? 0 : wallB - 7, matWidth, 7, style);
     if (wallB > 0) return;
   }
-  wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
-    (u, z) => stockArchColor(u - 2 * center, z, style));
+  wallR(g, wallB, 2 * center - archHalfWidth, 2 * center + archHalfWidth + 1, 0, 49,
+    (u, z) => acrossArchColor(u - 2 * center, z, archHalfWidth, style));
 }
 
 function closedStockDoorColor(offset, z) {
@@ -3246,11 +3247,11 @@ if (!preview) {
       clearRoute();
       return;
     }
-    const clickedExit = currentRoom.exits.find(({ wallA, wallB, tile }) => {
+    const clickedExit = currentRoom.exits.find(({ wallA, wallB, tile, archHalfWidth }) => {
       if (wallB !== undefined) {
         const u = px + 2 * wallB;
         const z = wallB + Math.floor(u / 2) - 1 - py;
-        return z >= 0 && z < 49 && stockArchColor(u - 2 * (tile[0] + .5) * TILE_SIZE, z);
+        return z >= 0 && z < 49 && acrossArchColor(u - 2 * (tile[0] + .5) * TILE_SIZE, z, archHalfWidth);
       }
       if (wallA === undefined) return false;
       const u = 2 * wallA - px - 1;
