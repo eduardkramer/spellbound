@@ -1641,8 +1641,32 @@ function hallArtwork(subject, x, y, gaze = 0) {
   }
   if (subject === 'crest') return schoolCrestPixel(x, y) ?? '#54445c';
   if (subject === 'family') {
-    return x < 0 ? stockPortraitArt('wizard', x * 2 + .84, y, 0, gaze)
-      : stockPortraitArt('witch', x * 2 - .84, y, 0, gaze);
+    const left = x < 0;
+    const local = x * 2 + (left ? .86 : -.86);
+    const headY = y - (left ? .25 : .10);
+    if ((local / .57) ** 2 + (headY / .44) ** 2 < 1) {
+      if (headY > .19 || Math.abs(local) > .42) return left ? '#8d807f' : '#543341';
+      if (Math.abs(headY - .04) < .08 && Math.abs(Math.abs(local - gaze) - .19) < .10) return '#332531';
+      if (headY < -.13 && left) return local < 0 ? '#baaba0' : '#958281';
+      return local < -.16 ? '#c29180' : '#e0b196';
+    }
+    if (headY < -.31 && Math.abs(local) < .44 - headY * .34) {
+      if (Math.abs(local + .12) < .1) return '#ba945e';
+      return left ? '#4d6570' : '#754955';
+    }
+    return x + y > .1 ? '#60504e' : '#493d43';
+  }
+  if (subject === 'woods' || subject === 'castle') {
+    const ridge = -.26 + Math.sin(x * 7) * .1 + Math.cos(x * 13) * .06;
+    const treetops = -.55 + Math.abs(Math.sin(x * 24)) * .17 + Math.sin(x * 8) * .09;
+    if (y < treetops) return y < -.74 ? '#454741' : '#5d5a47';
+    if (subject === 'castle' && Math.abs(x + .13) < .52 && y > ridge) {
+      const tower = Math.abs(x + .5) < .13 || Math.abs(x - .21) < .12;
+      if (y < (tower ? .34 : -.02)) return tower && Math.abs(y - .05) < .07 ? '#e0b57c' : '#675165';
+    }
+    if (y < ridge) return '#817074';
+    if ((x - .56) ** 2 + (y - .34) ** 2 < .028) return '#ebc38e';
+    return y < .36 ? '#b6857e' : y < .63 ? '#9d737e' : '#785e78';
   }
   return stockPaintingArt(subject, x, y, 0);
 }
@@ -1679,7 +1703,7 @@ function drawHallDecor(g, continuation) {
       if (subject === 'crest' && y < 3) return x % 3 ? '#987650' : null;
       if (edge === 0) return '#392b31';
       if (edge === 1) return x === 1 || y === height - 2 ? '#d2aa6c' : '#9f764f';
-      if (edge === 2) return '#5b3c37';
+      if (edge === 2) return (x + y) % 4 === 0 ? '#a87850' : '#5b3c37';
       const color = hallArtwork(subject, 2 * (x - 3) / (width - 7) - 1, 2 * (y - 3) / (height - 7) - 1);
       return hash(column, level) > .88 ? sh(color, .8) : color;
     });
@@ -1696,9 +1720,17 @@ function makeHallFurnishings(continuation) {
   const canvas = mk(), g = canvas.getContext('2d');
   const wood = woodC('#885a42');
   if (!continuation) {
-    for (const b of [21, 29]) box(g, 1, b, 0, 3.5, 1.25, 7, wood);
+    ell(g, ...P(2.5, 25.5, 0), 12, 4, 'rgba(29,23,31,.36)');
+    for (const b of [21, 29]) {
+      box(g, 1, b, 0, 3.5, 1.25, 7, wood);
+      box(g, 1, b - .2, 0, 3.7, 1.6, .8, flat('#845941', '#50382f', '#6d4937'));
+    }
+    box(g, 2.8, 21.5, 2.3, 1, 8, .85, wood);
     box(g, .5, 20, 7, 4.8, 11.5, 1.4, wood);
     box(g, .5, 20, 8, 1, 11.5, 4, wood);
+    line(g, ...P(5.25, 20.5, 8), ...P(5.25, 31, 8), '#c18a5b');
+    line(g, ...P(1.51, 20.5, 11.5), ...P(1.51, 31, 11.5), '#b88056');
+    for (const b of [21.5, 30]) dot(g, ...P(5.3, b, 7.6), '#c4a36b');
     box(g, 2, 21.5, 8.4, 2.6, 3.8, 1, flat('#63816e', '#324741', '#485e52'));
     box(g, 2, 22, 9.4, 2.25, 2.8, .8, flat('#bc9163', '#573c35', '#765547'));
     box(g, 1.8, 27, 8.4, 3, 3, .6, flat('#985369', '#603b4c', '#78465a'));
@@ -1708,10 +1740,18 @@ function makeHallFurnishings(continuation) {
   box(g, .4, 54, 0, 4.5, 7, 3, wood);
   box(g, .4, 54, 3, 4.5, 7, 8, flat('#5b4a55', '#382d3c', '#46404b'));
   box(g, .3, 53.7, 11, 4.8, 7.6, 1.4, wood);
+  box(g, .35, 54, 0, 4.65, 7, 1, flat('#a07151', '#523a36', '#6e4f44'));
+  wallL(g, 4.91, 108, 122, 3, 11, (u, z) => {
+    if (z === 10 || u === 108 || u === 121) return '#ad7e54';
+    if (z === 4 || u === 114) return '#705140';
+    return (u + z) % 7 === 0 ? '#74636c' : '#514451';
+  });
   for (const b of [55.5, 58.5]) {
     const [x, y] = P(4.75, b, 7);
     rect(g, x, y - 2, 1, 3, '#d9ac66');
     ell(g, x, y - 3, 1, 1, '#ead098');
+    dot(g, x + 1, y - 2, '#c79a57');
+    dot(g, x, y + 1, '#b78a56');
   }
   const armor = mk(), armorContext = armor.getContext('2d');
   const steel = flat('#aab2b4', '#535c70', '#788390');
@@ -1720,7 +1760,33 @@ function makeHallFurnishings(continuation) {
   box(armorContext, 1, 89.3, 11, 3.4, 4.5, 7, steel);
   box(armorContext, 1.5, 90.1, 18, 2.6, 2.7, 4, steel);
   line(armorContext, ...P(4.1, 90.4, 20), ...P(4.1, 92.5, 20), '#333345');
-  return [{ canvas, depth: 62 }, { canvas: armor, depth: 95 }];
+  const candlestick = mk(), brass = candlestick.getContext('2d');
+  const [x, y] = P(3.5, 76, 0);
+  ell(brass, x, y, 7, 3, 'rgba(26,20,30,.48)');
+  ell(brass, x, y - 1, 5, 2, '#684c39');
+  ell(brass, x, y - 2, 4, 1, '#ad7949');
+  rect(brass, x - 1, y - 20, 3, 18, '#8f6443');
+  line(brass, x - 1, y - 18, x - 1, y - 4, '#cc9b59');
+  for (const z of [7, 15, 21]) ell(brass, x, y - z, 2, 1, '#c3955a');
+  const candles = [[-5, 24], [0, 29], [5, 25]];
+  for (const [offset, z] of candles) {
+    line(brass, x, y - 19, x + offset, y - z + 4, '#b88a53');
+    ell(brass, x + offset, y - z + 4, 2, 1, '#aa7546');
+    rect(brass, x + offset - 1, y - z, 3, 4, '#e1d0a4');
+    dot(brass, x + offset - 1, y - z + 2, '#fff0c9');
+  }
+  return [
+    { canvas, depth: 62 }, { canvas: armor, depth: 95 },
+    { canvas: candlestick, depth: 79.5, animate: t => {
+      const intensity = .18 + .022 * Math.sin(t * 5.6);
+      glow(x, y - 23, 20, 17, '255,177,88', intensity);
+      for (const [offset, z] of candles) {
+        const tip = Math.sin(t * 8 + offset) > .5 ? 1 : 0;
+        rect(ctx, x + offset, y - z - 3 - tip, 1, 3, '#eba25e');
+        dot(ctx, x + offset, y - z - 1, '#fff2ba');
+      }
+    } }
+  ];
 
 }
 
@@ -2742,7 +2808,7 @@ for (const room of [rooms.hall, rooms.hallEnd]) {
   room.floor = Array.from({ length: HALL_ROWS }, () => Array(HALL_COLUMNS).fill('.'));
 }
 rooms.hall.floor[2][0] = rooms.hall.floor[3][0] = 'X';
-rooms.hallEnd.floor[6][0] = rooms.hallEnd.floor[7][0] = rooms.hallEnd.floor[11][0] = 'X';
+rooms.hallEnd.floor[6][0] = rooms.hallEnd.floor[7][0] = rooms.hallEnd.floor[9][0] = rooms.hallEnd.floor[11][0] = 'X';
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
   'X.XXXXX.',
