@@ -1127,7 +1127,40 @@ function drawStockLanterns(t) {
   }
 }
 
-function stockPaintingArt(subject, x, y) {
+const stockPortraits = {
+  witch: ['#40374f', '#825779', '#c78e73', '#35263d'],
+  wizard: ['#35455c', '#565c93', '#c69e82', '#d9c7b5'],
+  goblin: ['#514739', '#80614a', '#94a467', '#586a45'],
+  necromancer: ['#452b46', '#663f65', '#bea7ad', '#38283e'],
+  wraith: ['#283b4b', '#526781', '#8ea4b0', '#2b344b']
+};
+
+function stockPortraitArt(subject, x, y, t) {
+  const [background, cloak, skin, detail] = stockPortraits[subject];
+  const phase = t + Object.keys(stockPortraits).indexOf(subject) * 1.11;
+  const blink = phase % 4.7 > 4.5;
+  const head = x - .09 * Math.sin(phase * 1.35);
+  const face = Math.abs(head);
+  const goblin = subject === 'goblin';
+  const sinister = subject === 'necromancer' || subject === 'wraith';
+  const eye = Math.abs(face - .18) < .09 && Math.abs(y - .21) < .074;
+  if (eye) return blink ? detail : sinister ? '#efa17f' : '#292332';
+  if (goblin && face < .73 && face > .27 && Math.abs(y - .23 - face * .33) < .12) return skin;
+  if (face < .38 && y > -.16 && y < .52) {
+    if (Math.abs(y + .06) < .06 && face < .2) return detail;
+    return head < -.21 ? sh(skin, .77) : skin;
+  }
+  if ((subject === 'witch' || subject === 'wizard') &&
+      ((y >= .49 && y < .62 && face < .71) ||
+       (y >= .62 && face < (1 - y) * 1.25))) return cloak;
+  if (sinister && y > .05 && y < .77 && face < .75 - .4 * y) return cloak;
+  if (subject === 'wizard' && y < -.12 && y > -.61 && face < .32 + y * .38) return detail;
+  if (y < -.1 && y > -.94 && face < .43 - y * .36) return head > 0 ? cloak : sh(cloak, .72);
+  return background;
+}
+
+function stockPaintingArt(subject, x, y, t) {
+  if (stockPortraits[subject]) return stockPortraitArt(subject, x, y, t);
   switch (subject) {
     case 'castle': {
       if (y < -.46 + .19 * Math.sin(x * 8)) return '#394752';
@@ -1165,44 +1198,72 @@ function stockPaintingArt(subject, x, y) {
       if ((x + .22) ** 2 + (y - .24) ** 2 < .31 && (x - .03) ** 2 + (y - .38) ** 2 > .23) return '#e5c891';
       if (y < -.59 + .11 * Math.sin(x * 12)) return '#44475b';
       return '#34344d';
-    default:
-      if (Math.abs(x) < .19 && y > .13 && y < .63) return x < -.08 ? '#ac795e' : '#d1a27d';
-      if (y >= .56 && Math.abs(x) < .59 - (y - .56) * .9) return '#60547e';
-      if (y < .14 && y > -.72 && Math.abs(x) < .61 + y * .26) return y > -.1 ? '#c3b0a0' : '#675474';
-      return '#484154';
+    case 'comet':
+      return Math.abs(y - x * .48) < .1 && x > -.68 && x < .65 ? '#e4ab88' : '#403b60';
+    case 'mountains':
+      return y < .52 - Math.abs(x + .18) * 1.26 ? (y > .14 ? '#c5c7bc' : '#626d83') : '#a88d9b';
+    case 'mushrooms': {
+      const cap = ((x + .2) / .53) ** 2 + ((y - .15) / .32) ** 2 < 1;
+      if (cap && y > .05) return '#a55e5f';
+      return Math.abs(x + .22) < .14 && y > -.68 && y < .19 ? '#d3b888' : '#68645e';
+    }
+    case 'raven':
+      return (x + .24) ** 2 + (y - .12) ** 2 < .19 || Math.abs(y + x * .65) < .13 && Math.abs(x) < .83
+        ? '#36334a' : '#ae8991';
+    case 'hourglass':
+      return Math.abs(y) < .72 && Math.abs(x) < .12 + Math.abs(y) * .62
+        ? (Math.abs(y) > .57 ? '#956846' : '#dabb83') : '#564458';
+    case 'crystal':
+      return (Math.abs(x) * 1.55 + Math.abs(y) * .72 < .65)
+        ? (x > .04 ? '#876ea0' : '#bda8c6') : '#443751';
+    case 'eye':
+      if (x * x + Math.abs(y) * 1.24 < .68) return Math.abs(x) < .15 ? '#49334e' : '#c9986f';
+      return '#513f53';
+    case 'candle':
+      if (x * x + (y - .44) ** 2 < .085) return '#e0aa70';
+      return Math.abs(x) < .24 && y < .16 && y > -.69 ? '#b89978' : '#444354';
+    case 'sea':
+      if (y > .14) return '#aa8284';
+      return Math.sin(x * 9 + y * 18) > .62 ? '#829a9a' : '#495c70';
+    case 'flower':
+      if (Math.abs(x) < .08 && y < .3 && y > -.78) return '#7f8b60';
+      if (x * x + (y - .27) ** 2 < .25) return Math.abs(x) < .17 && Math.abs(y - .27) < .17 ? '#c9a365' : '#a86983';
+      return '#5f5261';
   }
 }
 
-function drawStockPaintings(g) {
+function drawStockPaintings(g, t = 0, animateOnly = false) {
   const oak = ['#a57b52', '#765137', '#51382d'];
   const brass = ['#c2a36c', '#927047', '#59443b'];
   const walnut = ['#896656', '#64463d', '#493239'];
   // Frame coordinates are in wall columns and height above the floor.
   const groups = [
     [wallL, [
-      [8, 90, 33, 11, 'woods', walnut], [103, 91, 34, 10, 'moon', oak],
-      [46, 52, 15, 13, 'herb', oak], [64, 51, 24, 17, 'castle', walnut],
-      [90, 50, 11, 15, 'potion', walnut], [65, 80, 22, 18, 'mage', brass],
-      [143, 48, 13, 25, 'herb', oak], [143, 79, 13, 16, 'potion', brass]
+      [8, 90, 33, 11, 'woods', walnut], [103, 91, 34, 10, 'comet', oak],
+      [46, 52, 15, 13, 'herb', oak], [64, 51, 24, 17, 'sea', walnut],
+      [90, 50, 11, 15, 'candle', walnut], [65, 80, 22, 18, 'witch', brass],
+      [143, 48, 13, 25, 'flower', oak], [143, 79, 13, 16, 'hourglass', brass]
     ]],
     [wallR, [
       [7, 52, 19, 25, 'potion', oak], [8, 82, 18, 16, 'moon', walnut],
-      [31, 57, 36, 34, 'castle', brass], [72, 48, 19, 24, 'herb', oak],
-      [72, 78, 20, 19, 'mage', walnut], [95, 48, 20, 17, 'woods', walnut],
-      [97, 84, 16, 14, 'moon', oak], [115, 69, 23, 26, 'potion', brass],
-      [121, 46, 26, 16, 'woods', oak], [143, 69, 30, 25, 'castle', walnut],
-      [153, 48, 16, 16, 'herb', brass], [178, 52, 10, 37, 'mage', oak]
+      [31, 57, 36, 34, 'wizard', brass], [72, 48, 19, 24, 'crystal', oak],
+      [72, 78, 20, 19, 'goblin', walnut], [95, 48, 20, 17, 'mushrooms', walnut],
+      [97, 84, 16, 14, 'raven', oak], [115, 69, 23, 26, 'necromancer', brass],
+      [121, 46, 26, 16, 'mountains', oak], [143, 69, 30, 25, 'castle', walnut],
+      [153, 48, 16, 16, 'eye', brass], [178, 52, 10, 37, 'wraith', oak]
     ]]
   ];
   for (const [paintWall, frames] of groups) {
     for (const [u, z, width, height, subject, frame] of frames) {
-      paintWall(g, 0, u, u + width + 2, z - 2, z + height, (column, level) => {
+      if (animateOnly && !stockPortraits[subject]) continue;
+      paintWall(g, 0, animateOnly ? u + 2 : u, animateOnly ? u + width - 2 : u + width + 2,
+        animateOnly ? z + 2 : z - 2, animateOnly ? z + height - 2 : z + height, (column, level) => {
         const x = column - u, y = level - z;
         if (x >= width || y < 0) return '#32313c';
         if (y === height - 1 || x === 0) return frame[0];
         if (y === 0 || x === width - 1) return frame[2];
         if (x === 1 || y === 1 || x === width - 2 || y === height - 2) return frame[1];
-        const color = stockPaintingArt(subject, 2 * (x - 2) / (width - 5) - 1, 2 * (y - 2) / (height - 5) - 1);
+        const color = stockPaintingArt(subject, 2 * (x - 2) / (width - 5) - 1, 2 * (y - 2) / (height - 5) - 1, t);
         return hash(column, level) > .86 ? sh(color, .87) : color;
       });
     }
@@ -3587,6 +3648,7 @@ function frame(ms) {
     } else if (currentRoom === rooms.potion) {
       drawPotionLight(t);
     } else {
+      drawStockPaintings(ctx, t, true);
       drawStockLanterns(t);
     }
     drawRoomOccupants(t, dt);
