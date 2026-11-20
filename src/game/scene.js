@@ -365,7 +365,26 @@ function towerWallStone(brick, u, z) {
   return texture > .91 ? sh(color, 1.12) : texture < .08 ? sh(color, .89) : color;
 }
 
-function passageColor(dx, z) {
+const doorStyles = {
+  tower: {
+    wood: '#995b37', light: '#bd7943', dark: '#613624', metal: '#efc17a',
+    cloth: '#75404d', thread: '#d5ad69', emblem: (x, y) => Math.abs(x) + 2 * Math.abs(y) < 2.6
+  },
+  library: {
+    wood: '#72503c', light: '#a6784f', dark: '#4b332b', metal: '#d6b47a',
+    cloth: '#52634d', thread: '#b7a676', emblem: (x, y) => Math.abs(x) < 2.5 && Math.abs(y) < .85 + .13 * Math.abs(x)
+  },
+  potion: {
+    wood: '#9c6545', light: '#c38455', dark: '#644338', metal: '#92b7a0',
+    cloth: '#5d505f', thread: '#ac959f', emblem: (x, y) => x * x + (y * 2) ** 2 < 4.5
+  },
+  stockroom: {
+    wood: '#665044', light: '#8c7156', dark: '#45362e', metal: '#9e9281',
+    cloth: '#766352', thread: '#a28d6f', emblem: (x, y) => Math.abs(y - x * .23) < .35 && Math.abs(x) < 2.7
+  }
+};
+
+function passageColor(dx, z, style = doorStyles.tower) {
   const distance = Math.abs(dx);
   const lift = Math.max(0, z - 31);
   const curve = Math.hypot(dx, lift);
@@ -377,22 +396,22 @@ function passageColor(dx, z) {
     const stud = z < 26 && distance >= 13 && distance < 15 && [9, 16, 23].includes(z);
     const leaf = (keystone && (distance < .7 || (distance < 2.2 && (z === 45 || z === 47)))) ||
       (lift > 2 && Math.abs(curve - 14) < .65 && (z === 35 || z === 38 || z === 41));
-    if (curve > 16.3) return '#4b2a24';
-    if (stud || leaf) return dx < 0 ? '#efc17a' : '#c58b48';
-    if (z < 27 && distance >= 14 && distance < 14.7 && [10, 17, 24].includes(z)) return '#5c382b';
-    if (curve > 15 || (foot && (z === 4 || z === 30))) return '#bd7943';
-    if (curve < 12.2) return '#613624';
-    if (foot || keystone) return '#945632';
-    if (curve > 14 && curve < 14.8) return '#724329';
-    return grain > .72 ? '#b47446' : grain < .28 ? '#79482e' : '#995b37';
+    if (curve > 16.3) return sh(style.dark, .77);
+    if (stud || leaf) return dx < 0 ? style.metal : sh(style.metal, .8);
+    if (z < 27 && distance >= 14 && distance < 14.7 && [10, 17, 24].includes(z)) return style.dark;
+    if (curve > 15 || (foot && (z === 4 || z === 30))) return style.light;
+    if (curve < 12.2) return style.dark;
+    if (foot || keystone) return sh(style.wood, .94);
+    if (curve > 14 && curve < 14.8) return sh(style.dark, 1.14);
+    return grain > .72 ? sh(style.wood, 1.15) : grain < .28 ? sh(style.wood, .83) : style.wood;
   }
-  if (z < 3) return '#c0884d';
+  if (z < 3) return style.light;
   if (z < 7) return '#644033';
   if (dx > 8.5 && z < 32) return '#4b2a2b';
   return '#27192c';
 }
 
-function drawDoorMat(g, a0, b0, width, depth) {
+function drawDoorMat(g, a0, b0, width, depth, style) {
   const acrossA = width > depth;
   box(g, a0, b0, 0, width, depth, 1, {
     top: (a, b) => {
@@ -403,40 +422,39 @@ function drawDoorMat(g, a0, b0, width, depth) {
       const edge = Math.min(u, span - u, v, length - v);
       const weave = (Math.floor(u * 2) + Math.floor(v * 2)) % 2;
       if (edge < .5) return '#594035';
-      if (edge < 1.15) return weave ? '#d5ad69' : '#b68450';
+      if (edge < 1.15) return weave ? style.thread : sh(style.thread, .78);
       if (edge < 1.6) return '#614339';
       const x = u - span / 2, y = v - length / 2;
-      const leaf = Math.abs(x) / 2.6 + Math.abs(y - x * .24) / 1.15 < 1;
-      if (leaf) return Math.abs(y - x * .24) < .26 ? '#f0c47a' : '#c88755';
-      return weave ? '#936443' : '#885b40';
+      if (style.emblem(x, y)) return Math.abs(x) < .3 ? sh(style.thread, 1.16) : style.thread;
+      return weave ? style.cloth : sh(style.cloth, .89);
     },
     left: '#614239',
     right: '#724a37'
   });
 }
 
-function drawPassage(g, rear) {
+function drawPassage(g, rear, style) {
   const center = EXIT_CENTER * 2;
-  drawDoorMat(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 14, 7);
-  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+  drawDoorMat(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 14, 7, style);
+  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z, style));
 }
 
-const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
+const stockArchColor = (offset, z, style) => passageColor(offset * 17 / 15, z, style);
 
-function drawStockPassage(g, { tile, wallB }) {
+function drawStockPassage(g, { tile, wallB }, style) {
   const center = (tile[0] + .5) * TILE_SIZE;
-  drawDoorMat(g, center - 6, wallB, 12, 7);
+  drawDoorMat(g, center - 6, wallB, 12, 7, style);
   wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
-    (u, z) => stockArchColor(u - 2 * center, z));
+    (u, z) => stockArchColor(u - 2 * center, z, style));
 }
 
-function drawSidePassage(g, { wallA, tile }, foreground) {
+function drawSidePassage(g, { wallA, tile }, foreground, style) {
   const center = (tile[1] + .5) * TILE_SIZE;
   if (!foreground) {
-    drawDoorMat(g, wallA === 0 ? 0 : wallA - 7, center - 7, 7, 14);
+    drawDoorMat(g, wallA === 0 ? 0 : wallA - 7, center - 7, 7, 14, style);
     if (wallA !== 0) return;
   }
-  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z, style));
 }
 
 /* ---------- bibliotheek ---------- */
@@ -1481,7 +1499,7 @@ function drawStockContainer(g, a, b, kind) {
   }
 }
 
-function buildStatic(sg, room) {
+function buildStatic(sg, room, doorStyle) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
   const stockroom = room === rooms.stockroom;
@@ -1512,10 +1530,10 @@ function buildStatic(sg, room) {
     drawStockPaintings(sg);
     drawStockShelves(sg);
   }
-  if (room === rooms.tower || library) drawPassage(sg, library);
+  if (room === rooms.tower || library) drawPassage(sg, library, doorStyle);
   for (const exit of room.exits) {
-    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
-    if (exit.wallB !== undefined) drawStockPassage(sg, exit);
+    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false, doorStyle);
+    if (exit.wallB !== undefined) drawStockPassage(sg, exit, doorStyle);
   }
 }
 
@@ -1775,15 +1793,16 @@ const loadingScreen = document.getElementById('game-loading');
 const loadingProgress = document.getElementById('game-loading-progress');
 if (loadingProgress) loadingProgress.value = 1;
 
-for (const room of Object.values(rooms)) {
+for (const [roomName, room] of Object.entries(rooms)) {
+  const doorStyle = doorStyles[roomName];
   const background = room.canvas.getContext('2d');
-  buildStatic(background, room);
+  buildStatic(background, room, doorStyle);
   outline(background, '#14183a');
   const frontExits = room.exits.filter(({ wallA }) => wallA > 0);
   if (frontExits.length) {
     room.foreground = mk();
     const foreground = room.foreground.getContext('2d');
-    for (const exit of frontExits) drawSidePassage(foreground, exit, true);
+    for (const exit of frontExits) drawSidePassage(foreground, exit, true, doorStyle);
   }
 }
 buildFront();
