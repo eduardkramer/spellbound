@@ -481,22 +481,18 @@ function drawSidePassage(g, { wallA, tile }, foreground, style) {
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
 const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
 const readingSeat = { tile: [1, 5], approach: [2, 5], direction: 'ne', offsetB: 0, height: 7, hit: [14, 24] };
-const librarySeats = [
-  readingSeat,
-  { tile: [2, 4], approach: [1, 4], direction: 'ne', height: 7, hit: [9, 16] },
-  { tile: [5, 4], approach: [6, 4], direction: 'ne', height: 7, hit: [9, 16] },
-  { tile: [4, 7], approach: [3, 7], direction: 'ne', height: 7, hit: [9, 16] },
-  { tile: [9, 6], approach: [8, 6], direction: 'ne', height: 7, hit: [9, 16] },
-  { tile: [11, 9], approach: [10, 9], direction: 'ne', height: 7, hit: [9, 16] },
-  { tile: [5, 10], approach: [4, 10], direction: 'ne', height: 7, hit: [9, 16] }
-];
+const studyTables = [[3, 3], [8, 3], [3, 8], [8, 8]];
+const studySeats = studyTables.flatMap(([column, row]) =>
+  [column, column + 1, column + 2].flatMap(a => [-1, 1].map(side => ({
+    tile: [a, row + side], approach: [a, row + 2 * side],
+    direction: side > 0 ? 'ne' : 'sw', height: 7, hit: [9, 16]
+  }))));
+const librarySeats = [readingSeat, ...studySeats];
 
 const libraryLayout = [
-  [2, 3, 'desk'], [2, 4, 'chair'], [5, 3, 'desk'], [5, 4, 'chair'],
-  [4, 6, 'desk'], [4, 7, 'chair'], [1, 6, 'plant'], [7, 1, 'plant'],
-  [1, 5, 'reading chair'], [0, 4, 'tea table'],
-  [9, 5, 'desk'], [9, 6, 'chair'], [11, 8, 'desk'], [11, 9, 'chair'],
-  [5, 9, 'desk'], [5, 10, 'chair'], [2, 10, 'plant'], [12, 2, 'plant'], [12, 10, 'plant']
+  [1, 6, 'plant'], [7, 1, 'plant'], [1, 5, 'reading chair'], [0, 4, 'tea table'],
+  [2, 10, 'plant'], [12, 2, 'plant'], [12, 10, 'plant'],
+  ...studySeats.map(({ tile }) => [...tile, 'chair'])
 ];
 const leftShelfRanges = [[4, 64], [115, 126], [132, 184]];
 const rightShelfRanges = [[8, 48], [98, 126], [133, 172], [179, 216]];
@@ -510,10 +506,13 @@ function shadedLibraryFloor(a, b) {
     shade = Math.min(shade, Math.min(a, b) < 5 ? .65 : .85);
   }
   for (const [column, row, type] of libraryLayout) {
-    const radius = type === 'desk' ? 5 : 3.4;
+    const radius = 3.4;
     const centerA = (column + .5) * TILE_SIZE + 1;
     const centerB = (row + .5) * TILE_SIZE + 1.5;
     shade = Math.min(shade, contactShade(a, b, centerA, centerB, radius, radius));
+  }
+  for (const [column, row] of studyTables) {
+    shade = Math.min(shade, contactShade(a, b, (column + 1.5) * TILE_SIZE, (row + .5) * TILE_SIZE, 13, 4));
   }
   const lamplight = Math.max(0, ...libraryLanterns.map(([la, lb]) => 1 - Math.hypot((a - la) / 20, (b - lb) / 17)));
   const adjusted = shade * (1 + lamplight * .32);
@@ -528,12 +527,18 @@ function shadedLibraryFloor(a, b) {
 }
 
 function libraryFloor(a, b) {
-  const annex = a >= 65 && a < 104 && b >= 39 && b < 86;
+  if (a >= 49 && a < 62 && b >= 14 && b < 86) {
+    const edge = Math.min(a - 49, 62 - a, b - 14, 86 - b);
+    if (edge < 1) return '#ba9a5e';
+    if (edge < 2) return '#2c4b47';
+    return Math.abs(a - 55.5) + Math.abs(b % 8 - 4) < 3.4 ? '#a48249' : '#385d55';
+  }
+  const annex = a >= 65 && a < 104 && b >= 14 && b < 86;
   if (annex || (a >= 9 && a < 58 && b >= 15 && b < 58)) {
-    const edge = annex ? Math.min(a - 65, 104 - a, b - 39, 86 - b) : Math.min(a - 9, 58 - a, b - 15, 58 - b);
+    const edge = annex ? Math.min(a - 65, 104 - a, b - 14, 86 - b) : Math.min(a - 9, 58 - a, b - 15, 58 - b);
     if (edge < .8 || (edge > 1.8 && edge < 2.7)) return '#bea875';
     if (edge < 4) return '#485b48';
-    const pattern = annex ? Math.abs(a - 84.5) + Math.abs(b - 62.5) : Math.abs(a - 33.5) + Math.abs(b - 36.5);
+    const pattern = annex ? Math.abs(a - 84.5) + Math.abs(b - 50) : Math.abs(a - 33.5) + Math.abs(b - 36.5);
     const weave = hash(Math.floor(a * 2), Math.floor(b * 2));
     if (Math.abs(pattern - 13) < .85 || Math.abs(pattern - 16) < .55) return '#91a17a';
     return weave > .86 ? '#68795d' : '#52674d';
@@ -1838,30 +1843,8 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   const canvas = mk(), g = canvas.getContext('2d');
   const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
   const wood = woodC('#9b6345'), darkWood = woodC('#673f2c');
-  if (type === 'desk') {
-    for (const da of [-2.7, 2]) for (const db of [-2.7, 2]) {
-      box(g, a + da, b + db, 0, .8, .8, 13, darkWood);
-    }
-    box(g, a - 3.3, b - 3.3, 11, 6.6, 6.6, 2, darkWood);
-    box(g, a - 3.5, b - 3.5, 13, 7, 7, 2, wood);
-    line(g, ...P(a - 3.4, b + 3.45, 15), ...P(a + 3.4, b + 3.45, 15), '#ce9663');
-    box(g, a - 2.55, b - 1.65, 15, 4.45, 3.7, .5,
-      flat(row === 3 && column === 2 ? '#6c465c' : '#395651', '#553142', '#382831'));
-    const pages = flat('#f0ddb1', '#a78057', '#c2a67c');
-    box(g, a - 2.4, b - 1.5, 15, 2, 3.4, 1, pages);
-    box(g, a - .25, b - 1.5, 15, 2, 3.4, 1, pages);
-    for (let ln = 0; ln < 3; ln++) {
-      const pageB = b - .9 + ln * .65;
-      line(g, ...P(a - 2.05, pageB, 16), ...P(a - .8, pageB, 16), '#ad8d63');
-      line(g, ...P(a + .15, pageB, 16), ...P(a + (ln === 2 ? .95 : 1.35), pageB, 16), '#ad8d63');
-    }
-    const [x, y] = P(a + 2.2, b - 2.1, 15);
-    ell(g, x, y, 3, 1, '#654332');
-    rect(g, x - 2, y - 4, 4, 4, '#436866');
-    dot(g, x - 2, y - 2, '#8ab0a0');
-    ell(g, x, y - 4, 2, 1, '#352930');
-    if (row === 3 && column === 2) line(g, x, y - 3, x + 5, y - 10, '#e4cba2');
-  } else if (type === 'reading chair') {
+  const seat = librarySeats.find(({ tile }) => tile[0] === column && tile[1] === row);
+  if (type === 'reading chair') {
     const fabric = woodC('#895450'), cushion = woodC('#ac7161');
     box(g, a - 3.3, b - 3.3, 1, 6.6, 6.6, 6, fabric);
     box(g, a - 2.45, b - 2.5, 6, 4.9, 5, 1.5, cushion);
@@ -1884,7 +1867,7 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
       box(g, a + da, b + db, 0, .65, .65, 6, darkWood);
     }
     box(g, a - 2.2, b - 2.2, 6, 4.4, 4.4, 1.4, wood);
-    box(g, a - 2.2, b + 1.5, 7, 4.4, .65, 8, wood);
+    box(g, a - 2.2, b + (seat?.direction === 'sw' ? -2.2 : 1.5), 7, 4.4, .65, 8, wood);
   } else {
     box(g, a - 2, b - 2, 0, 4, 4, 5, flat('#986644', '#653f36', '#75473a'));
     const [x, y] = P(a, b, 5);
@@ -1893,7 +1876,6 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
     ell(g, x + 2, y - 5, 3, 4, '#446a49');
   }
   outline(g, '#241d27');
-  const seat = librarySeats.find(({ tile }) => tile[0] === column && tile[1] === row);
   const animate = seat ? t => drawSeatedWizard(t, seat) : type === 'tea table' ? t => {
     const [x, y] = P(a + 1, b - 1.2, 8.4);
     const age = (t * .6) % 1;
@@ -1903,6 +1885,38 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
   } : null;
   return { canvas, depth: a + b, animate };
 }).sort((a, b) => a.depth - b.depth);
+
+for (const [column, row] of studyTables) {
+  const canvas = mk(), g = canvas.getContext('2d');
+  const a = (column + 1.5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
+  const wood = woodC('#a56b48'), darkWood = woodC('#673d2d');
+  for (const legA of [-10, 9]) for (const legB of [-2.6, 1.5]) {
+    box(g, a + legA, b + legB, 0, 1.3, 1.3, 13, darkWood);
+  }
+  box(g, a - 10.5, b - 2.8, 10, 21, 5.6, 3, darkWood);
+  box(g, a - 11.5, b - 3.5, 13, 23, 7, 2, wood);
+  line(g, ...P(a - 11, b + 3.4, 15), ...P(a + 11, b + 3.4, 15), '#cc9766');
+
+  for (const [offset, side] of [[-8, -1], [-5, 1], [6, -1], [8.5, 1]]) {
+    const bookB = b + side * 1.3 - 1;
+    const cover = side < 0 ? '#4e695c' : '#784957';
+    box(g, a + offset - 1.7, bookB, 15, 3.5, 2, .5, flat(cover, '#50332e', '#604339'));
+    box(g, a + offset - 1.5, bookB + .15, 15.5, 3.1, 1.7, .6, flat('#dbc69a', '#9a7858', '#bda17a'));
+    line(g, ...P(a + offset, bookB + .2, 16.1), ...P(a + offset, bookB + 1.75, 16.1), '#877252');
+  }
+  const [x, y] = P(a, b, 15);
+  ell(g, x, y, 4, 2, '#a27b4f');
+  rect(g, x - 1, y - 9, 3, 8, '#a47742');
+  line(g, x - 5, y - 8, x + 5, y - 8, '#bd9256');
+  for (const arm of [-5, 5]) {
+    ell(g, x + arm, y - 9, 4, 2, '#57796a');
+    rect(g, x + arm - 2, y - 9, 5, 2, '#fff0bb');
+  }
+  outline(g, '#241d27');
+  libraryFurnishings.push({ canvas, depth: a + b, animate: t => {
+    glow(x, y - 7, 16, 10, '255,198,107', .14 + .018 * Math.sin(t * 1.6 + a + b));
+  } });
+}
 
 function drawLibraryPortrait(t) {
   const blink = t % 5.1 > 4.94;
@@ -2391,6 +2405,7 @@ const libraryFloorMap = Array.from({ length: LIBRARY_ROWS }, () => Array(LIBRARY
 for (let row = ROOM_TILES; row < LIBRARY_ROWS; row++) libraryFloorMap[row][0] = 'X';
 for (let column = ROOM_TILES; column < LIBRARY_COLUMNS; column++) libraryFloorMap[0][column] = 'X';
 for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
+for (const [a, b] of studyTables) libraryFloorMap[b].fill('X', a, a + 3);
 rooms.tower.floor = towerFloor;
 rooms.library.floor = libraryFloorMap;
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
