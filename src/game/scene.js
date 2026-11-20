@@ -3023,7 +3023,7 @@ if (!preview) {
     }
     if (currentRoom === rooms.library && librarianHit) {
       const [x, y] = librarianHit;
-      if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
+      if (Math.abs(px + CX - x) <= 13 && py + CY >= y - 43 && py + CY <= y) {
         librarianDialogue.hidden = !librarianDialogue.hidden;
         clearRoute();
         requestedSeat = null;
@@ -3438,88 +3438,42 @@ function librarianLayer() {
   return { depth: da + db, animate: () => drawLibrarian(x, y, face, action, progress, watching, stop.face) };
 }
 
+const librarianSprite = new Image();
+librarianSprite.src = 'data:image/png;base64,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';
+
 function drawLibrarian(x, y, face, action, progress, watching, shelfSide) {
   const stride = action === 'walk' ? Math.round(Math.sin(progress * Math.PI * 6)) : 0;
-  const head = y - (action === 'read' && !watching ? 23 : 25);
-  const ink = '#272334', robe = '#537460', trim = '#ac9868';
   ell(ctx, x, y, 6, 2, '#49392e');
-  rect(ctx, x - 4 + stride, y - 3, 3, 3, ink);
-  rect(ctx, x + 1 - stride, y - 3, 3, 3, ink);
-  for (let row = 0; row < 16; row++) {
-    const half = row > 10 ? 6 : 5;
-    rect(ctx, x - half, y - 19 + row, half * 2 + 1, 1, ink);
-    rect(ctx, x - half + 1, y - 19 + row, half * 2 - 1, 1, robe);
-    dot(ctx, x - 2, y - 19 + row, '#698875');
-  }
-  // Schoudermantel met donkere plooien en geborduurde randen.
-  for (let row = 0; row < 11; row++) {
-    const half = row < 3 ? 5 + row : 7;
-    const yy = y - 21 + row;
-    rect(ctx, x - half, yy, half * 2 + 1, 1, ink);
-    rect(ctx, x - half + 1, yy, half * 2 - 1, 1, '#39564d');
-    dot(ctx, x - half + 1, yy, trim);
-    dot(ctx, x + half - 1, yy, '#7d7155');
-    dot(ctx, x - 3 + Math.floor(row / 4), yy, '#60816d');
-  }
-  rect(ctx, x - 4, y - 8, 9, 1, '#334840');
-  rect(ctx, x - 2, y - 17, 5, 1, trim);
-  dot(ctx, x, y - 16, '#d2b878');
-  rect(ctx, x - 4, y - 5, 9, 1, '#998656');
+  if (!librarianSprite.naturalWidth) return;
 
-  const detail = (offset, row, color) => dot(ctx, x + offset * face, head + row, color);
-  ell(ctx, x, head, 6, 6, ink);
-  ell(ctx, x + face, head, 4, 5, '#cf9e7d');
-  ell(ctx, x - 3 * face, head + 1, 2, 4, '#8c8082');
-  detail(-4, -1, '#c2b5b2');
-  detail(-4, 2, '#ded2c8');
-
-  // Silver beard tapers over the collar and turns with the head.
-  for (const [row, start, end] of [[2, -4, 4], [3, -4, 5], [4, -3, 5], [5, -3, 4], [6, -2, 4], [7, -1, 3]]) {
-    for (let offset = start; offset <= end; offset++) {
-      detail(offset, row, offset === start || offset === end ? '#807378' :
-        (offset + row) % 4 === 0 ? '#aa9997' : '#e2d5c7');
-    }
+  const width = librarianSprite.naturalWidth;
+  const height = librarianSprite.naturalHeight;
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(face < 0 ? -1 : 1, 1);
+  ctx.imageSmoothingEnabled = false;
+  if (stride === 0) {
+    ctx.drawImage(librarianSprite, -width / 2, -height);
+  } else {
+    const bodyHeight = height - 5;
+    const split = Math.floor(width / 2);
+    ctx.drawImage(librarianSprite, 0, 0, width, bodyHeight, -width / 2, -height, width, bodyHeight);
+    ctx.drawImage(librarianSprite, 0, bodyHeight, split, 5, -width / 2 + stride, -5, split, 5);
+    ctx.drawImage(librarianSprite, split, bodyHeight, width - split, 5,
+      split - width / 2 - stride, -5, width - split, 5);
   }
-  detail(2, 3, '#ab7866');
-  detail(4, 1, '#e4b499');
-  for (const lens of [-1, 3]) {
-    for (const [dx, dy] of [[-1, 0], [0, -1], [1, 0], [0, 1]]) {
-      detail(lens + dx, dy, '#ca9d58');
-    }
-    detail(lens, 0, '#4a362e');
-  }
-
-  const brim = head - 4;
-  const crown = [[-6, -4], [-7, -3], [-8, -2], [-8, -1], [-7, 0],
-    [-5, 1], [-4, 2], [-4, 3], [-4, 4], [-5, 4], [-5, 5]];
-  for (const [row, [start, end]] of crown.entries()) {
-    for (let offset = start; offset <= end; offset++) {
-      const color = offset === start || offset === end || row === 0 ? ink :
-        row >= 8 ? '#795f41' : offset <= start + 2 ? '#758050' : '#445338';
-      dot(ctx, x + offset * face, brim - 11 + row, color);
-    }
-  }
-  rect(ctx, x - 8, brim, 17, 2, ink);
-  rect(ctx, x - 7, brim, 15, 1, '#758050');
-  const buckle = x + face * 2;
-  rect(ctx, buckle - 1, brim - 3, 3, 3, '#d9b46c');
-  dot(ctx, buckle, brim - 2, '#65513d');
-
-  // Sluiting en goudsteken langs de zoom.
-  dot(ctx, x, y - 17, '#f0d59b');
-  dot(ctx, x + 1, y - 16, '#806249');
-  for (const dx of [-4, -2, 0, 2, 4]) dot(ctx, x + dx, y - 5, '#c0a577');
+  ctx.restore();
 
   if (action === 'shelve' && !watching) {
     const raise = Math.min(1, progress * 1.8);
     const hand = y - 12 - Math.round(12 * raise);
-    line(ctx, x + shelfSide * 4, y - 16, x + shelfSide * 8, hand, robe);
+    line(ctx, x + shelfSide * 4, y - 16, x + shelfSide * 8, hand, '#4e5739');
     if (progress < .76) drawLibrarianBook(x + shelfSide * 9, hand - 2, shelfSide);
     dot(ctx, x + shelfSide * 8, hand, '#d8aa89');
   } else if (action === 'walk') {
     const handX = x + face * 4, handY = y - 13 + stride;
     drawLibrarianBook(handX, handY - 1, face);
-    dot(ctx, handX, handY + 2, '#dac292');
+    dot(ctx, handX, handY + 1, '#dac292');
   }
 }
 
