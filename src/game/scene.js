@@ -1620,7 +1620,13 @@ function hallWindowGlass(u, z) {
     u !== x && y !== 31 && y !== 32;
 }
 
-function drawHallDecor(g) {
+const hallEndFrames = [
+  [43, 46, 18, 25, 'necromancer'],
+  [103, 47, 21, 23, 'woods'],
+  [164, 46, 18, 26, 'goblin']
+];
+
+function drawHallDecor(g, continuation) {
   for (const center of hallWindows) {
     wallL(g, 0, center - 16, center + 17, hallWindowBase, 89, (u, z) => {
       const y = z - hallWindowBase;
@@ -1629,11 +1635,11 @@ function drawHallDecor(g) {
       if (arch > 15) return '#34333d';
       if (arch > 13 || y < 3) return arch > 14 ? '#8e684b' : '#b58a5e';
       if (!hallWindowGlass(u, z)) return '#6b5144';
-      return autumnSunset(u, y / 67);
+      return autumnSunset(u + (continuation ? HALL_DEPTH * 2 : 0), y / 67);
     });
     box(g, 0, (center - 16) / 2, hallWindowBase - 1, 2.5, 16, 2, woodC('#946744'));
   }
-  for (const [u, z, width, height, subject] of hallFrames) {
+  for (const [u, z, width, height, subject] of (continuation ? hallEndFrames : hallFrames)) {
     wallL(g, 0, u, u + width, z, z + height, (column, level) => {
       const x = column - u, y = level - z;
       const edge = Math.min(x, width - 1 - x, y, height - 1 - y);
@@ -1664,9 +1670,12 @@ function drawHallCandles(t) {
   }
 }
 
-function hallFloor(a, b) {
-  if (b >= 8 && b < HALL_DEPTH - 7 && a >= 9 && a < HALL_WIDTH - 8) {
-    const edge = Math.min(b - 8, HALL_DEPTH - 7 - b, a - 9, HALL_WIDTH - 8 - a);
+function hallFloor(a, b, continuation) {
+  const start = continuation ? 0 : 8;
+  const end = continuation ? HALL_DEPTH - 7 : HALL_DEPTH;
+  if (b >= start && b < end && a >= 9 && a < HALL_WIDTH - 8) {
+    const edge = Math.min(a - 9, HALL_WIDTH - 8 - a,
+      continuation ? end - b : b - start);
     if (edge < 1) return '#a98b59';
     if (edge < 2) return '#373646';
     return Math.abs(b % 16 - 8) + Math.abs(a - 16) < 4 ? '#96784f' : '#514957';
@@ -1681,7 +1690,7 @@ function buildStatic(sg, room, doorStyle) {
   const hall = room.corridor;
   const width = hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
   const depth = hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
-  const floor = hall ? hallFloor : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  const floor = hall ? (a, b) => hallFloor(a, b, room === rooms.hallEnd) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
   wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
@@ -1701,7 +1710,7 @@ function buildStatic(sg, room, doorStyle) {
     drawLibraryShelves(sg);
     drawLibraryClock(sg);
   }
-  if (hall) drawHallDecor(sg);
+  if (hall) drawHallDecor(sg, room === rooms.hallEnd);
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
     drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
