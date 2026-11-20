@@ -1688,20 +1688,23 @@ function buildStatic(sg, room, doorStyle) {
   const potion = room === rooms.potion;
   const stockroom = room === rooms.stockroom;
   const hall = room.corridor;
+  const openHallEntrance = room === rooms.hallEnd;
   const width = hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
   const depth = hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
-  const floor = hall ? (a, b) => hallFloor(a, b, room === rooms.hallEnd) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  const floor = hall ? (a, b) => hallFloor(a, b, openHallEntrance) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
-  wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
-  topFace(sg, WH, -T, width, -T, 0, copingFn);
-  topFace(sg, WH, -T, 0, 0, depth, copingFn);
   const mer = { top: copingFn, left: brOutL, right: brOutR };
-  box(sg, -T, -T, WH, T, T, 12, mer);
-  box(sg, -T, depth - 8, WH, T, 8, 10, mer);
-  box(sg, width - 8, -T, WH, 8, T, 10, mer);
+  if (!openHallEntrance) {
+    wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
+    topFace(sg, WH, -T, width, -T, 0, copingFn);
+    box(sg, -T, -T, WH, T, T, 12, mer);
+    box(sg, width - 8, -T, WH, 8, T, 10, mer);
+  }
+  topFace(sg, WH, -T, 0, 0, depth, copingFn);
+  if (room !== rooms.hall) box(sg, -T, depth - 8, WH, T, 8, 10, mer);
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
-  wallL(sg, width, -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
+  wallL(sg, width, openHallEntrance ? 0 : -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (library) {
     drawReadingWindow(sg);
     box(sg, 0, 33, 26, 4, 21, 2.5, woodC('#89654c'));
