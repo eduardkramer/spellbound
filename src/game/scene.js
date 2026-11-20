@@ -22,6 +22,8 @@ const HALL_COLUMNS = 4, HALL_ROWS = 14;
 const HALL_WIDTH = HALL_COLUMNS * TILE_SIZE, HALL_DEPTH = HALL_ROWS * TILE_SIZE;
 const HALL_ENTRANCE_COLUMN = 1;
 const HALL_CLASSROOM_DOOR_ROW = 7, CLASSROOM_DOOR_ROW = 3;
+const CLASSROOM_COLUMNS = 12, CLASSROOM_ROWS = 11;
+const CLASSROOM_WIDTH = CLASSROOM_COLUMNS * TILE_SIZE, CLASSROOM_DEPTH = CLASSROOM_ROWS * TILE_SIZE;
 const hallEdge = (row, arrivalRow, target, direction) =>
   Array.from({ length: HALL_COLUMNS }, (_, column) => ({
     tile: [column, row], target, arrival: [column, arrivalRow], direction
@@ -1898,27 +1900,48 @@ function drawHallConnector(g, b) {
   }
 }
 
-const classroomLayout = [
-  [4, 1, 'table'],
-  [2, 3, 'table'], [3, 3, 'table'], [5, 3, 'table'], [6, 3, 'table'],
-  [2, 4, 'chair'], [3, 4, 'chair'], [5, 4, 'chair'], [6, 4, 'chair'],
-  [2, 6, 'table'], [3, 6, 'table'], [5, 6, 'table'], [6, 6, 'table'],
-  [2, 7, 'chair'], [3, 7, 'chair'], [5, 7, 'chair'], [6, 7, 'chair'],
-  [7, 1, 'books']
-];
-const classroomLanterns = [[20, 3], [55, 3]];
+const classroomRows = [4, 6, 8];
+const classroomBanks = [1, 7];
+const classroomLanterns = [[18, 3], [72, 3], [3, 69], [89, 67]];
+
+function classroomFloor(a, b) {
+  const plank = Math.floor(b / 3.5);
+  const seam = (a + plank % 3 * 6) % 17;
+  if (b % 3.5 < .35 || seam < .32) return '#674b40';
+  const light = Math.max(0, 1 - Math.hypot((a - 47) / 55, (b - 13) / 38));
+  const grain = hash(Math.floor(a / 4), Math.floor(b * 2));
+  return sh('#ad8058', .8 + hash(plank, 42) * .19 + light * .25 + (grain > .87 ? .08 : 0));
+}
 
 function drawClassroomDecor(g) {
-  box(g, 20, 0, 31, 32, 2, 25, woodC('#8e623f'));
-  wallR(g, 2, 42, 102, 33, 54, (u, z) => {
-    if (u < 44 || u >= 100 || z < 35 || z >= 52) return '#9f7851';
-    const x = u - 73, y = z - 43;
-    if (Math.abs(Math.hypot(x, y) - 6) < .6 || Math.abs(x) + Math.abs(y) === 5) return '#c4cbb8';
-    if (z === 39 && (u >= 48 && u < 59 || u >= 87 && u < 96)) return '#879a88';
-    return hash(u, z) > .85 ? '#3f5550' : '#354b46';
+  const oak = woodC('#95653f');
+  box(g, 23, 2, 0, 50, 18, 1.5, woodC('#916344'));
+  box(g, 23, 19, 0, 50, 3, .65, woodC('#a87851'));
+  wallL(g, 0, 0, CLASSROOM_DEPTH * 2, 0, 30, (u, z) =>
+    z < 3 || z > 26 || u % 15 < 2 ? '#53483c' : '#41554d');
+  wallR(g, 0, 0, CLASSROOM_WIDTH * 2, 0, 30, (u, z) =>
+    z < 3 || z > 26 || u % 15 < 2 ? '#57493b' : '#485c51');
+  box(g, 23, 0, 34, 50, 2, 35, oak);
+  wallR(g, 2, 48, 144, 36, 67, (u, z) => {
+    if (u < 50 || u >= 142 || z < 38 || z >= 65) return '#a77f55';
+    const x = u - 95, y = z - 51;
+    const ring = Math.hypot(x, y);
+    if (Math.abs(ring - 9) < .55 || Math.abs(x) + Math.abs(y) === 6) return '#d5d7b7';
+    if (Math.abs(x) < 27 && Math.abs(x) > 16 && z % 5 === 0) return '#9ba993';
+    return hash(u, z) > .85 ? '#405952' : '#344b45';
   });
-  box(g, 19.5, 0, 30, 33, 3.25, 1.5, woodC('#a57446'));
-  box(g, 24, 2.1, 31.5, 2.1, .6, .5, flat('#e4d5ab', '#8e7c63', '#c3b997'));
+  box(g, 22.5, 0, 33, 51, 3.5, 1.5, woodC('#ae7d52'));
+  box(g, 33, 2, 34.5, 3, .8, .6, flat('#eadbb8', '#a1937e', '#cebfa3'));
+  box(g, 78, 0, 0, 16, 3, 48, oak);
+  wallR(g, 3, 156, 188, 0, 48, libraryShelf(156, 188, null));
+  for (const [start, shade] of [[12, '#b8a078'], [104, '#78898a']]) {
+    wallL(g, 0, start, start + 24, 39, 67, (u, z) => {
+      const x = u - start, y = z - 39;
+      if (y < 2 || y > 25 || x === 0 || x === 23) return '#755038';
+      if (Math.abs(x - 12) + Math.abs(y - 15) === 7 || (y < 8 && y % 3 === 0 && x > 3 && x < 20)) return '#e6d3a3';
+      return shade;
+    });
+  }
 }
 
 function buildStatic(sg, room, doorStyle) {
@@ -1927,9 +1950,10 @@ function buildStatic(sg, room, doorStyle) {
   const stockroom = room === rooms.stockroom;
   const hall = room.corridor;
   const openHallEntrance = room === rooms.hallEnd;
-  const width = hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
-  const depth = hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
-  const floor = hall ? (a, b) => hallFloor(a, b, openHallEntrance) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
+  const classroom = room === rooms.classroom;
+  const width = classroom ? CLASSROOM_WIDTH : hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
+  const depth = classroom ? CLASSROOM_DEPTH : hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
+  const floor = classroom ? classroomFloor : hall ? (a, b) => hallFloor(a, b, openHallEntrance) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   if (hall) drawHallFloorLight(sg);
 
@@ -2840,8 +2864,14 @@ for (const room of [rooms.hall, rooms.hallEnd]) {
   room.floor = Array.from({ length: HALL_ROWS }, () => Array(HALL_COLUMNS).fill('.'));
 }
 rooms.hall.floor[2][0] = rooms.hall.floor[3][0] = 'X';
-rooms.classroom.floor = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILES).fill('.'));
-for (const [a, b] of classroomLayout) rooms.classroom.floor[b][a] = 'X';
+rooms.classroom.floor = Array.from({ length: CLASSROOM_ROWS }, () => Array(CLASSROOM_COLUMNS).fill('.'));
+for (const row of classroomRows) for (const column of classroomBanks) {
+  rooms.classroom.floor[row].fill('X', column, column + 4);
+  rooms.classroom.floor[row + 1].fill('X', column, column + 4);
+}
+rooms.classroom.floor[1].fill('X', 4, 8);
+rooms.classroom.floor[2][10] = 'X';
+rooms.classroom.floor[0][10] = rooms.classroom.floor[0][11] = 'X';
 rooms.hallEnd.floor[6][0] = rooms.hallEnd.floor[7][0] = rooms.hallEnd.floor[9][0] = rooms.hallEnd.floor[11][0] = 'X';
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
@@ -4108,12 +4138,62 @@ function drawLibraryDitto(t) {
 
 const hallFurnishings = new Map([[rooms.hall, makeHallFurnishings(false)], [rooms.hallEnd, makeHallFurnishings(true)]]);
 
-const classroomFurnishings = classroomLayout.map(([column, row, kind]) => {
-  const canvas = mk();
-  const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
-  drawStockContainer(canvas.getContext('2d'), a, b, kind);
-  return { canvas, depth: a + b };
-});
+const classroomFurnishings = [];
+for (const row of classroomRows) for (const column of classroomBanks) {
+  const canvas = mk(), g = canvas.getContext('2d');
+  const a = column * TILE_SIZE, b = row * TILE_SIZE;
+  const oak = woodC('#a57147'), frame = woodC('#714734');
+  for (const end of [1.5, 28.5]) box(g, a + end, b + 2, 0, 1.2, 4, 11, frame);
+  box(g, a + 1, b + 3.9, 8, 30, 1.1, 3, frame);
+  for (let section = 0; section < 8; section++) {
+    const curve = Math.floor(Math.abs(section - 3.5) / 2) * .65;
+    box(g, a + .5 + section * 3.9, b + 1 + curve, 11, 3.9, 5.15, 1.5, oak);
+  }
+  for (const offset of [6, 17, 26]) {
+    if (hash(row, column + offset) < .3) continue;
+    box(g, a + offset - 1.6, b + 2.6, 12.5, 3.2, 2.2, .55, flat('#dcca9d', '#9b7851', '#bf996a'));
+    line(g, ...P(a + offset, b + 2.7, 13.05), ...P(a + offset, b + 4.55, 13.05), '#8a6a4c');
+  }
+  classroomFurnishings.push({ canvas, depth: a + 16 + b + 4 });
+  for (let seat = 0; seat < 4; seat++) {
+    const chair = mk();
+    const chairA = a + (seat + .5) * TILE_SIZE, chairB = b + 12;
+    drawStockContainer(chair.getContext('2d'), chairA, chairB, 'chair');
+    classroomFurnishings.push({ canvas: chair, depth: chairA + chairB });
+  }
+}
+
+const classroomFront = mk();
+const teacherDesk = classroomFront.getContext('2d');
+const deskWood = woodC('#955e3f');
+box(teacherDesk, 32.5, 8.5, 1.5, 31, 7, 11, deskWood);
+box(teacherDesk, 33.2, 9, 3, 29.6, 6.6, 7, woodC('#825238'));
+box(teacherDesk, 32, 8, 12.5, 32, 8, 2, woodC('#b78253'));
+for (const panel of [36, 45, 54]) {
+  box(teacherDesk, panel, 15.5, 4, 6, .65, 6, woodC('#a67049'));
+}
+box(teacherDesk, 43, 10, 14.5, 10, 4, .75, flat('#e7d3a6', '#a68257', '#bf9c6e'));
+line(teacherDesk, ...P(48, 10, 15.25), ...P(48, 14, 15.25), '#ad8960');
+classroomFurnishings.push({ canvas: classroomFront, depth: 60 });
+
+const classroomDemo = mk();
+const demo = classroomDemo.getContext('2d');
+drawStockContainer(demo, 84, 20, 'table');
+for (const [offset, sides] of [[-2, flat('#9fa7c7', '#645e95', '#7974a7')], [2, flat('#9ac3ad', '#4f786a', '#5d9680')]]) {
+  box(demo, 83.4 + offset, 21, 12.5, 1.2, 1.5, 2.4, sides);
+  box(demo, 83.7 + offset, 21.3, 14.9, .6, .6, .9, flat('#cabda5', '#8d8076', '#a19483'));
+}
+classroomFurnishings.push({ canvas: classroomDemo, depth: 104, animate: t => {
+  const [x, y] = P(84, 19, 27 + Math.sin(t * 2) * 1.5);
+  const corners = [[x, y - 7], [x + 7, y], [x, y + 7], [x - 7, y]];
+  glow(x, y + 4, 23, 19, '105,211,242', .24);
+  for (let i = 0; i < corners.length; i++) {
+    line(ctx, ...corners[i], ...corners[(i + 1) % corners.length], '#a1ddeb');
+    dot(ctx, ...corners[i], '#eaf9ff');
+  }
+  line(ctx, x, y - 7, x, y + 7, '#7fbccf');
+  dot(ctx, x + 10 * Math.sin(t * 1.5), y + 4 * Math.cos(t * 1.5), '#eaf9ff');
+} });
 
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
@@ -4302,8 +4382,9 @@ function fit() {
   const stockroom = currentRoom === rooms.stockroom;
   const library = currentRoom === rooms.library;
   const hall = currentRoom.corridor;
-  const width = hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : N;
-  const depth = hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : N;
+  const classroom = currentRoom === rooms.classroom;
+  const width = classroom ? CLASSROOM_WIDTH : hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : N;
+  const depth = classroom ? CLASSROOM_DEPTH : hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : N;
   roomWidth = hall ? 2 * (width + depth + 2 * T) + 10 : 4 * (Math.max(width, depth) + T) + 10;
   roomHeight = CY + width + depth + F + 12;
   const fitScale = Math.min(sceneView.clientWidth / roomWidth, sceneView.clientHeight / roomHeight);
