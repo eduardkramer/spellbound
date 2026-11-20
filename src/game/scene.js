@@ -18,7 +18,7 @@ const LIBRARY_COLUMNS = 14, LIBRARY_ROWS = 12;
 const LIBRARY_WIDTH = LIBRARY_COLUMNS * TILE_SIZE, LIBRARY_DEPTH = LIBRARY_ROWS * TILE_SIZE;
 const LIBRARY_POTION_DOOR_ROW = 4;
 const LIBRARY_HALL_DOOR_COLUMN = 7;
-const HALL_COLUMNS = 14, HALL_ROWS = 4;
+const HALL_COLUMNS = 4, HALL_ROWS = 14;
 const HALL_WIDTH = HALL_COLUMNS * TILE_SIZE, HALL_DEPTH = HALL_ROWS * TILE_SIZE;
 const HALL_ENTRANCE_COLUMN = 1;
 const STOCK_COLUMNS = 12, STOCK_ROWS = 10;
@@ -1597,12 +1597,71 @@ function drawStockContainer(g, a, b, kind) {
   }
 }
 
+const hallWindows = [22, 82, 142, 202];
+const hallWindowBase = 18;
+const hallFrames = [
+  [43, 45, 18, 26, 'wizard'],
+  [104, 48, 19, 22, 'castle'],
+  [164, 46, 18, 26, 'witch']
+];
+
+function hallWindowGlass(u, z) {
+  const x = hallWindows.find(center => Math.abs(u - center) <= 13);
+  const y = z - hallWindowBase;
+  return x !== undefined && y >= 3 && Math.hypot(u - x, Math.max(0, y - 54)) <= 13 &&
+    u !== x && y !== 31 && y !== 32;
+}
+
+function drawHallDecor(g) {
+  for (const center of hallWindows) {
+    wallL(g, 0, center - 16, center + 17, hallWindowBase, 89, (u, z) => {
+      const y = z - hallWindowBase;
+      const arch = Math.hypot(u - center, Math.max(0, y - 54));
+      if (arch > 16) return null;
+      if (arch > 15) return '#34333d';
+      if (arch > 13 || y < 3) return arch > 14 ? '#8e684b' : '#b58a5e';
+      if (!hallWindowGlass(u, z)) return '#6b5144';
+      return autumnSunset(u, y / 67);
+    });
+    box(g, 0, (center - 16) / 2, hallWindowBase - 1, 2.5, 16, 2, woodC('#946744'));
+  }
+  for (const [u, z, width, height, subject] of hallFrames) {
+    wallL(g, 0, u, u + width, z, z + height, (column, level) => {
+      const x = column - u, y = level - z;
+      const edge = Math.min(x, width - 1 - x, y, height - 1 - y);
+      if (edge === 0) return '#392b31';
+      if (edge === 1) return x === 1 || y === height - 2 ? '#d2aa6c' : '#9f764f';
+      if (edge === 2) return '#5b3c37';
+      const color = stockPaintingArt(subject, 2 * (x - 3) / (width - 7) - 1, 2 * (y - 3) / (height - 7) - 1, 0);
+      return hash(column, level) > .88 ? sh(color, .8) : color;
+    });
+  }
+  for (const u of [53, 114, 173]) {
+    const b = u / 2;
+    box(g, 0, b - 2.5, 31, 3, 5, 1.5, flat('#a87b48', '#624537', '#865c3f'));
+    box(g, 1, b - 1.4, 32.5, 1, 1, 4, flat('#ead9b6', '#a99170', '#c1ab87'));
+    box(g, 1, b + .5, 32.5, 1, 1, 5, flat('#f0dec0', '#b19a75', '#d3bc96'));
+  }
+}
+
+function drawHallCandles(t) {
+  for (const u of [53, 114, 173]) {
+    for (const [offset, height] of [[-.9, 37], [1, 38]]) {
+      const [x, y] = P(1.5, u / 2 + offset, height);
+      const flicker = Math.sin(t * 6 + u + offset);
+      glow(x, y, 14, 13, '255,178,89', .14 + flicker * .025);
+      rect(ctx, x, y - 2, 1, 3, '#ffbb62');
+      dot(ctx, x, y - 1, '#fff2b8');
+    }
+  }
+}
+
 function hallFloor(a, b) {
-  if (a >= 8 && a < HALL_WIDTH - 7 && b >= 9 && b < HALL_DEPTH - 8) {
-    const edge = Math.min(a - 8, HALL_WIDTH - 7 - a, b - 9, HALL_DEPTH - 8 - b);
+  if (b >= 8 && b < HALL_DEPTH - 7 && a >= 9 && a < HALL_WIDTH - 8) {
+    const edge = Math.min(b - 8, HALL_DEPTH - 7 - b, a - 9, HALL_WIDTH - 8 - a);
     if (edge < 1) return '#a98b59';
     if (edge < 2) return '#373646';
-    return Math.abs(a % 16 - 8) + Math.abs(b - 16) < 4 ? '#96784f' : '#514957';
+    return Math.abs(b % 16 - 8) + Math.abs(a - 16) < 4 ? '#96784f' : '#514957';
   }
   return stockroomFloor(a, b);
 }
@@ -1634,6 +1693,7 @@ function buildStatic(sg, room, doorStyle) {
     drawLibraryShelves(sg);
     drawLibraryClock(sg);
   }
+  if (hall) drawHallDecor(sg);
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
     drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
@@ -2052,7 +2112,7 @@ function drawLibraryPortrait(t) {
   });
 }
 
-const hallLanterns = [[30, 2], [51, 2], [72, 2], [94, 2]];
+const hallLanterns = [[3, 26.5], [3, 57], [3, 86.5]];
 
 function drawLibraryLights(t, lanterns = libraryLanterns) {
   for (const [a, b] of lanterns) {
@@ -2119,7 +2179,13 @@ function drawWindowLeaves(t, pixel, width, height, seed) {
 }
 
 function drawRoomWindowLife(t) {
-  if (currentRoom === rooms.tower) {
+  if (currentRoom === rooms.hall) {
+    const pixel = windowPixels(wallL, 0, hallWindowBase, hallWindowGlass);
+    drawWindowBirds(t, pixel, HALL_DEPTH * 2, 67, 5);
+    for (const [index, center] of hallWindows.entries()) {
+      drawWindowLeaves(t, (x, y, color) => pixel(center - 13 + x, y, color), 27, 67, 6 + index);
+    }
+  } else if (currentRoom === rooms.tower) {
     const pixel = windowPixels(wallL, 24, 60, (u, z) =>
       u >= 24 && u < 64 && z >= 60 && z < 90 &&
       !(u >= 43 && u < 45) && !(z >= 74 && z < 76));
@@ -3839,6 +3905,7 @@ function frame(ms) {
         drawStockLanterns(t);
       } else {
         drawLibraryLights(t, hallLanterns);
+        drawHallCandles(t);
       }
     }
     drawRoomOccupants(t, dt);
@@ -3888,7 +3955,7 @@ function positionCamera() {
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 16);
-  const roomLeft = (W - roomWidth) / 2;
+  const roomLeft = currentRoom === rooms.hall ? CX - 2 * (HALL_DEPTH + T) - 5 : (W - roomWidth) / 2;
   const offset = (viewport, start, length, focus) => {
     const scaled = length * cameraScale;
     if (scaled <= viewport) return (viewport - scaled) / 2 - start * cameraScale;
@@ -3910,7 +3977,7 @@ function fit() {
   const hall = currentRoom === rooms.hall;
   const width = hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : N;
   const depth = hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : N;
-  roomWidth = 4 * (Math.max(width, depth) + T) + 10;
+  roomWidth = hall ? 2 * (width + depth + 2 * T) + 10 : 4 * (Math.max(width, depth) + T) + 10;
   roomHeight = CY + width + depth + F + 12;
   const fitScale = Math.min(sceneView.clientWidth / roomWidth, sceneView.clientHeight / roomHeight);
   cameraScale = fitScale * zoom / 100;
