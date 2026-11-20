@@ -6,7 +6,22 @@ const hotbar = document.getElementById('hotbar');
 const dialog = document.getElementById('chest-inventory');
 const status = document.getElementById('chest-status');
 const hotbarButtons = Array.from(hotbar.querySelectorAll('[data-slot]'));
-const items = { staff: { name: 'wand', draw: WIZARD.drawStaffIcon } };
+const items = {
+  staff: { name: 'wand', draw: WIZARD.drawStaffIcon },
+  greenPotion: { name: 'Green Potion', draw: drawGreenPotion }
+};
+const stockLoot = ['greenPotion'];
+
+function drawGreenPotion(g) {
+  for (const [color, x, y, width, height] of [
+    ['#232337', 10, 4, 12, 5], ['#232337', 12, 9, 8, 5], ['#232337', 8, 14, 16, 13],
+    ['#b88752', 12, 5, 8, 3], ['#99c7b3', 13, 9, 6, 6], ['#99c7b3', 9, 15, 14, 10],
+    ['#44865a', 10, 18, 12, 7], ['#82c966', 10, 18, 12, 2], ['#c9f5bc', 11, 16, 2, 6]
+  ]) {
+    g.fillStyle = color;
+    g.fillRect(x, y, width, height);
+  }
+}
 const chestSize = 40;
 
 function loadInventory() {
@@ -17,18 +32,24 @@ function loadInventory() {
       const contents = [...saved.hotbar, ...saved.chest];
       if (contents.every(item => item === null || Object.hasOwn(items, item)) &&
           contents.filter(item => item === 'staff').length === 1) {
-        return { hotbar: saved.hotbar, chest: [...saved.chest, ...Array(chestSize - saved.chest.length).fill(null)] };
+        return {
+          hotbar: saved.hotbar,
+          chest: [...saved.chest, ...Array(chestSize - saved.chest.length).fill(null)],
+          stock: stockLoot.map((item, index) => saved.stock?.[index] === null ? null : item)
+        };
       }
     }
   } catch {
     // Ook zonder browseropslag blijft de inventaris tijdens het spelen beschikbaar.
   }
-  return { hotbar: Array(hotbarButtons.length).fill(null), chest: ['staff', ...Array(chestSize - 1).fill(null)] };
+  return { hotbar: Array(hotbarButtons.length).fill(null), chest: ['staff', ...Array(chestSize - 1).fill(null)], stock: [...stockLoot] };
 }
 
 const inventory = loadInventory();
 let selectedSlot = inventory.hotbar[0] === 'staff' ? 0 : null;
 let source = null;
+const isStockChest = () => dialog.dataset.stockChest === 'true';
+const hasStockLoot = () => inventory.stock.some(Boolean);
 
 function drawSlot(button, item, label, pressed) {
   button.setAttribute('aria-label', `${label}, ${item ? items[item].name : 'empty'}`);
@@ -54,8 +75,14 @@ function render() {
   hotbar.dataset.hasWand = String(inventory.hotbar.includes('staff'));
   WIZARD.staffEquipped = inventory.hotbar[selectedSlot] === 'staff';
   for (const slot of chestButtons) {
-    drawSlot(slot.button, inventory[slot.area][slot.index], slot.label, source === slot);
+    const stock = isStockChest();
+    slot.button.hidden = stock && (slot.area !== 'chest' || slot.index >= inventory.stock.length);
+    const item = stock ? inventory.stock[slot.index] : inventory[slot.area][slot.index];
+    slot.button.disabled = stock && !item;
+    drawSlot(slot.button, item, stock && item ? 'Take item' : slot.label, source === slot);
   }
+  document.getElementById('chest-title').textContent = isStockChest() ? 'Stockroom Chest' : 'Chest';
+  if (isStockChest()) status.textContent = hasStockLoot() ? 'Select an item to take it.' : 'The chest is empty.';
 }
 
 function storeInventory() {
@@ -66,7 +93,29 @@ function storeInventory() {
   }
 }
 
+function takeStockItem(slot) {
+  if (slot.area !== 'chest') return;
+  const item = inventory.stock[slot.index];
+  if (!item) return;
+  const emptySlot = inventory.hotbar.indexOf(null);
+  if (emptySlot === -1) {
+    status.textContent = 'Your hotbar is full.';
+    return;
+  }
+  inventory.hotbar[emptySlot] = item;
+  inventory.stock[slot.index] = null;
+  storeInventory();
+  render();
+  const message = hasStockLoot() ? '' : ' The chest is empty.';
+  status.textContent = `${items[item].name} added to your hotbar.${message}`;
+  document.getElementById('close-chest-inventory').focus();
+}
+
 function useChestSlot(slot) {
+  if (isStockChest()) {
+    takeStockItem(slot);
+    return;
+  }
   const item = inventory[slot.area][slot.index];
   if (source === slot) {
     source = null;
@@ -129,11 +178,23 @@ addEventListener('keydown', event => {
 document.getElementById('close-chest-inventory').addEventListener('click', () => dialog.close());
 
 dialog.addEventListener('close', () => {
+  if (dialog.open) return;
   source = null;
   status.textContent = '';
   render();
   document.getElementById('scene').focus({ preventScroll: true });
 });
+
+window.CHEST_INVENTORY = {
+  hasStockLoot,
+  open(stockChest) {
+    source = null;
+    dialog.dataset.stockChest = String(stockChest);
+    status.textContent = '';
+    render();
+    dialog.show();
+  }
+};
 
 render();
 })();
