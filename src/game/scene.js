@@ -2608,6 +2608,7 @@ function drawLibraryPortrait(t) {
 }
 
 const hallLanterns = [[3, 26.5], [3, 57], [3, 86.5]];
+const firstHallLanterns = hallLanterns.filter(([, b]) => b !== 57);
 
 function drawLibraryLights(t, lanterns = libraryLanterns) {
   for (const [a, b] of lanterns) {
@@ -4667,7 +4668,7 @@ function frame(ms) {
       } else if (currentRoom === rooms.classroom) {
         drawClassroomLights(t);
       } else {
-        drawLibraryLights(t, hallLanterns);
+        drawLibraryLights(t, currentRoom === rooms.hall ? firstHallLanterns : hallLanterns);
         drawHallCandles(t, currentRoom === rooms.hallEnd);
         if (currentRoom === rooms.hall) drawHallChandelier(t);
       }
