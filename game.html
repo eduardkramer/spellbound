@@ -32,10 +32,9 @@
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
   .npc-dialogue{
-    --dialogue-center:69dvh;
-    position:fixed;inset:var(--dialogue-center) 0 auto;margin:0 auto;z-index:3;
-    transform:translateY(-50%);
-    width:min(720px,calc(100% - 32px));max-height:calc(2 * (100dvh - var(--dialogue-center) - 16px));
+    --dialogue-bottom:calc(var(--hotbar-bottom, 20dvh) + clamp(12px, 3dvh, 36px));
+    position:fixed;inset:auto 0 var(--dialogue-bottom);margin:0 auto;z-index:3;
+    width:min(720px,calc(100% - 32px));max-height:calc(100dvh - var(--dialogue-bottom) - 12px);
     box-sizing:border-box;overflow:auto;border:2px solid #b48d57;padding:14px;
     color:#f5e6ce;background:
       linear-gradient(#d5ad6c,#d5ad6c) left top / 14px 3px no-repeat,
@@ -296,5 +295,24 @@
 <script src="src/game/quests/manager.js"></script>
 <script src="src/game/scene.js"></script>
 <script src="src/audio/player.js"></script>
+<script>
+(() => {
+  const hotbar = document.getElementById('hotbar');
+  const sceneView = document.getElementById('scene-view');
+
+  function alignDialogue() {
+    const hotbarTop = hotbar.getBoundingClientRect().top;
+    const bottom = Math.max(0, window.innerHeight - Math.max(100, hotbarTop));
+    document.documentElement.style.setProperty('--hotbar-bottom', `${bottom}px`);
+  }
+
+  const observer = new ResizeObserver(alignDialogue);
+  observer.observe(sceneView);
+  observer.observe(hotbar);
+  window.addEventListener('resize', alignDialogue);
+  window.addEventListener('scroll', alignDialogue, { passive: true });
+  alignDialogue();
+})();
+</script>
 </body>
 </html>
