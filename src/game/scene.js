@@ -448,6 +448,24 @@ function drawStockPassage(g, { tile, wallB }, style) {
     (u, z) => stockArchColor(u - 2 * center, z, style));
 }
 
+function closedStockDoorColor(offset, z) {
+  if (Math.hypot(offset * 17 / 15, Math.max(0, z - 31)) > 11 || z < 3) return null;
+  const plank = (offset + 12) % 5;
+  if (z >= 13 && z <= 15 || z >= 29 && z <= 31) {
+    if (z === 14 || z === 30) return Math.abs(offset) === 7 ? '#d2ad70' : '#53453c';
+    return '#3d3030';
+  }
+  if (offset === 4 && z >= 20 && z <= 23) return z === 22 ? '#ead08e' : '#77583e';
+  if (plank === 0) return '#4c3027';
+  if (plank === 1) return '#aa6f49';
+  return hash(offset, Math.floor(z / 4)) > .65 ? '#96603e' : '#805039';
+}
+
+const closedStockDoor = mk();
+const stockDoorCenter = (POTION_STOCK_DOOR_COLUMN + .5) * TILE_SIZE * 2;
+wallR(closedStockDoor.getContext('2d'), 0, stockDoorCenter - 15, stockDoorCenter + 16, 0, 49,
+  (u, z) => closedStockDoorColor(u - stockDoorCenter, z));
+
 function drawSidePassage(g, { wallA, tile }, foreground, style) {
   const center = (tile[1] + .5) * TILE_SIZE;
   if (!foreground) {
@@ -2505,7 +2523,8 @@ let requestedChest = false;
 let seatProgress = 0;
 let route = [];
 let destination = null;
-const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
+const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.' &&
+  (currentRoom !== rooms.potion || a !== POTION_STOCK_DOOR_COLUMN || b !== 0 || isStockroomUnlocked());
 
 const questDialogue = document.getElementById('quest-dialogue');
 const resetQuestDialogue = document.getElementById('reset-quest-dialogue');
@@ -2521,6 +2540,11 @@ const searchBookStack = document.getElementById('search-book-stack');
 let cauldronHeat = 0;
 let cauldronWarmup = isCauldronLit() ? 1 : 0;
 let dialogueQuest = null;
+
+function isStockroomUnlocked() {
+  const stage = questManager?.status(pageQuest);
+  return stage === 'active' || stage === 'ready' || stage === 'complete';
+}
 
 function isCauldronLit() {
   const stage = questManager?.status(cauldronQuest);
@@ -3177,6 +3201,7 @@ function updateStockroomHint() {
 }
 
 function enterRoom(exit) {
+  if (exit.target === 'stockroom' && !isStockroomUnlocked()) return;
   currentRoom = rooms[exit.target];
   iceBalls.length = 0;
   castTime = 0;
@@ -3199,6 +3224,9 @@ function enterRoom(exit) {
 
 const teleportChoice = document.getElementById('teleport-room-choice');
 document.getElementById('teleport-room')?.addEventListener('click', () => {
+  const stockroomOption = teleportChoice.querySelector('[value="stockroom"]');
+  stockroomOption.disabled = !isStockroomUnlocked();
+  stockroomOption.textContent = stockroomOption.disabled ? 'Potion Stockroom (locked)' : 'Potion Stockroom';
   teleportChoice.value = Object.keys(rooms).find(key => rooms[key] === currentRoom);
   heldKeys.clear();
   fireHeld = false;
@@ -3209,7 +3237,7 @@ document.getElementById('teleport-room-form')?.addEventListener('submit', event 
   if (event.submitter?.value !== 'teleport') return;
   const target = teleportChoice.value;
   const entrance = Object.values(rooms).flatMap(room => room.exits).find(exit => exit.target === target);
-  if (!entrance || rooms[target] === currentRoom) return;
+  if (!entrance || rooms[target] === currentRoom || (target === 'stockroom' && !isStockroomUnlocked())) return;
   event.preventDefault();
   chestInventory?.close();
   wizard.step = null;
@@ -3258,6 +3286,11 @@ function updateWizard(dt) {
   if (wizard.step) {
     wizard.step.elapsed += dt;
     if (wizard.step.elapsed >= STEP_TIME) {
+      if (!isWalkable(wizard.step.a, wizard.step.b)) {
+        wizard.step = null;
+        clearRoute();
+        return;
+      }
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
       const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
@@ -3660,6 +3693,7 @@ function frame(ms) {
   ctx.drawImage(currentRoom.canvas, 0, 0);
   drawRoomWindowLife(t);
   if (currentRoom === rooms.potion) {
+    if (!isStockroomUnlocked()) ctx.drawImage(closedStockDoor, 0, 0);
     drawRackBubbles(t);
     ctx.drawImage(rackGlass, 0, 0);
   }
