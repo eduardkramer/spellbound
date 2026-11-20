@@ -1626,6 +1626,18 @@ function drawStockContainer(g, a, b, kind, chairFacesBoard = false) {
 
 const hallWindows = [22, 82, 142, 202];
 const hallWindowBase = 18;
+const hallWallCandleShelves = {
+  hall: [
+    { b: 26.5, candles: [{ offset: -1.25, height: 4 }, { offset: 1.25, height: 6, lit: true }] },
+    { b: 57, candles: [{ offset: -1.25, height: 5, lit: true }, { offset: 1.25, height: 3, lit: true }] },
+    { b: 86.5, candles: [{ offset: -1.25, height: 5 }, { offset: 1.25, height: 3 }] }
+  ],
+  hallEnd: [
+    { b: 26.5, candles: [{ offset: -1.25, height: 5, lit: true }, { offset: 1.25, height: 3 }] },
+    { b: 57, candles: [{ offset: -1.25, height: 3 }, { offset: 1.25, height: 6, lit: true }] },
+    { b: 86.5, candles: [{ offset: -1.25, height: 4, lit: true }, { offset: 1.25, height: 5, lit: true }] }
+  ]
+};
 const hallFrames = [
   [43, 45, 18, 26, 'notice'],
   [104, 48, 19, 22, 'castle'],
@@ -1727,12 +1739,35 @@ function drawHallDecor(g, continuation) {
       return hash(column, level) > .88 ? sh(color, .8) : color;
     });
   }
-  for (const u of [53, 114, 173]) {
-    const b = u / 2;
-    box(g, 0, b - 2.5, 31, 3, 5, 1.5, flat('#a87b48', '#624537', '#865c3f'));
-    box(g, 1, b - 1.4, 32.5, 1, 1, 4, flat('#ead9b6', '#a99170', '#c1ab87'));
-    box(g, 1, b + .5, 32.5, 1, 1, 5, flat('#f0dec0', '#b19a75', '#d3bc96'));
+  const shelves = hallWallCandleShelves[continuation ? 'hallEnd' : 'hall'];
+  for (const { b, candles } of shelves) {
+    box(g, 0, b - 2.5, 31, 3, 5, 1.5, flat('#99764f', '#59443b', '#7f5c43'));
+    for (const { offset, height } of candles) {
+      const [x, y] = P(1.5, b + offset, 32.5);
+      drawHallCandleWax(g, x, y, height);
+    }
   }
+}
+
+function drawHallCandleWax(g, x, base, height) {
+  const top = base - height;
+  rect(g, x - 1, top, 3, height, '#c6ac84');
+  rect(g, x + 1, top + 1, 1, height - 1, '#9e805f');
+  rect(g, x - 1, top, 1, height - 1, '#e3cba2');
+  dot(g, x, top, '#a98c6d');
+  dot(g, x + 1, top + 1, '#dbbb91');
+  dot(g, x, top - 1, '#493b3b');
+}
+
+function drawHallCandleFlame(x, top, t) {
+  const flicker = .65 * Math.sin(t * 6.1 + x) + .35 * Math.sin(t * 9.7 + top);
+  const lean = Math.round(flicker);
+  glow(x, top - 2, 10, 9, '255,176,91', .067 + .014 * flicker);
+  rect(ctx, x, top - 4, 1, 3, '#efa353');
+  dot(ctx, x + lean, top - 5, '#f6ab59');
+  dot(ctx, x, top - 3, '#fff1b6');
+  dot(ctx, x + (lean || 1), top - 3, '#ffce81');
+  dot(ctx, x, top - 2, '#ffd68c');
 }
 
 function makeHallFurnishings(continuation) {
@@ -1787,22 +1822,21 @@ function makeHallFurnishings(continuation) {
   rect(brass, x - 1, y - 20, 3, 18, '#8f6443');
   line(brass, x - 1, y - 18, x - 1, y - 4, '#cc9b59');
   for (const z of [7, 15, 21]) ell(brass, x, y - z, 2, 1, '#c3955a');
-  const candles = [[-5, 24], [0, 29], [5, 25]];
-  for (const [offset, z] of candles) {
-    line(brass, x, y - 19, x + offset, y - z + 4, '#b88a53');
-    ell(brass, x + offset, y - z + 4, 2, 1, '#aa7546');
-    rect(brass, x + offset - 1, y - z, 3, 4, '#e1d0a4');
-    dot(brass, x + offset - 1, y - z + 2, '#fff0c9');
+  const candles = [
+    { offset: -5, cup: 20, height: 5, lit: true },
+    { offset: 0, cup: 25, height: 3 },
+    { offset: 5, cup: 21, height: 6, lit: true }
+  ];
+  for (const { offset, cup, height } of candles) {
+    line(brass, x, y - 19, x + offset, y - cup, '#b88a53');
+    ell(brass, x + offset, y - cup, 2, 1, '#aa7546');
+    drawHallCandleWax(brass, x + offset, y - cup, height);
   }
   return [
     { canvas, depth: 62 }, { canvas: armor, depth: 95 },
     { canvas: candlestick, depth: 79.5, animate: t => {
-      const intensity = .18 + .022 * Math.sin(t * 5.6);
-      glow(x, y - 23, 20, 17, '255,177,88', intensity);
-      for (const [offset, z] of candles) {
-        const tip = Math.sin(t * 8 + offset) > .5 ? 1 : 0;
-        rect(ctx, x + offset, y - z - 3 - tip, 1, 3, '#eba25e');
-        dot(ctx, x + offset, y - z - 1, '#fff2ba');
+      for (const { offset, cup, height, lit } of candles) {
+        if (lit) drawHallCandleFlame(x + offset, y - cup - height, t);
       }
     } }
   ];
@@ -1824,14 +1858,10 @@ function drawHallFloorLight(g) {
   }
 }
 
-function drawHallCandles(t) {
-  for (const u of [53, 114, 173]) {
-    for (const [offset, height] of [[-.9, 37], [1, 38]]) {
-      const [x, y] = P(1.5, u / 2 + offset, height);
-      const flicker = Math.sin(t * 6 + u + offset);
-      glow(x, y, 14, 13, '255,178,89', .14 + flicker * .025);
-      rect(ctx, x, y - 2, 1, 3, '#ffbb62');
-      dot(ctx, x, y - 1, '#fff2b8');
+function drawHallCandles(t, continuation) {
+  for (const { b, candles } of hallWallCandleShelves[continuation ? 'hallEnd' : 'hall']) {
+    for (const { offset, height, lit } of candles) {
+      if (lit) drawHallCandleFlame(...P(1.5, b + offset, 32.5 + height), t);
     }
   }
 }
@@ -4583,7 +4613,7 @@ function frame(ms) {
         drawClassroomLights(t);
       } else {
         drawLibraryLights(t, hallLanterns);
-        drawHallCandles(t);
+        drawHallCandles(t, currentRoom === rooms.hallEnd);
       }
     }
     drawRoomOccupants(t, dt);
