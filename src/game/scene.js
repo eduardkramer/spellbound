@@ -3466,33 +3466,44 @@ function drawLibrarian(x, y, face, action, progress, watching, shelfSide) {
   dot(ctx, x, y - 16, '#d2b878');
   rect(ctx, x - 4, y - 5, 9, 1, '#998656');
 
+  const detail = (offset, row, color) => dot(ctx, x + offset * face, head + row, color);
   ell(ctx, x, head, 6, 6, ink);
-  ell(ctx, x + face, head, 4, 5, '#d8aa89');
-  rect(ctx, x - 4 * face - 1, head - 3, 2, 7, '#b6adb6');
-  dot(ctx, x - 4 * face, head + 2, '#e7dfe2');
-  const eye = x + 2 * face;
-  rect(ctx, eye - 2, head - 1, 4, 3, '#66544b');
-  rect(ctx, eye - 1, head, 2, 1, '#c5e7e4');
-  dot(ctx, x + 5 * face, head + 1, '#d8aa89');
-  dot(ctx, x + 3 * face, head + 3, '#9d695e');
+  ell(ctx, x + face, head, 4, 5, '#cf9e7d');
+  ell(ctx, x - 3 * face, head + 1, 2, 4, '#8c8082');
+  detail(-4, -1, '#c2b5b2');
+  detail(-4, 2, '#ded2c8');
 
-  // De rand loopt over de haarlijn; de kroon sluit direct op de rand aan.
-  const brim = head - 4;
-  for (let row = 0; row < 11; row++) {
-    const half = Math.min(5, Math.floor(row / 2) + 1);
-    const tip = x - face * Math.max(0, 3 - Math.floor(row / 2));
-    const yy = brim - 11 + row;
-    rect(ctx, tip - half, yy, half * 2 + 1, 1, ink);
-    if (row > 0) rect(ctx, tip - half + 1, yy, half * 2 - 1, 1, '#466657');
-    if (row > 2) dot(ctx, tip - half + 1, yy, '#71917a');
-    if (row > 5) dot(ctx, tip + half - 1, yy, '#30463e');
+  // Silver beard tapers over the collar and turns with the head.
+  for (const [row, start, end] of [[2, -4, 4], [3, -4, 5], [4, -3, 5], [5, -3, 4], [6, -2, 4], [7, -1, 3]]) {
+    for (let offset = start; offset <= end; offset++) {
+      detail(offset, row, offset === start || offset === end ? '#807378' :
+        (offset + row) % 4 === 0 ? '#aa9997' : '#e2d5c7');
+    }
   }
-  rect(ctx, x - 5, brim - 2, 11, 2, '#887451');
-  rect(ctx, x + face * 3 - 1, brim - 2, 3, 2, '#d9b46c');
-  dot(ctx, x + face * 3, brim - 1, '#65513d');
-  rect(ctx, x - 7, brim, 15, 2, ink);
-  rect(ctx, x - 6, brim, 13, 1, '#6b8a76');
-  rect(ctx, x - 4, brim + 2, 9, 1, '#987767');
+  detail(2, 3, '#ab7866');
+  detail(4, 1, '#e4b499');
+  for (const lens of [-1, 3]) {
+    for (const [dx, dy] of [[-1, 0], [0, -1], [1, 0], [0, 1]]) {
+      detail(lens + dx, dy, '#ca9d58');
+    }
+    detail(lens, 0, '#4a362e');
+  }
+
+  const brim = head - 4;
+  const crown = [[-6, -4], [-7, -3], [-8, -2], [-8, -1], [-7, 0],
+    [-5, 1], [-4, 2], [-4, 3], [-4, 4], [-5, 4], [-5, 5]];
+  for (const [row, [start, end]] of crown.entries()) {
+    for (let offset = start; offset <= end; offset++) {
+      const color = offset === start || offset === end || row === 0 ? ink :
+        row >= 8 ? '#795f41' : offset <= start + 2 ? '#758050' : '#445338';
+      dot(ctx, x + offset * face, brim - 11 + row, color);
+    }
+  }
+  rect(ctx, x - 8, brim, 17, 2, ink);
+  rect(ctx, x - 7, brim, 15, 1, '#758050');
+  const buckle = x + face * 2;
+  rect(ctx, buckle - 1, brim - 3, 3, 3, '#d9b46c');
+  dot(ctx, buckle, brim - 2, '#65513d');
 
   // Sluiting en goudsteken langs de zoom.
   dot(ctx, x, y - 17, '#f0d59b');
