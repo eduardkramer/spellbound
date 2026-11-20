@@ -1626,6 +1626,12 @@ function drawStockContainer(g, a, b, kind, chairFacesBoard = false) {
 
 const hallWindows = [22, 82, 142, 202];
 const hallWindowBase = 18;
+const hallChandelier = new Image();
+hallChandelier.src = 'assets/sprites/hall-chandelier.png';
+let hallChandelierBody;
+const hallChandelierBodyStart = 14;
+// Sprite coordinates of the three lit candles, measured from the top of the wax.
+const hallChandelierCandles = [[3, 27, 3], [14, 22, 4], [25, 27, 3]];
 const hallWallCandleShelves = {
   hall: [
     { b: 26.5, candles: [{ offset: -1.25, height: 4 }, { offset: 1.25, height: 6, lit: true }] },
@@ -1863,6 +1869,55 @@ function drawHallCandles(t, continuation) {
     for (const { offset, height, lit } of candles) {
       if (lit) drawHallCandleFlame(...P(1.5, b + offset, 32.5 + height), t);
     }
+  }
+}
+
+function drawHallChandelier(t) {
+  if (!hallChandelier.naturalWidth) return;
+  if (!hallChandelierBody) {
+    // Use the lower part of the sprite and match its metal to the hall fittings.
+    hallChandelierBody = document.createElement('canvas');
+    const width = hallChandelierBody.width = hallChandelier.naturalWidth;
+    const height = hallChandelierBody.height = hallChandelier.naturalHeight - hallChandelierBodyStart;
+    const body = hallChandelierBody.getContext('2d');
+    body.drawImage(hallChandelier, 0, hallChandelierBodyStart, width, height, 0, 0, width, height);
+    for (const [column, waxTop, flameHeight] of hallChandelierCandles) {
+      body.clearRect(column - 1, waxTop - hallChandelierBodyStart - flameHeight, 2, flameHeight);
+    }
+    body.globalCompositeOperation = 'source-atop';
+    rect(body, 0, 0, width, height, 'rgba(139,111,86,.34)');
+    for (const [column, row] of [[1, 31], [8, 27], [14, 16], [19, 27], [26, 31]]) {
+      dot(body, column, row - hallChandelierBodyStart, '#c09561');
+    }
+    for (const [column, waxTop] of hallChandelierCandles) {
+      const row = waxTop - hallChandelierBodyStart;
+      dot(body, column - 1, row, '#f2d5a5');
+      dot(body, column - 1, row + 2, '#eac292');
+    }
+  }
+
+  const acrossHall = 20, alongHall = 60, height = 102;
+  const [wallX, wallY] = P(0, alongHall, height);
+  const [x, y] = P(acrossHall, alongHall, height);
+  const bodyX = x - hallChandelierBody.width / 2;
+  const bodyY = y + 6;
+
+  // The open ceiling view leaves the wall bracket visible.
+  rect(ctx, wallX - 1, wallY - 3, 3, 8, '#564237');
+  dot(ctx, wallX, wallY - 2, '#a58461');
+  line(ctx, wallX, wallY + 4, wallX + 12, wallY + 6, '#66503f');
+  line(ctx, wallX, wallY, x, y, '#564237');
+  line(ctx, wallX + 1, wallY - 1, x, y - 1, '#9b7857');
+  rect(ctx, x - 1, y, 2, 6, '#655041');
+  for (const offset of [0, 3]) dot(ctx, x - 1, y + offset, '#b18b63');
+
+  const flicker = Math.sin(t * 6.7) * .65 + Math.sin(t * 11.2) * .35;
+  glow(x, y + 18, 24, 19, '255,185,106', .050 + .012 * flicker);
+  ctx.drawImage(hallChandelierBody, bodyX, bodyY);
+  for (const [column, waxTop] of hallChandelierCandles) {
+    const waxY = bodyY + waxTop - hallChandelierBodyStart;
+    drawHallCandleFlame(bodyX + column, waxY, t + column * .07);
+    dot(ctx, bodyX + column, waxY - 1, '#554039');
   }
 }
 
@@ -2553,6 +2608,7 @@ function drawLibraryPortrait(t) {
 }
 
 const hallLanterns = [[3, 26.5], [3, 57], [3, 86.5]];
+const firstHallLanterns = hallLanterns.filter(([, b]) => b !== 57);
 
 function drawLibraryLights(t, lanterns = libraryLanterns) {
   for (const [a, b] of lanterns) {
@@ -4612,8 +4668,9 @@ function frame(ms) {
       } else if (currentRoom === rooms.classroom) {
         drawClassroomLights(t);
       } else {
-        drawLibraryLights(t, hallLanterns);
+        drawLibraryLights(t, currentRoom === rooms.hall ? firstHallLanterns : hallLanterns);
         drawHallCandles(t, currentRoom === rooms.hallEnd);
+        if (currentRoom === rooms.hall) drawHallChandelier(t);
       }
     }
     drawRoomOccupants(t, dt);
