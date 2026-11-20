@@ -1095,6 +1095,7 @@ const stockBookcases = [[0, 3], [6, 9]];
 const pageStackTile = [11, 9];
 const stockChestTile = [0, 9];
 const [stockChestA, stockChestB] = stockChestTile.map(tile => (tile + .5) * TILE_SIZE);
+const stockChestScale = .85;
 let stockChestOpen = false;
 let stockChestOpening = 0;
 const stockLayout = [
@@ -2013,7 +2014,11 @@ function drawStockChest(t, dt) {
 function drawChestLid(t, a, b, progress, halfOpen = false) {
   const opening = progress * progress * (3 - 2 * progress);
   const angle = opening * (halfOpen ? 1.18 : 1.7);
-  const [x, y] = P(a, b, 8);
+  const scale = halfOpen ? stockChestScale : 1;
+  const project = (width, depth, height) => halfOpen
+    ? P(a + depth * scale, b + width * scale, height * scale)
+    : P(a + width, b + depth, height);
+  const [x, y] = project(0, 0, 8);
   if (opening) {
     const glow = ctx.createRadialGradient(x, y - 6, 1, x, y - 6, 44);
     glow.addColorStop(0, 'rgba(255, 235, 169, ' + .65 * opening + ')');
@@ -2022,8 +2027,10 @@ function drawChestLid(t, a, b, progress, halfOpen = false) {
     ctx.fillStyle = glow;
     ctx.fillRect(x - 44, y - 50, 88, 88);
 
-    topFace(ctx, 8, a - 4, a + 4, b - 3, b + 3, (u, v) => {
-      if (Math.abs(u - a) > 3.5 || Math.abs(v - b) > 2.5) return '#e1a750';
+    const extentA = (halfOpen ? 3 : 4) * scale;
+    const extentB = (halfOpen ? 4 : 3) * scale;
+    topFace(ctx, 8 * scale, a - extentA, a + extentA, b - extentB, b + extentB, (u, v) => {
+      if (Math.abs(u - a) > extentA - .5 || Math.abs(v - b) > extentB - .5) return '#e1a750';
       if (halfOpen) return '#563923';
       return opening > .4 ? '#fff4bd' : '#d8983f';
     });
@@ -2034,9 +2041,9 @@ function drawChestLid(t, a, b, progress, halfOpen = false) {
   const lid = (offset, length, thickness = 0) => {
     // Schaal de vorm naar de buitenmaten van de bak (8 × 6).
     const span = length * 6 / 7;
-    return P(
-      a - 4 + offset * 8 / 9,
-      b - 3 + span * Math.cos(angle) - thickness * Math.sin(angle),
+    return project(
+      -4 + offset * 8 / 9,
+      -3 + span * Math.cos(angle) - thickness * Math.sin(angle),
       8 + span * Math.sin(angle) + thickness * Math.cos(angle)
     );
   };
@@ -2182,7 +2189,12 @@ const stockFurnishings = stockLayout.map(([column, row, kind]) => {
 });
 rooms.stockroom.floor[stockChestTile[1]][stockChestTile[0]] = 'X';
 const stockChestCanvas = mk();
-drawChestBody(stockChestCanvas.getContext('2d'), stockChestA, stockChestB, woodC('#805037'));
+const stockChestContext = stockChestCanvas.getContext('2d');
+box(stockChestContext, stockChestA - 3 * stockChestScale, stockChestB - 4 * stockChestScale,
+  0, 6 * stockChestScale, 8 * stockChestScale, 8 * stockChestScale, woodC('#805037'));
+box(stockChestContext, stockChestA + 2.5 * stockChestScale, stockChestB - stockChestScale,
+  4 * stockChestScale, stockChestScale, 2 * stockChestScale, 4 * stockChestScale,
+  flat('#dfbc68', '#a78040', '#c4974d'));
 stockFurnishings.push({ canvas: stockChestCanvas, depth: stockChestA + stockChestB, animate: drawStockChest });
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
@@ -2856,7 +2868,7 @@ if (!preview) {
     }
     if (roomChestTile() && chestInventory) {
       const inStockroom = currentRoom === rooms.stockroom;
-      const [x, y] = inStockroom ? P(stockChestA, stockChestB, 8) : P(52, 4, 8);
+      const [x, y] = inStockroom ? P(stockChestA, stockChestB, 8 * stockChestScale) : P(52, 4, 8);
       if (Math.abs(px + CX - x) <= 15 && py + CY >= y - (inStockroom ? 13 : 10) && py + CY <= y + 12) {
         requestChest();
         return;
