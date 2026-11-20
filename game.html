@@ -31,10 +31,39 @@
   #zoom{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
-  #librarian-dialogue{margin:0 auto 12px;padding:12px 16px;max-width:440px;
-    border:2px solid #b79259;background:#30263a;color:#fff1d3;box-shadow:3px 3px #20192a}
-  #librarian-dialogue p{margin:6px 0 10px}
-  #close-librarian-dialogue{width:auto;padding:0 10px}
+  .npc-dialogue{
+    --dialogue-bottom:calc(var(--hotbar-bottom, 20dvh) + clamp(12px, 3dvh, 36px));
+    position:fixed;inset:auto 0 var(--dialogue-bottom);margin:0 auto;z-index:3;
+    width:min(720px,calc(100% - 32px));max-height:calc(100dvh - var(--dialogue-bottom) - 12px);
+    box-sizing:border-box;overflow:auto;border:2px solid #b48d57;padding:14px;
+    color:#f5e6ce;background:
+      linear-gradient(#d5ad6c,#d5ad6c) left top / 14px 3px no-repeat,
+      linear-gradient(#d5ad6c,#d5ad6c) right top / 14px 3px no-repeat,
+      linear-gradient(#d5ad6c,#d5ad6c) left bottom / 14px 3px no-repeat,
+      linear-gradient(#d5ad6c,#d5ad6c) right bottom / 14px 3px no-repeat,
+      linear-gradient(145deg,#2d2b45,#191b32);
+    box-shadow:0 0 0 2px #171322,inset 0 0 0 3px #24203a,inset 0 0 0 4px #6d5262,4px 5px #100e1e;
+  }
+  .npc-dialogue::backdrop{background:#12102555}
+  .npc-dialogue-layout{display:grid;grid-template-columns:clamp(80px,17vw,148px) minmax(0,1fr);gap:12px}
+  .npc-speaker{margin:0;align-self:end;text-align:center}
+  .npc-portrait{height:clamp(90px,18vh,150px);background:center bottom / contain no-repeat;image-rendering:pixelated}
+  .npc-speaker figcaption{
+    padding:6px 4px;color:#f6d489;background:#29243b;border:1px solid #a07b55;
+    box-shadow:inset 0 -2px #191529;font-size:13px;font-weight:bold;
+  }
+  .npc-dialogue-copy{
+    align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+    min-width:0;padding:12px clamp(10px,2vw,20px);border:1px solid #51465e;
+    background:#171a30;box-shadow:inset 0 0 0 2px #23253e;overflow-wrap:anywhere;
+  }
+  .npc-dialogue h2{font: bold 18px/1.25 Georgia,serif;color:#f6d489;margin:0 0 6px}
+  .npc-dialogue p{font-size:clamp(13px,1.25vw,16px);line-height:1.55;margin:0 0 12px}
+  .npc-dialogue form{display:flex;flex-wrap:wrap;gap:6px}
+  .npc-dialogue button{
+    width:auto;padding:0 10px;border-color:#936f4e;background:#3d3049;color:#ffe4a8;
+  }
+  .npc-dialogue button:hover,.npc-dialogue button:focus-visible{background:#54405a}
   #reset-quest,#teleport-room{width:auto;padding:0 10px;font-size:12px}
   #quest-log{max-width:95%;color:var(--txt);font-size:12px}
   #quest-log summary{cursor:pointer;color:var(--gold)}
@@ -44,10 +73,10 @@
   #reset-quest-choice,#teleport-room-choice{display:block;width:100%;margin:8px 0 12px}
   #reset-quest-dialogue button:disabled{opacity:.45;cursor:default}
   #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
-  #quest-dialogue,#reset-quest-dialogue,#teleport-room-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
-  #quest-dialogue::backdrop,#reset-quest-dialogue::backdrop,#teleport-room-dialogue::backdrop{background:#12102599}
-  #quest-dialogue h2,#reset-quest-dialogue h2,#teleport-room-dialogue h2{margin:0 0 8px;font-size:18px}
-  #quest-dialogue button,#reset-quest-dialogue button,#teleport-room-dialogue button{width:auto;padding:0 12px}
+  #reset-quest-dialogue,#teleport-room-dialogue{max-width:min(440px,85vw);border:2px solid #b79259;background:#30263a;color:#fff1d3}
+  #reset-quest-dialogue::backdrop,#teleport-room-dialogue::backdrop{background:#12102599}
+  #reset-quest-dialogue h2,#teleport-room-dialogue h2{margin:0 0 8px;font-size:18px}
+  #reset-quest-dialogue button,#teleport-room-dialogue button{width:auto;padding:0 12px}
   #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
 
   /* ---- muziekspeler ---- */
@@ -132,6 +161,7 @@
   .slot-key{position:absolute;top:5px;left:6px;font-size:11px;line-height:1}
 </style>
 <link rel="stylesheet" href="assets/sprites/lore-scroll.css">
+<link rel="stylesheet" href="assets/sprites/npc-portraits.css">
 </head>
 <body>
 <div id="game-loading">
@@ -152,10 +182,17 @@
   <div id="scene-view">
     <canvas id="scene" tabindex="0" aria-label="Wizard’s room" aria-describedby="movement-hint"></canvas>
   </div>
-  <aside id="librarian-dialogue" aria-label="Conversation with the librarian" aria-live="polite" hidden>
-    <strong>Librarian</strong>
-    <p>They say Madame Aubert opens her eyes when someone returns a book after midnight.</p>
-    <button type="button" id="close-librarian-dialogue">Close</button>
+  <aside id="librarian-dialogue" class="npc-dialogue" aria-labelledby="librarian-name" aria-live="polite" hidden>
+    <div class="npc-dialogue-layout">
+      <figure class="npc-speaker">
+        <div class="npc-portrait" id="librarian-portrait" aria-hidden="true"></div>
+        <figcaption id="librarian-name">Librarian</figcaption>
+      </figure>
+      <div class="npc-dialogue-copy">
+        <p>They say Madame Aubert opens her eyes when someone returns a book after midnight.</p>
+        <button type="button" id="close-librarian-dialogue">Close</button>
+      </div>
+    </div>
   </aside>
 
   <div id="hotbar" role="group" aria-label="Items — select with keys 1 through 6">
@@ -218,14 +255,21 @@
     <button value="cancel" formnovalidate>Cancel</button>
   </form>
 </dialog>
-<dialog id="quest-dialogue" aria-labelledby="quest-title" aria-describedby="quest-message">
-  <strong>Skeleton Mage</strong>
-  <h2 id="quest-title">Fire Beneath the Cauldron</h2>
-  <p id="quest-message"></p>
-  <form method="dialog">
-    <button id="quest-action" value="advance"></button>
-    <button id="quest-dismiss" value="dismiss"></button>
-  </form>
+<dialog id="quest-dialogue" class="npc-dialogue" aria-labelledby="skeleton-mage-name quest-title" aria-describedby="quest-message">
+  <div class="npc-dialogue-layout">
+    <figure class="npc-speaker">
+      <div class="npc-portrait" id="skeleton-mage-portrait" aria-hidden="true"></div>
+      <figcaption id="skeleton-mage-name">Skeleton Mage</figcaption>
+    </figure>
+    <div class="npc-dialogue-copy">
+      <h2 id="quest-title">Fire Beneath the Cauldron</h2>
+      <p id="quest-message"></p>
+      <form method="dialog">
+        <button id="quest-action" value="advance"></button>
+        <button id="quest-dismiss" value="dismiss"></button>
+      </form>
+    </div>
+  </div>
 </dialog>
 <dialog id="chest-inventory" aria-labelledby="chest-title" aria-describedby="chest-help">
   <div class="chest-heading">
@@ -251,5 +295,24 @@
 <script src="src/game/quests/manager.js"></script>
 <script src="src/game/scene.js"></script>
 <script src="src/audio/player.js"></script>
+<script>
+(() => {
+  const hotbar = document.getElementById('hotbar');
+  const sceneView = document.getElementById('scene-view');
+
+  function alignDialogue() {
+    const hotbarTop = hotbar.getBoundingClientRect().top;
+    const bottom = Math.max(0, window.innerHeight - Math.max(100, hotbarTop));
+    document.documentElement.style.setProperty('--hotbar-bottom', `${bottom}px`);
+  }
+
+  const observer = new ResizeObserver(alignDialogue);
+  observer.observe(sceneView);
+  observer.observe(hotbar);
+  window.addEventListener('resize', alignDialogue);
+  window.addEventListener('scroll', alignDialogue, { passive: true });
+  alignDialogue();
+})();
+</script>
 </body>
 </html>
