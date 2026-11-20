@@ -1127,6 +1127,88 @@ function drawStockLanterns(t) {
   }
 }
 
+function stockPaintingArt(subject, x, y) {
+  switch (subject) {
+    case 'castle': {
+      if (y < -.46 + .19 * Math.sin(x * 8)) return '#394752';
+      const tower = Math.abs(x + .39) < .13 || Math.abs(x - .34) < .15;
+      if (Math.abs(x) < .55 && y < (tower ? .47 : .13)) {
+        return tower && Math.abs(y + .04) < .09 ? '#e9b16b' : '#5a4b60';
+      }
+      return y > .3 ? '#a8717a' : '#cf9382';
+    }
+    case 'woods':
+      if (y < -.64) return '#414b4f';
+      if (Math.abs(x + .38) < .07 || Math.abs(x - .49) < .06) return '#63463d';
+      if ((x + .48) ** 2 + (y - .37) ** 2 < .32) return '#b4774e';
+      if ((x - .42) ** 2 + (y - .49) ** 2 < .31) return '#865448';
+      return '#6b7473';
+    case 'potion':
+      if (Math.abs(x) < .23 && y > .45 && y < .69) return '#bd875a';
+      if ((Math.abs(x) < .2 && y > .06 && y <= .45) ||
+          (x / .56) ** 2 + ((y + .22) / .48) ** 2 < 1) {
+        if (x < -.24 && y > -.46) return '#c3dadd';
+        return y < -.16 ? '#677baf' : '#82a8aa';
+      }
+      return y < -.65 ? '#53515e' : '#3c354a';
+    case 'herb': {
+      const stem = .14 * y;
+      if (Math.abs(x - stem) < .09 && Math.abs(y) < .82) return '#636f4e';
+      for (const [leafX, leafY] of [[-.31, -.36], [.34, -.05], [-.26, .25], [.23, .55]]) {
+        if (((x - leafX) / .31) ** 2 + ((y - leafY) / .16) ** 2 < 1) {
+          return leafX < 0 ? '#788058' : '#94966b';
+        }
+      }
+      return '#b3936d';
+    }
+    case 'moon':
+      if ((x + .22) ** 2 + (y - .24) ** 2 < .31 && (x - .03) ** 2 + (y - .38) ** 2 > .23) return '#e5c891';
+      if (y < -.59 + .11 * Math.sin(x * 12)) return '#44475b';
+      return '#34344d';
+    default:
+      if (Math.abs(x) < .19 && y > .13 && y < .63) return x < -.08 ? '#ac795e' : '#d1a27d';
+      if (y >= .56 && Math.abs(x) < .59 - (y - .56) * .9) return '#60547e';
+      if (y < .14 && y > -.72 && Math.abs(x) < .61 + y * .26) return y > -.1 ? '#c3b0a0' : '#675474';
+      return '#484154';
+  }
+}
+
+function drawStockPaintings(g) {
+  const oak = ['#a57b52', '#765137', '#51382d'];
+  const brass = ['#c2a36c', '#927047', '#59443b'];
+  const walnut = ['#896656', '#64463d', '#493239'];
+  // Frame coordinates are in wall columns and height above the floor.
+  const groups = [
+    [wallL, [
+      [8, 90, 33, 11, 'woods', walnut], [103, 91, 34, 10, 'moon', oak],
+      [46, 52, 15, 13, 'herb', oak], [64, 51, 24, 17, 'castle', walnut],
+      [90, 50, 11, 15, 'potion', walnut], [65, 80, 22, 18, 'mage', brass],
+      [143, 48, 13, 25, 'herb', oak], [143, 79, 13, 16, 'potion', brass]
+    ]],
+    [wallR, [
+      [7, 52, 19, 25, 'potion', oak], [8, 82, 18, 16, 'moon', walnut],
+      [31, 57, 36, 34, 'castle', brass], [72, 48, 19, 24, 'herb', oak],
+      [72, 78, 20, 19, 'mage', walnut], [95, 48, 20, 17, 'woods', walnut],
+      [97, 84, 16, 14, 'moon', oak], [115, 69, 23, 26, 'potion', brass],
+      [121, 46, 26, 16, 'woods', oak], [143, 69, 30, 25, 'castle', walnut],
+      [153, 48, 16, 16, 'herb', brass], [178, 52, 10, 37, 'mage', oak]
+    ]]
+  ];
+  for (const [paintWall, frames] of groups) {
+    for (const [u, z, width, height, subject, frame] of frames) {
+      paintWall(g, 0, u, u + width + 2, z - 2, z + height, (column, level) => {
+        const x = column - u, y = level - z;
+        if (x >= width || y < 0) return '#32313c';
+        if (y === height - 1 || x === 0) return frame[0];
+        if (y === 0 || x === width - 1) return frame[2];
+        if (x === 1 || y === 1 || x === width - 2 || y === height - 2) return frame[1];
+        const color = stockPaintingArt(subject, 2 * (x - 2) / (width - 5) - 1, 2 * (y - 2) / (height - 5) - 1);
+        return hash(column, level) > .86 ? sh(color, .87) : color;
+      });
+    }
+  }
+}
+
 function drawStockShelves(g) {
   const timber = woodC('#83583c');
   for (const [first, limit] of stockBookcases) {
@@ -1330,6 +1412,7 @@ function buildStatic(sg, room) {
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
     drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
+    drawStockPaintings(sg);
     drawStockShelves(sg);
   }
   if (room === rooms.tower || library) drawPassage(sg, library);
