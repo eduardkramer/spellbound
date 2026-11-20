@@ -32,22 +32,38 @@
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
   .npc-dialogue{
-    position:fixed;inset:auto 0 clamp(12px,5vh,54px);margin:0 auto;z-index:3;
-    width:min(740px,calc(100% - 32px));max-height:calc(100dvh - 32px);
-    box-sizing:border-box;overflow:auto;border:2px solid #b89a63;padding:12px;
-    color:#f8ecda;background:#202638;
-    box-shadow:0 0 0 3px #121524,inset 0 0 0 2px #594b45,4px 6px #111420;
+    --dialogue-offset:clamp(56px,14dvh,144px);
+    position:fixed;inset:auto 0 var(--dialogue-offset);margin:0 auto;z-index:3;
+    width:min(720px,calc(100% - 32px));max-height:calc(100dvh - var(--dialogue-offset) - 16px);
+    box-sizing:border-box;overflow:auto;border:2px solid #b48d57;padding:14px;
+    color:#f5e6ce;background:
+      linear-gradient(#d5ad6c,#d5ad6c) left top / 14px 3px no-repeat,
+      linear-gradient(#d5ad6c,#d5ad6c) right top / 14px 3px no-repeat,
+      linear-gradient(#d5ad6c,#d5ad6c) left bottom / 14px 3px no-repeat,
+      linear-gradient(#d5ad6c,#d5ad6c) right bottom / 14px 3px no-repeat,
+      linear-gradient(145deg,#2d2b45,#191b32);
+    box-shadow:0 0 0 2px #171322,inset 0 0 0 3px #24203a,inset 0 0 0 4px #6d5262,4px 5px #100e1e;
   }
   .npc-dialogue::backdrop{background:#12102555}
-  .npc-dialogue-layout{display:grid;grid-template-columns:clamp(80px,17vw,148px) minmax(0,1fr);gap:16px}
+  .npc-dialogue-layout{display:grid;grid-template-columns:clamp(80px,17vw,148px) minmax(0,1fr);gap:12px}
   .npc-speaker{margin:0;align-self:end;text-align:center}
   .npc-portrait{height:clamp(90px,18vh,150px);background:center bottom / contain no-repeat;image-rendering:pixelated}
-  .npc-speaker figcaption{padding:5px 3px;color:#ffe0a0;background:#333044;border:1px solid #85704f;font-size:13px}
-  .npc-dialogue-copy{align-self:center;min-width:0;line-height:1.5}
-  .npc-dialogue h2{font-size:16px;margin:0}
-  .npc-dialogue p{margin:0 0 10px}
-  .npc-dialogue h2 + p{margin-top:6px}
-  .npc-dialogue button{width:auto;padding:0 10px}
+  .npc-speaker figcaption{
+    padding:6px 4px;color:#f6d489;background:#29243b;border:1px solid #a07b55;
+    box-shadow:inset 0 -2px #191529;font-size:13px;font-weight:bold;
+  }
+  .npc-dialogue-copy{
+    align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+    min-width:0;padding:12px clamp(10px,2vw,20px);border:1px solid #51465e;
+    background:#171a30;box-shadow:inset 0 0 0 2px #23253e;overflow-wrap:anywhere;
+  }
+  .npc-dialogue h2{font: bold 18px/1.25 Georgia,serif;color:#f6d489;margin:0 0 6px}
+  .npc-dialogue p{font-size:clamp(13px,1.25vw,16px);line-height:1.55;margin:0 0 12px}
+  .npc-dialogue form{display:flex;flex-wrap:wrap;gap:6px}
+  .npc-dialogue button{
+    width:auto;padding:0 10px;border-color:#936f4e;background:#3d3049;color:#ffe4a8;
+  }
+  .npc-dialogue button:hover,.npc-dialogue button:focus-visible{background:#54405a}
   #reset-quest,#teleport-room{width:auto;padding:0 10px;font-size:12px}
   #quest-log{max-width:95%;color:var(--txt);font-size:12px}
   #quest-log summary{cursor:pointer;color:var(--gold)}
