@@ -3565,60 +3565,71 @@ const fireSprite = new Image();
 fireSprite.src = 'assets/sprites/fire-breath.png';
 const fireFrameWidth = 88, fireFrameHeight = 38, fireFrameCount = 16;
 
-function fireBreathLayers(t, a, b, dt) {
+function drawFireBreathSmoke(t, length) {
+  if (length < 12) return;
+  for (let index = 0; index < 4; index++) {
+    const age = (t * 1.35 + index / 4) % 1;
+    const radius = 1 + Math.floor(age * 3);
+    const x = length * (.68 + age * .23) + Math.sin(age * 5 + index) * 2;
+    const y = -3 - age * 18 - index % 2 * 3;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .46;
+    rect(ctx, x - radius, y, 2 * radius + 1, 2, '#786b6b');
+    rect(ctx, x - radius + 1, y - 1, 2 * radius - 1, 1, '#a2968d');
+    dot(ctx, x + radius - 1, y + 2, '#655a60');
+  }
+}
+
+function drawFireBreath(t, a, b, dt) {
   if (!canBreatheFire() || !fireCharge || !fireSprite.naturalWidth) {
     warmCauldron(false, dt);
-    return [];
+    return;
   }
   const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
   const hand = WIZARD.castingHand(wizard.direction, castStrength());
   const z = 13;
   const originA = a + (hand.y + z + hand.x / 2) / 2;
   const originB = b + (hand.y + z - hand.x / 2) / 2;
-  const startA = Math.floor(originA / TILE_SIZE), startB = Math.floor(originB / TILE_SIZE);
   const reach = 22 * fireCharge;
+  const floor = currentFloor();
+  const inPotionRoom = currentRoom === rooms.potion;
+  const stockroomDoorClosed = inPotionRoom && !isStockroomUnlocked();
+  const aimsAtCauldron = inPotionRoom && (cauldronA - a) * da + (cauldronB - b) * db > 0;
   let visibleReach = reach;
   let hitsCauldron = false;
   for (let distance = 0; distance < reach; distance += .5) {
     const column = Math.floor((originA + distance * da) / TILE_SIZE);
     const row = Math.floor((originB + distance * db) / TILE_SIZE);
-    if (currentRoom === rooms.potion && (cauldronA - a) * da + (cauldronB - b) * db > 0 &&
-        Math.abs(column + .5 - cauldronA / TILE_SIZE) < 1 &&
-        Math.abs(row + .5 - cauldronB / TILE_SIZE) < 1) {
-      hitsCauldron = true;
-      visibleReach = distance + 2;
+    if (!floor[row]?.[column] || (stockroomDoorClosed && column === POTION_STOCK_DOOR_COLUMN && row === 0)) {
+      visibleReach = Math.max(0, distance - .5);
       break;
     }
-    if ((column !== startA || row !== startB) && !isWalkable(column, row)) {
-      visibleReach = distance;
-      break;
-    }
+    hitsCauldron ||= aimsAtCauldron &&
+      Math.abs(column + .5 - cauldronA / TILE_SIZE) < 1 &&
+      Math.abs(row + .5 - cauldronB / TILE_SIZE) < 1;
   }
   warmCauldron(hitsCauldron, dt);
-  if (!visibleReach) return [];
+  if (!visibleReach) return;
   const [x, y] = P(originA, originB, z);
   const dx = 2 * (da - db), dy = da + db;
   const projected = Math.hypot(dx, dy);
   const ux = dx / projected, uy = dy / projected;
   const side = Math.sign(dx);
   const scale = .73;
+  const widthScale = .92;
+  const visibleLength = visibleReach * projected;
   const frame = Math.floor(t / .06) % fireFrameCount;
-  return [{
-    depth: originA + originB,
-    animate() {
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.translate(x, y);
-      ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
-      ctx.beginPath();
-      ctx.rect(0, -fireFrameHeight * scale, visibleReach * projected, fireFrameHeight * scale * 2);
-      ctx.clip();
-      ctx.drawImage(fireSprite, frame % 4 * fireFrameWidth, Math.floor(frame / 4) * fireFrameHeight,
-        fireFrameWidth, fireFrameHeight, -5 * scale, -24 * scale,
-        fireFrameWidth * scale, fireFrameHeight * scale);
-      ctx.restore();
-    }
-  }];
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.translate(x, y);
+  ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
+  ctx.beginPath();
+  ctx.rect(0, -fireFrameHeight * widthScale, visibleLength, fireFrameHeight * widthScale * 2);
+  ctx.clip();
+  ctx.drawImage(fireSprite, frame % 4 * fireFrameWidth, Math.floor(frame / 4) * fireFrameHeight,
+    fireFrameWidth, fireFrameHeight, -5 * scale, -24 * widthScale,
+    fireFrameWidth * scale, fireFrameHeight * widthScale);
+  drawFireBreathSmoke(t, visibleLength);
+  ctx.restore();
 }
 
 function castIceBall() {
@@ -4613,7 +4624,7 @@ function drawRoomOccupants(t, dt) {
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings
       : currentRoom === rooms.potion ? potionFurnishings : currentRoom === rooms.stockroom ? stockFurnishings : [];
-  const occupants = [...roomFurnishings, ...iceBallLayers(), ...fireBreathLayers(t, a, b, dt)].sort((left, right) => left.depth - right.depth);
+  const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
@@ -4622,6 +4633,7 @@ function drawRoomOccupants(t, dt) {
     ? WIZARD.draw(ctx, wizard.direction, step ? 'walk' : 'idle', step ? step.elapsed : t, x, y, castStrength())
     : undefined;
   for (; index < occupants.length; index++) drawFurnishing(occupants[index], t, dt);
+  drawFireBreath(t, a, b, dt);
   if (currentRoom === rooms.stockroom) drawStockDarkness(x, y, wandTip, t);
 }
 
