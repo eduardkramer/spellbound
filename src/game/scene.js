@@ -495,7 +495,7 @@ const libraryLayout = [
   ...studySeats.map(({ tile }) => [...tile, 'chair'])
 ];
 const leftShelfRanges = [[4, 64], [115, 126], [132, 184]];
-const rightShelfRanges = [[8, 48], [98, 126], [133, 172], [179, 216]];
+const rightShelfRanges = [[8, 48], [98, 126], [133, 151], [179, 216]];
 const libraryLanterns = [[10, 10], [46, 16], [14, 48], [78, 25], [89, 68], [37, 76]];
 
 function shadedLibraryFloor(a, b) {
@@ -638,6 +638,40 @@ function drawReadingWindow(g) {
     if (!readingWindowGlass(u, z)) return '#6b5144';
     return autumnSunset(u - 51, y / 53);
   });
+}
+
+const libraryClockCenter = 165;
+
+function drawLibraryClock(g) {
+  wallR(g, 0, libraryClockCenter - 11, libraryClockCenter + 12, 24, 70, (u, z) => {
+    const x = u - libraryClockCenter, d = Math.abs(x);
+    if (z >= 61 && d > 11 - Math.floor((z - 61) / 2)) return null;
+    if (d >= 10 || z === 24 || z === 69) return '#3b262c';
+    if (z < 29 || z >= 61 || z === 43) return z % 3 === 0 ? '#b26848' : '#8f4938';
+    if (z < 43 && d < 7) return d === 6 || z === 29 ? '#785441' : '#342a34';
+    const r = Math.hypot(x, z - 52);
+    if (r <= 8) {
+      if (r > 7) return '#a3774b';
+      if ((x === 0 && Math.abs(z - 52) === 6) || (z === 52 && d === 6)) return '#654835';
+      return r > 5.9 ? '#c6a47b' : '#e4cba0';
+    }
+    return x < 0 ? '#97583e' : '#774033';
+  });
+}
+
+function animateLibraryClock(t) {
+  const [faceX, faceY] = P(libraryClockCenter / 2, 0, 52);
+  const angle = t / 45 - .85;
+  line(ctx, faceX, faceY, faceX + Math.sin(angle) * 5, faceY - Math.cos(angle) * 5, '#674632');
+  line(ctx, faceX, faceY, faceX + 3, faceY + 2, '#493237');
+  dot(ctx, faceX, faceY, '#875c3a');
+
+  const swing = Math.sin(t * 3.2) * 3.1;
+  const [pivotX, pivotY] = P(libraryClockCenter / 2, 0, 41);
+  const [bobX, bobY] = P((libraryClockCenter + swing) / 2, 0, 33);
+  line(ctx, pivotX, pivotY, bobX, bobY, '#b78b55');
+  ell(ctx, bobX, bobY, 3, 2, '#d8ae6e');
+  dot(ctx, bobX - 1, bobY - 1, '#f3d29b');
 }
 
 function drawLibraryShelves(g) {
@@ -1554,6 +1588,7 @@ function buildStatic(sg, room, doorStyle) {
     box(sg, .5, 40, 28.5, 3, 8, 1.5, flat('#b37959', '#805247', '#64403c'));
     drawWallIvy(sg, [[0, 11, 28], [0, 31, 38], [0, 54, 24], [7, 0, 31], [52, 0, 36]]);
     drawLibraryShelves(sg);
+    drawLibraryClock(sg);
   }
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
@@ -1867,7 +1902,14 @@ const libraryFurnishings = libraryLayout.map(([column, row, type]) => {
       box(g, a + da, b + db, 0, .65, .65, 6, darkWood);
     }
     box(g, a - 2.2, b - 2.2, 6, 4.4, 4.4, 1.4, wood);
-    box(g, a - 2.2, b + (seat?.direction === 'sw' ? -2.2 : 1.5), 7, 4.4, .65, 8, wood);
+    const backB = b + (seat?.direction === 'sw' ? -2.2 : 1.5);
+    const fabric = flat('#648072', '#3e514b', '#4d655a');
+    box(g, a - 1.8, b - 1.8, 7.4, 3.6, 3.6, .65, fabric);
+    box(g, a - 2.2, backB, 7, .75, .75, 8, darkWood);
+    box(g, a + 1.45, backB, 7, .75, .75, 8, darkWood);
+    box(g, a - 1.65, backB, 10, 3.3, .75, 3.5, fabric);
+    box(g, a - 2.3, backB - .1, 14, 4.6, .95, 1, wood);
+    for (const rail of [-1.5, 1.5]) dot(g, ...P(a + rail, backB + .6, 14.4), '#c49965');
   } else {
     box(g, a - 2, b - 2, 0, 4, 4, 5, flat('#986644', '#653f36', '#75473a'));
     const [x, y] = P(a, b, 5);
@@ -1896,6 +1938,14 @@ for (const [column, row] of studyTables) {
   box(g, a - 10.5, b - 2.8, 10, 21, 5.6, 3, darkWood);
   box(g, a - 11.5, b - 3.5, 13, 23, 7, 2, wood);
   line(g, ...P(a - 11, b + 3.4, 15), ...P(a + 11, b + 3.4, 15), '#cc9766');
+  line(g, ...P(a - 10.5, b + 3.51, 13.8), ...P(a + 10.5, b + 3.51, 13.8), '#794a36');
+  for (const [from, to, across] of [[-10, -5, -2.1], [-4, 3, 2.7], [3, 10, -2.6], [6, 10, 1.9]]) {
+    line(g, ...P(a + from, b + across, 15.05), ...P(a + to, b + across, 15.05), '#8b563b');
+  }
+  for (const offset of [-9.4, 9.4]) {
+    dot(g, ...P(a + offset, b + 3.55, 14), '#d2a068');
+    box(g, a + offset - .35, b + 1.6, 1, 1.5, 1.4, 1.1, darkWood);
+  }
 
   for (const [offset, side] of [[-8, -1], [-5, 1], [6, -1], [8.5, 1]]) {
     const bookB = b + side * 1.3 - 1;
@@ -3728,6 +3778,7 @@ function frame(ms) {
     if (currentRoom === rooms.library) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
       drawLibraryPortrait(t);
+      animateLibraryClock(t);
       drawLibraryLights(t);
     } else if (currentRoom === rooms.potion) {
       drawPotionLight(t);
