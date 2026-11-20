@@ -8,15 +8,17 @@ const status = document.getElementById('chest-status');
 const hotbarButtons = Array.from(hotbar.querySelectorAll('[data-slot]'));
 const items = {
   staff: { name: 'wand', draw: WIZARD.drawStaffIcon },
-  greenPotion: { name: 'Green Potion', draw: drawGreenPotion }
+  sealedScroll: { name: 'Sealed Scroll', draw: drawScrollIcon }
 };
-const stockLoot = ['greenPotion'];
+const stockLoot = ['sealedScroll'];
+const scroll = document.getElementById('lore-scroll');
 
-function drawGreenPotion(g) {
+function drawScrollIcon(g) {
   for (const [color, x, y, width, height] of [
-    ['#232337', 10, 4, 12, 5], ['#232337', 12, 9, 8, 5], ['#232337', 8, 14, 16, 13],
-    ['#b88752', 12, 5, 8, 3], ['#99c7b3', 13, 9, 6, 6], ['#99c7b3', 9, 15, 14, 10],
-    ['#44865a', 10, 18, 12, 7], ['#82c966', 10, 18, 12, 2], ['#c9f5bc', 11, 16, 2, 6]
+    ['#42303b', 7, 5, 18, 22], ['#dfbd83', 10, 7, 12, 18],
+    ['#f5dca3', 8, 5, 17, 4], ['#bc925c', 7, 23, 18, 4],
+    ['#ad8056', 12, 12, 8, 1], ['#ad8056', 12, 15, 6, 1],
+    ['#943d53', 15, 18, 5, 5], ['#ce6770', 16, 18, 2, 2]
   ]) {
     g.fillStyle = color;
     g.fillRect(x, y, width, height);
@@ -29,13 +31,16 @@ function loadInventory() {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (Array.isArray(saved?.hotbar) && saved.hotbar.length === hotbarButtons.length &&
         Array.isArray(saved.chest) && (saved.chest.length === 32 || saved.chest.length === chestSize)) {
-      const contents = [...saved.hotbar, ...saved.chest];
+      const removeTestPotion = item => item === 'greenPotion' ? null : item;
+      const hotbar = saved.hotbar.map(removeTestPotion);
+      const chest = saved.chest.map(removeTestPotion);
+      const contents = [...hotbar, ...chest];
       if (contents.every(item => item === null || Object.hasOwn(items, item)) &&
           contents.filter(item => item === 'staff').length === 1) {
         return {
-          hotbar: saved.hotbar,
-          chest: [...saved.chest, ...Array(chestSize - saved.chest.length).fill(null)],
-          stock: stockLoot.map((item, index) => saved.stock?.[index] === null ? null : item)
+          hotbar,
+          chest: [...chest, ...Array(chestSize - saved.chest.length).fill(null)],
+          stock: stockLoot.map((item, index) => saved.stockLootVersion === 2 && saved.stock?.[index] === null ? null : item)
         };
       }
     }
@@ -87,7 +92,7 @@ function render() {
 
 function storeInventory() {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(inventory));
+    localStorage.setItem(storageKey, JSON.stringify({ ...inventory, stockLootVersion: 2 }));
   } catch {
     // Verplaatsen blijft werken als de browser opslag blokkeert.
   }
@@ -109,6 +114,7 @@ function takeStockItem(slot) {
   const message = hasStockLoot() ? '' : ' The chest is empty.';
   status.textContent = `${items[item].name} added to your hotbar.${message}`;
   document.getElementById('close-chest-inventory').focus();
+  if (item === 'sealedScroll') scroll.showModal();
 }
 
 function useChestSlot(slot) {
@@ -154,6 +160,7 @@ const chestButtons = [
 
 function selectSlot(index) {
   selectedSlot = selectedSlot === index ? null : index;
+  if (inventory.hotbar[index] === 'sealedScroll') scroll.showModal();
   render();
 }
 
@@ -162,6 +169,7 @@ for (const [index, button] of hotbarButtons.entries()) {
 }
 
 addEventListener('keydown', event => {
+  if (scroll.open) return;
   if (dialog.open && event.key === 'Escape') {
     event.preventDefault();
     dialog.close();
