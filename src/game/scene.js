@@ -2443,6 +2443,7 @@ let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
 const loreScroll = document.getElementById('lore-scroll');
+const teleportDialogue = document.getElementById('teleport-room-dialogue');
 let requestedSeat = null, activeSeat = null;
 let requestedChest = false;
 let seatProgress = 0;
@@ -2925,7 +2926,7 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open) return;
+    if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open || teleportDialogue?.open) return;
     if (key === 'e' && !event.repeat && canSearchBookStack()) {
       event.preventDefault();
       findMissingPage();
@@ -3119,8 +3120,53 @@ function updateStockroomHint() {
   if (movementHint.textContent !== hint) movementHint.textContent = hint;
 }
 
+function enterRoom(exit) {
+  const wasStockroom = currentRoom === rooms.stockroom;
+  currentRoom = rooms[exit.target];
+  if (wasStockroom !== (currentRoom === rooms.stockroom)) fit();
+  iceBalls.length = 0;
+  castTime = 0;
+  fireCharge = 0;
+  librarianDialogue.hidden = true;
+  [wizard.a, wizard.b] = exit.arrival;
+  wizard.direction = exit.direction;
+  requestedSeat = null;
+  clearRoute();
+  clearHover();
+  heldKeys.clear();
+  const hints = {
+    library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
+    potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
+    stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
+  };
+  movementHint.textContent = hints[exit.target] ?? defaultHint;
+}
+
+const teleportChoice = document.getElementById('teleport-room-choice');
+document.getElementById('teleport-room')?.addEventListener('click', () => {
+  teleportChoice.value = Object.keys(rooms).find(key => rooms[key] === currentRoom);
+  heldKeys.clear();
+  fireHeld = false;
+  teleportDialogue.showModal();
+});
+
+document.getElementById('teleport-room-form')?.addEventListener('submit', event => {
+  if (event.submitter?.value !== 'teleport') return;
+  const target = teleportChoice.value;
+  const entrance = Object.values(rooms).flatMap(room => room.exits).find(exit => exit.target === target);
+  if (!entrance || rooms[target] === currentRoom) return;
+  event.preventDefault();
+  chestInventory?.close();
+  wizard.step = null;
+  activeSeat = null;
+  seatProgress = 0;
+  enterRoom(entrance);
+  teleportDialogue.close();
+  cv.focus({ preventScroll: true });
+});
+
 function updateWizard(dt) {
-  if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open) return;
+  if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open || teleportDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
@@ -3160,27 +3206,7 @@ function updateWizard(dt) {
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
       const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
-      if (exit) {
-        const wasStockroom = currentRoom === rooms.stockroom;
-        currentRoom = rooms[exit.target];
-        if (wasStockroom !== (currentRoom === rooms.stockroom)) fit();
-        iceBalls.length = 0;
-        castTime = 0;
-        fireCharge = 0;
-        librarianDialogue.hidden = true;
-        [wizard.a, wizard.b] = exit.arrival;
-        wizard.direction = exit.direction;
-        requestedSeat = null;
-        clearRoute();
-        clearHover();
-        heldKeys.clear();
-        const hints = {
-          library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
-          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
-          stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
-        };
-        movementHint.textContent = hints[exit.target] ?? defaultHint;
-      }
+      if (exit) enterRoom(exit);
       wizard.step = null;
       if (!route.length) destination = null;
     }
