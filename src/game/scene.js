@@ -1422,6 +1422,10 @@ function drawStockPaintings(g, t = 0, animateOnly = false) {
       [153, 48, 16, 16, 'eye', brass], [178, 52, 10, 37, 'wraith', oak]
     ]]
   ];
+  drawFramedPaintings(g, groups, t, animateOnly);
+}
+
+function drawFramedPaintings(g, groups, t = 0, animateOnly = false) {
   for (const [paintWall, frames] of groups) {
     for (const [u, z, width, height, subject, frame] of frames) {
       if (animateOnly && !stockPortraits[subject]) continue;
@@ -1912,7 +1916,7 @@ const classroomLanterns = [[18, 3], [72, 3], [3, 69], [89, 67]];
 function classroomFloor(a, b) {
   // A woven runner follows the clear aisle between the two banks of desks.
   const hem = Math.min(a - 42, 54 - a, b - 23, 85 - b);
-  let base = '#a77852', finish = 1;
+  let base = '#785440', finish = 1;
   if (hem >= 0) {
     const diamond = Math.abs(a - 48) + Math.abs((b - 23) % 12 - 6);
     base = hem < .6 ? '#715637' : hem < 1.2 || Math.abs(diamond - 3) < .45
@@ -1958,8 +1962,9 @@ function drawClassroomDecor(g) {
   wallR(g, 0, 0, CLASSROOM_WIDTH * 2, 0, 30, (u, z) =>
     z < 3 || z > 26 || u % 15 < 2 ? '#57493b' : '#485c51');
   const boardWood = woodC('#815337');
-  box(g, 17, 0, 30, 59, 3.5, 47, boardWood);
-  wallR(g, 3.5, 34, 152, 30, 77, (u, z) => {
+  box(g, 17, 0, 30, 59, 4, 47, boardWood);
+  // An integer wall offset keeps each chalk pixel on the canvas pixel grid.
+  wallR(g, 4, 34, 152, 30, 77, (u, z) => {
     const edge = Math.min(u - 34, 151 - u, z - 30, 76 - z);
     if (edge === 0) return '#4b372f';
     if (edge === 1) return u < 80 || z >= 75 ? '#c19362' : '#97663f';
@@ -1968,15 +1973,16 @@ function drawClassroomDecor(g) {
     if (edge === 2) return '#ac7d51';
     if (edge === 3) return '#674531';
     if (edge === 4) return '#272f2c';
-    if (z === 68 && u > 48 && u < 138) return '#6f8273';
-    for (const [index, center] of [62, 93, 124].entries()) {
-      const x = u - center, y = z - 56;
-      if (classroomRunePixel(index, x, y, 2)) return '#e0dfbe';
-      if (Math.abs(Math.hypot(x, y) - 11) < .5) return '#849a87';
-      if (Math.abs(x) < 7 && (z === 39 || (z === 42 && x < 3))) return '#abb59a';
+    for (let index = 0; index < 3; index++) {
+      const x = u - (61 + 32 * index), y = z - 55;
+      if (classroomRunePixel(index, x, y, 3)) return '#fff2cd';
+      // Short registration marks and numbered study diagrams.
+      if (Math.abs(x) <= 10 && y === -13) return '#8fa39a';
+      if (Math.abs(x) <= index * 2 && (x + index * 2) % 4 === 0 && z >= 36 && z <= 40) return '#dcc58d';
+      if (Math.abs(x) === 13 && Math.abs(y) < 3) return '#a4b7a7';
+      if (Math.abs(x) <= 1 && y === 13) return '#d1b37c';
     }
-    const dust = hash(Math.floor(u / 3), Math.floor(z / 2));
-    return dust > .82 ? '#456056' : z < 42 ? '#31433e' : '#394f47';
+    return z < 39 ? '#263a35' : '#20332f';
   });
   box(g, 16.5, 0, 29, 60, 5, 1.25, woodC('#aa794f'));
   line(g, ...P(17, 4.9, 30.25), ...P(76, 4.9, 30.25), '#c89968');
@@ -1993,6 +1999,12 @@ function drawClassroomDecor(g) {
       return shade;
     });
   }
+  const gilt = ['#ccaa73', '#967348', '#5b4032'];
+  const walnut = ['#b08462', '#7c5442', '#493638'];
+  drawFramedPaintings(g, [
+    [wallL, [[139, 43, 30, 40, 'wizard', gilt], [44, 74, 30, 19, 'moon', walnut]]],
+    [wallR, [[157, 61, 30, 25, 'castle', gilt]]]
+  ]);
 }
 
 function buildStatic(sg, room, doorStyle) {
