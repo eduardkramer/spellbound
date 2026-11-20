@@ -1998,11 +1998,11 @@ function drawHallConnector(g, b) {
 const classroomRows = [4, 6, 8];
 const classroomBanks = [1, 7];
 // Room-local pixel sprite. The bronze backplate sits flush against each wall.
-const classroomSconce = document.createElement('canvas');
-classroomSconce.width = 14;
-classroomSconce.height = 26;
-{
-  const g = classroomSconce.getContext('2d');
+function makeClassroomSconce(crystalColors, rune) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 14;
+  canvas.height = 26;
+  const g = canvas.getContext('2d');
   const palette = ["#182726","#21a18b","#1a8978","#3ad7b0","#13625b","#563729","#574232","#596b58","#a7fedc","#87583a","#6c4531","#9ec8b3","#60a796","#613d2d","#4a8273","#107469","#392621","#442c24","#88b1a1","#271b1a","#552c1e","#0d5852","#33221d","#7c5237","#314b3f","#955c39","#926340"];
   const keys = 'abcdefghijklmnopqrstuvwxyzA';
   const rows = [
@@ -2035,25 +2035,52 @@ classroomSconce.height = 26;
   ];
   rows.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) {
-      if (row[x] !== '.') dot(g, x, y, palette[keys.indexOf(row[x])]);
+      if (row[x] !== '.') dot(g, x, y, crystalColors[row[x]] ?? palette[keys.indexOf(row[x])]);
     }
   });
-  line(g, 8, 5, 10, 7, '#aff6d5');
-  line(g, 11, 5, 10, 7, '#aff6d5');
-  line(g, 10, 7, 10, 10, '#b3ffe1');
+  line(g, 8, 5, 10, 7, rune);
+  line(g, 11, 5, 10, 7, rune);
+  line(g, 10, 7, 10, 10, rune);
   line(g, 2, 5, 3, 4, '#ba8859');
   line(g, 7, 18, 9, 16, '#ac784c');
+  return canvas;
 }
 
+const classroomLights = [
+  { a: 12, b: 0, z: 65, color: '104,225,177', sprite: makeClassroomSconce({}, '#aff6d5') },
+  { a: 0, b: 44, z: 67, color: '186,125,247', sprite: makeClassroomSconce({
+    a: '#32233d', b: '#8153ab', c: '#6d438c', d: '#b477ed', e: '#4f356b',
+    h: '#ecd7ff', i: '#e6c5ff', l: '#bda1d5', m: '#9874b8', o: '#694f83',
+    p: '#624477', s: '#a888bf', u: '#59366e', v: '#472d5e', y: '#4d3963'
+  }, '#f0d9ff') }
+];
+
 function drawClassroomLights(t) {
-  for (const [a, b, z] of [[12, 0, 65], [76, 0, 93], [0, 44, 67]]) {
+  for (const { a, b, z, color, sprite } of classroomLights) {
     const [x, y] = P(a, b, z);
     const facing = a === 0 ? 1 : -1;
-    glow(x + 7 * facing, y - 5, 20, 18, '114,209,180', .067 + .01 * Math.sin(t * 1.3 + a));
+    const flicker = .55 * Math.sin(t * 7.6 + a) + .3 * Math.sin(t * 12.9 + b) + .15 * Math.sin(t * 18.3);
+    ctx.save();
+    ctx.translate(x + 7 * facing, y - 5);
+    ctx.scale(1, .85);
+    ctx.globalCompositeOperation = 'source-atop';
+    const radius = 31 + 2 * flicker;
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+    halo.addColorStop(0, `rgba(${color},${.37 + .09 * flicker})`);
+    halo.addColorStop(.46, `rgba(${color},${.18 + .05 * flicker})`);
+    halo.addColorStop(1, `rgba(${color},0)`);
+    ctx.fillStyle = halo;
+    ctx.fillRect(-radius, -radius, 2 * radius, 2 * radius);
+    ctx.restore();
+
     ctx.save();
     ctx.translate(x, y - 13);
     ctx.scale(facing, 1);
-    ctx.drawImage(classroomSconce, -3, 0);
+    ctx.drawImage(sprite, -3, 0);
+    ctx.globalAlpha = .24 + .15 * flicker;
+    line(ctx, 5, 5, 7, 7, '#fff3ff');
+    line(ctx, 8, 5, 7, 7, '#fff3ff');
+    line(ctx, 7, 7, 7, 10, '#fff3ff');
     ctx.restore();
   }
 }
@@ -2098,6 +2125,56 @@ function classroomRunePixel(index, x, y, scale = 1) {
   return classroomRunes[index][row]?.[column] === '#';
 }
 
+function drawClassroomChalkboard(g) {
+  const left = 17, right = 76, bottom = 30, top = 77, front = 4;
+  box(g, left, 0, bottom, right - left, front, top - bottom, woodC('#754c35'));
+  // An integer wall offset keeps each chalk pixel on the canvas pixel grid.
+  wallR(g, front, 2 * left, 2 * right, bottom, top, (u, z) => {
+    const side = Math.min(u - 2 * left, 2 * right - 1 - u);
+    const rail = Math.min(z - bottom, top - 1 - z);
+    const edge = Math.min(side, rail);
+    if (edge === 0) return '#49362e';
+    if (side === 3 && rail === 3) return '#d0ac75';
+    if (side === rail && edge < 5) return '#6d4a36';
+    if (edge === 1) return z >= top - 2 || u < 40 ? '#c79a68' : '#90613e';
+    if (edge <= 3) {
+      const grain = side < rail ? hash(u, z >> 2) : hash(u >> 2, z);
+      return grain > .76 ? '#b48254' : '#9c6b46';
+    }
+    if (edge === 4) return '#4e392d';
+    if (edge === 5) return '#192b28';
+
+    const dust = hash(u, z);
+    for (let index = 0; index < 3; index++) {
+      const x = u - (60 + 33 * index), y = z - 54;
+      if (classroomRunePixel(index, x, y, 3)) return dust > .82 ? '#cbbd98' : '#f1e5c2';
+      if (Math.abs(x) <= 9 && y === -12 && dust > .18) return '#8fa299';
+      if (y === -15 && x >= -3 && x < -3 + (index + 1) * 3 && (x + 3) % 3 === 0) return '#c1a986';
+      if (Math.abs(x) === 13 && Math.abs(y) < 3) return '#859d91';
+      if (Math.abs(x) < 5 && y === 13 && (x + index) % 3 !== 0) return '#9ba48c';
+    }
+    if (z < 39 && dust > .88) return '#59665a';
+    const erased = Math.abs(z - 43 - Math.sin(u * .13) * 2.5) < 1.6 ||
+      Math.abs(z - 65 - (u % 20) * .14) < 1.4;
+    if (erased && dust > .68) return '#465950';
+    return dust > .87 ? '#324841' : z < 40 ? '#2d4139' : '#273b35';
+  });
+
+  const trayLeft = left + 1.5, trayRight = right - 1.5;
+  box(g, trayLeft, front - .15, bottom - .85, trayRight - trayLeft, 2.55, .85, woodC('#795136'));
+  box(g, trayLeft, front + .18, bottom - .05, trayRight - trayLeft, 1.65, .12,
+    flat('#725238', '#5b402e', '#61442e'));
+  box(g, 30, front + .55, bottom, 2.6, .65, .7, flat('#e9ddbd', '#a6967e', '#cbb99b'));
+  box(g, 34, front + .45, bottom, 1.5, .75, .65, flat('#c9a2b0', '#91717c', '#ab8793'));
+  box(g, 65.5, front + .35, bottom, 3.4, 1.35, .65, flat('#75695c', '#433930', '#5d4d42'));
+  box(g, 65.7, front + .4, bottom + .65, 3, 1.15, .45, woodC('#9c6b44'));
+  for (const a of [31, 33, 35, 38, 56, 62, 66]) dot(g, ...P(a, front + 1.55, bottom), '#bda787');
+  box(g, trayLeft, front + 1.85, bottom - .45, trayRight - trayLeft, .55, .85, woodC('#ab794d'));
+  for (const a of [trayLeft, trayRight - .7]) {
+    box(g, a, front, bottom - .8, .7, 2.4, 1.3, woodC('#93623f'));
+  }
+}
+
 function drawClassroomDecor(g) {
   const oak = woodC('#95653f');
   box(g, 23, 2, 0, 50, 18, 1.5, woodC('#916344'));
@@ -2106,34 +2183,7 @@ function drawClassroomDecor(g) {
     z < 3 || z > 26 || u % 15 < 2 ? '#53483c' : '#41554d');
   wallR(g, 0, 0, CLASSROOM_WIDTH * 2, 0, 30, (u, z) =>
     z < 3 || z > 26 || u % 15 < 2 ? '#57493b' : '#485c51');
-  const boardWood = woodC('#815337');
-  box(g, 17, 0, 30, 59, 4, 47, boardWood);
-  // An integer wall offset keeps each chalk pixel on the canvas pixel grid.
-  wallR(g, 4, 34, 152, 30, 77, (u, z) => {
-    const edge = Math.min(u - 34, 151 - u, z - 30, 76 - z);
-    if (edge === 0) return '#4b372f';
-    if (edge === 1) return u < 80 || z >= 75 ? '#c19362' : '#97663f';
-    const corner = Math.min(u - 34, 151 - u) + Math.min(z - 30, 76 - z);
-    if (corner <= 8) return corner === 6 ? '#795536' : '#c29b5e';
-    if (edge === 2) return '#ac7d51';
-    if (edge === 3) return '#674531';
-    if (edge === 4) return '#272f2c';
-    for (let index = 0; index < 3; index++) {
-      const x = u - (61 + 32 * index), y = z - 55;
-      if (classroomRunePixel(index, x, y, 3)) return '#fff2cd';
-      // Short registration marks and numbered study diagrams.
-      if (Math.abs(x) <= 10 && y === -13) return '#8fa39a';
-      if (Math.abs(x) <= index * 2 && (x + index * 2) % 4 === 0 && z >= 36 && z <= 40) return '#dcc58d';
-      if (Math.abs(x) === 13 && Math.abs(y) < 3) return '#a4b7a7';
-      if (Math.abs(x) <= 1 && y === 13) return '#d1b37c';
-    }
-    return z < 39 ? '#263a35' : '#20332f';
-  });
-  box(g, 16.5, 0, 29, 60, 5, 1.25, woodC('#aa794f'));
-  line(g, ...P(17, 4.9, 30.25), ...P(76, 4.9, 30.25), '#c89968');
-  box(g, 35, 3.9, 30.25, 1.6, .65, .7, flat('#d4b188', '#986f58', '#b99672'));
-  box(g, 33, 4, 30.25, 3, .8, .6, flat('#eadbb8', '#a1937e', '#cebfa3'));
-  box(g, 61, 3.6, 30.25, 2.3, 1, .7, flat('#887359', '#5f4c3e', '#6d5946'));
+  drawClassroomChalkboard(g);
   box(g, 78, 0, 0, 16, 3, 48, oak);
   wallR(g, 3, 156, 188, 0, 48, libraryShelf(156, 188, null));
   for (const [start, shade] of [[12, '#b8a078'], [104, '#78898a']]) {
