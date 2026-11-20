@@ -6,7 +6,24 @@ const hotbar = document.getElementById('hotbar');
 const dialog = document.getElementById('chest-inventory');
 const status = document.getElementById('chest-status');
 const hotbarButtons = Array.from(hotbar.querySelectorAll('[data-slot]'));
-const items = { staff: { name: 'wand', draw: WIZARD.drawStaffIcon } };
+const items = {
+  staff: { name: 'wand', draw: WIZARD.drawStaffIcon },
+  sealedScroll: { name: 'Sealed Scroll', draw: drawScrollIcon }
+};
+const stockLoot = ['sealedScroll'];
+const scroll = document.getElementById('lore-scroll');
+
+function drawScrollIcon(g) {
+  for (const [color, x, y, width, height] of [
+    ['#42303b', 7, 5, 18, 22], ['#dfbd83', 10, 7, 12, 18],
+    ['#f5dca3', 8, 5, 17, 4], ['#bc925c', 7, 23, 18, 4],
+    ['#ad8056', 12, 12, 8, 1], ['#ad8056', 12, 15, 6, 1],
+    ['#943d53', 15, 18, 5, 5], ['#ce6770', 16, 18, 2, 2]
+  ]) {
+    g.fillStyle = color;
+    g.fillRect(x, y, width, height);
+  }
+}
 const chestSize = 40;
 
 function loadInventory() {
@@ -14,21 +31,30 @@ function loadInventory() {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (Array.isArray(saved?.hotbar) && saved.hotbar.length === hotbarButtons.length &&
         Array.isArray(saved.chest) && (saved.chest.length === 32 || saved.chest.length === chestSize)) {
-      const contents = [...saved.hotbar, ...saved.chest];
+      const removeTestPotion = item => item === 'greenPotion' ? null : item;
+      const hotbar = saved.hotbar.map(removeTestPotion);
+      const chest = saved.chest.map(removeTestPotion);
+      const contents = [...hotbar, ...chest];
       if (contents.every(item => item === null || Object.hasOwn(items, item)) &&
           contents.filter(item => item === 'staff').length === 1) {
-        return { hotbar: saved.hotbar, chest: [...saved.chest, ...Array(chestSize - saved.chest.length).fill(null)] };
+        return {
+          hotbar,
+          chest: [...chest, ...Array(chestSize - saved.chest.length).fill(null)],
+          stock: stockLoot.map((item, index) => saved.stockLootVersion === 2 && saved.stock?.[index] === null ? null : item)
+        };
       }
     }
   } catch {
     // Ook zonder browseropslag blijft de inventaris tijdens het spelen beschikbaar.
   }
-  return { hotbar: Array(hotbarButtons.length).fill(null), chest: ['staff', ...Array(chestSize - 1).fill(null)] };
+  return { hotbar: Array(hotbarButtons.length).fill(null), chest: ['staff', ...Array(chestSize - 1).fill(null)], stock: [...stockLoot] };
 }
 
 const inventory = loadInventory();
 let selectedSlot = inventory.hotbar[0] === 'staff' ? 0 : null;
 let source = null;
+const isStockChest = () => dialog.dataset.stockChest === 'true';
+const hasStockLoot = () => inventory.stock.some(Boolean);
 
 function drawSlot(button, item, label, pressed) {
   button.setAttribute('aria-label', `${label}, ${item ? items[item].name : 'empty'}`);
@@ -54,19 +80,48 @@ function render() {
   hotbar.dataset.hasWand = String(inventory.hotbar.includes('staff'));
   WIZARD.staffEquipped = inventory.hotbar[selectedSlot] === 'staff';
   for (const slot of chestButtons) {
-    drawSlot(slot.button, inventory[slot.area][slot.index], slot.label, source === slot);
+    const stock = isStockChest();
+    slot.button.hidden = stock && (slot.area !== 'chest' || slot.index >= inventory.stock.length);
+    const item = stock ? inventory.stock[slot.index] : inventory[slot.area][slot.index];
+    slot.button.disabled = stock && !item;
+    drawSlot(slot.button, item, stock && item ? 'Take item' : slot.label, source === slot);
   }
+  document.getElementById('chest-title').textContent = isStockChest() ? 'Stockroom Chest' : 'Chest';
+  if (isStockChest()) status.textContent = hasStockLoot() ? 'Select an item to take it.' : 'The chest is empty.';
 }
 
 function storeInventory() {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(inventory));
+    localStorage.setItem(storageKey, JSON.stringify({ ...inventory, stockLootVersion: 2 }));
   } catch {
     // Verplaatsen blijft werken als de browser opslag blokkeert.
   }
 }
 
+function takeStockItem(slot) {
+  if (slot.area !== 'chest') return;
+  const item = inventory.stock[slot.index];
+  if (!item) return;
+  const emptySlot = inventory.hotbar.indexOf(null);
+  if (emptySlot === -1) {
+    status.textContent = 'Your hotbar is full.';
+    return;
+  }
+  inventory.hotbar[emptySlot] = item;
+  inventory.stock[slot.index] = null;
+  storeInventory();
+  render();
+  const message = hasStockLoot() ? '' : ' The chest is empty.';
+  status.textContent = `${items[item].name} added to your hotbar.${message}`;
+  document.getElementById('close-chest-inventory').focus();
+  if (item === 'sealedScroll') scroll.showModal();
+}
+
 function useChestSlot(slot) {
+  if (isStockChest()) {
+    takeStockItem(slot);
+    return;
+  }
   const item = inventory[slot.area][slot.index];
   if (source === slot) {
     source = null;
@@ -105,6 +160,7 @@ const chestButtons = [
 
 function selectSlot(index) {
   selectedSlot = selectedSlot === index ? null : index;
+  if (inventory.hotbar[index] === 'sealedScroll') scroll.showModal();
   render();
 }
 
@@ -113,6 +169,7 @@ for (const [index, button] of hotbarButtons.entries()) {
 }
 
 addEventListener('keydown', event => {
+  if (scroll.open) return;
   if (dialog.open && event.key === 'Escape') {
     event.preventDefault();
     dialog.close();
@@ -129,11 +186,23 @@ addEventListener('keydown', event => {
 document.getElementById('close-chest-inventory').addEventListener('click', () => dialog.close());
 
 dialog.addEventListener('close', () => {
+  if (dialog.open) return;
   source = null;
   status.textContent = '';
   render();
   document.getElementById('scene').focus({ preventScroll: true });
 });
+
+window.CHEST_INVENTORY = {
+  hasStockLoot,
+  open(stockChest) {
+    source = null;
+    dialog.dataset.stockChest = String(stockChest);
+    status.textContent = '';
+    render();
+    dialog.show();
+  }
+};
 
 render();
 })();

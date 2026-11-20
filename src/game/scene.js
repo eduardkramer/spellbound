@@ -365,41 +365,114 @@ function towerWallStone(brick, u, z) {
   return texture > .91 ? sh(color, 1.12) : texture < .08 ? sh(color, .89) : color;
 }
 
-function passageColor(dx, z) {
-  const curve = Math.hypot(dx, Math.max(0, z - 31));
-  if (curve > 17) return null;
-  if (curve > 12) {
-    const joint = z < 31 ? z % 7 === 0 : Math.floor(Math.atan2(z - 31, dx) * 12) % 5 === 0;
-    return joint ? '#3b3d63' : curve > 15 ? '#8997ba' : '#626c96';
+const doorStyles = {
+  tower: {
+    wood: '#995b37', light: '#bd7943', dark: '#613624', metal: '#efc17a',
+    cloth: '#75404d', thread: '#d5ad69', emblem: (x, y) => Math.abs(x) + 2 * Math.abs(y) < 2.6
+  },
+  library: {
+    wood: '#72503c', light: '#a6784f', dark: '#4b332b', metal: '#d6b47a',
+    cloth: '#52634d', thread: '#b7a676', emblem: (x, y) => Math.abs(x) < 2.5 && Math.abs(y) < .85 + .13 * Math.abs(x)
+  },
+  potion: {
+    wood: '#9c6545', light: '#c38455', dark: '#644338', metal: '#92b7a0',
+    cloth: '#5d505f', thread: '#ac959f', emblem: (x, y) => x * x + (y * 2) ** 2 < 4.5
+  },
+  stockroom: {
+    wood: '#665044', light: '#8c7156', dark: '#45362e', metal: '#9e9281',
+    cloth: '#766352', thread: '#a28d6f', emblem: (x, y) => Math.abs(y - x * .23) < .35 && Math.abs(x) < 2.7
   }
-  if (curve > 11) return '#242849';
-  if (z < 3) return '#d6af67';
-  if (z < 9) return '#4d4261';
-  return '#171933';
+};
+
+function passageColor(dx, z, style = doorStyles.tower) {
+  const distance = Math.abs(dx);
+  const lift = Math.max(0, z - 31);
+  const curve = Math.hypot(dx, lift);
+  if (curve > 17) return null;
+  if (curve > 11) {
+    const grain = hash(Math.floor(dx * 2 + Math.sin(z / 5)), Math.floor(z / 6));
+    const foot = z < 5 || (z >= 27 && z <= 30);
+    const keystone = z >= 44 && distance < 3;
+    const stud = z < 26 && distance >= 13 && distance < 15 && [9, 16, 23].includes(z);
+    const leaf = (keystone && (distance < .7 || (distance < 2.2 && (z === 45 || z === 47)))) ||
+      (lift > 2 && Math.abs(curve - 14) < .65 && (z === 35 || z === 38 || z === 41));
+    if (curve > 16.3) return sh(style.dark, .77);
+    if (stud || leaf) return dx < 0 ? style.metal : sh(style.metal, .8);
+    if (z < 27 && distance >= 14 && distance < 14.7 && [10, 17, 24].includes(z)) return style.dark;
+    if (curve > 15 || (foot && (z === 4 || z === 30))) return style.light;
+    if (curve < 12.2) return style.dark;
+    if (foot || keystone) return sh(style.wood, .94);
+    if (curve > 14 && curve < 14.8) return sh(style.dark, 1.14);
+    return grain > .72 ? sh(style.wood, 1.15) : grain < .28 ? sh(style.wood, .83) : style.wood;
+  }
+  if (z < 3) return style.light;
+  if (z < 7) return '#644033';
+  if (dx > 8.5 && z < 32) return '#4b2a2b';
+  return '#27192c';
 }
 
-function drawPassage(g, rear) {
+function drawDoorMat(g, a0, b0, width, depth, style) {
+  const acrossA = width > depth;
+  box(g, a0, b0, 0, width, depth, 1, {
+    top: (a, b) => {
+      const u = acrossA ? a - a0 : b - b0;
+      const v = acrossA ? b - b0 : a - a0;
+      const span = acrossA ? width : depth;
+      const length = acrossA ? depth : width;
+      const edge = Math.min(u, span - u, v, length - v);
+      const weave = (Math.floor(u * 2) + Math.floor(v * 2)) % 2;
+      if (edge < .5) return '#594035';
+      if (edge < 1.15) return weave ? style.thread : sh(style.thread, .78);
+      if (edge < 1.6) return '#614339';
+      const x = u - span / 2, y = v - length / 2;
+      if (style.emblem(x, y)) return Math.abs(x) < .3 ? sh(style.thread, 1.16) : style.thread;
+      return weave ? style.cloth : sh(style.cloth, .89);
+    },
+    left: '#614239',
+    right: '#724a37'
+  });
+}
+
+function drawPassage(g, rear, style) {
   const center = EXIT_CENTER * 2;
-  box(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 0, 14, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
-  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z));
+  drawDoorMat(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 14, 7, style);
+  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z, style));
 }
 
-const stockArchColor = (offset, z) => passageColor(offset * 17 / 15, z);
+const stockArchColor = (offset, z, style) => passageColor(offset * 17 / 15, z, style);
 
-function drawStockPassage(g, { tile, wallB }) {
+function drawStockPassage(g, { tile, wallB }, style) {
   const center = (tile[0] + .5) * TILE_SIZE;
-  box(g, center - 6, wallB, 0, 12, 7, 1, flat('#62678f', '#3d4166', '#464b70'));
+  drawDoorMat(g, center - 6, wallB, 12, 7, style);
   wallR(g, wallB, 2 * center - 15, 2 * center + 16, 0, 49,
-    (u, z) => stockArchColor(u - 2 * center, z));
+    (u, z) => stockArchColor(u - 2 * center, z, style));
 }
 
-function drawSidePassage(g, { wallA, tile }, foreground) {
+function closedStockDoorColor(offset, z) {
+  if (Math.hypot(offset * 17 / 15, Math.max(0, z - 31)) > 11 || z < 3) return null;
+  const plank = (offset + 12) % 5;
+  if (z >= 13 && z <= 15 || z >= 29 && z <= 31) {
+    if (z === 14 || z === 30) return Math.abs(offset) === 7 ? '#d2ad70' : '#53453c';
+    return '#3d3030';
+  }
+  if (offset === 4 && z >= 20 && z <= 23) return z === 22 ? '#ead08e' : '#77583e';
+  if (plank === 0) return '#4c3027';
+  if (plank === 1) return '#aa6f49';
+  return hash(offset, Math.floor(z / 4)) > .65 ? '#96603e' : '#805039';
+}
+
+const closedStockDoor = mk();
+const stockDoorCenter = (POTION_STOCK_DOOR_COLUMN + .5) * TILE_SIZE * 2;
+wallR(closedStockDoor.getContext('2d'), 0, stockDoorCenter - 15, stockDoorCenter + 16, 0, 49,
+  (u, z) => closedStockDoorColor(u - stockDoorCenter, z));
+
+function drawSidePassage(g, { wallA, tile }, foreground, style) {
   const center = (tile[1] + .5) * TILE_SIZE;
   if (!foreground) {
-    box(g, wallA === 0 ? 0 : wallA - 7, center - 7, 0, 7, 14, 1, flat('#62678f', '#3d4166', '#464b70'));
+    drawDoorMat(g, wallA === 0 ? 0 : wallA - 7, center - 7, 7, 14, style);
     if (wallA !== 0) return;
   }
-  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z));
+  wallL(g, wallA, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(2 * center - u, z, style));
 }
 
 /* ---------- bibliotheek ---------- */
@@ -1092,14 +1165,26 @@ function stockroomFloor(a, b) {
 
 const stockShelfStarts = [4, 34, 64];
 const stockBookcases = [[0, 3], [6, 9]];
-const pageStackTile = [5, 8];
+const pageStackTile = [11, 9];
+const stockChestTile = [0, 9];
+const [stockChestA, stockChestB] = stockChestTile.map(tile => (tile + .5) * TILE_SIZE);
+const stockChestScale = .85;
+let stockChestOpening = 0;
 const stockLayout = [
-  [2, 1, 'glass'], [3, 1, 'books'], [5, 1, 'chest'], [7, 1, 'herbs'],
-  [9, 1, 'crates'], [10, 2, 'barrel'], [10, 3, 'herbs'], [2, 2, 'chair'],
-  [1, 6, 'table'], [2, 6, 'chair'], [4, 5, 'crystals'], [5, 5, 'herbs'],
-  [6, 5, 'crates'], [8, 6, 'herbs'], [9, 6, 'glass'], [10, 6, 'chest'],
-  [2, 8, 'scrolls'], [3, 8, 'herbs'], [...pageStackTile, 'books'], [6, 8, 'chair'],
-  [7, 8, 'table'], [9, 8, 'crates'], [10, 8, 'barrel'], [11, 8, 'chest']
+  // Keep the entrance aisle clear all the way to the shelves.
+  [2, 2, 'table'], [3, 2, 'books'], [4, 2, 'still'], [5, 2, 'chest'],
+  [6, 2, 'herbs'], [7, 2, 'glass'], [8, 2, 'rug'], [9, 2, 'crates'], [10, 2, 'barrel'],
+  [2, 3, 'chair'], [2, 4, 'crates'],
+  // The inner aisles open on alternating ends.
+  [4, 4, 'basket'], [5, 4, 'scrolls'], [6, 4, 'glass'], [7, 4, 'crates'],
+  [8, 4, 'crystals'], [9, 4, 'still'], [10, 4, 'chest'], [11, 4, 'rug'],
+  [1, 5, 'table'], [2, 5, 'barrel'],
+  [1, 6, 'chest'], [2, 6, 'herbs'], [3, 6, 'basket'], [4, 6, 'crates'],
+  [5, 6, 'mortar'], [6, 6, 'books'], [7, 6, 'chair'], [8, 6, 'glass'],
+  [9, 6, 'herbs'], [10, 6, 'chest'],
+  [2, 8, 'scrolls'], [3, 8, 'basket'], [4, 8, 'crates'], [5, 8, 'rug'],
+  [6, 8, 'chair'], [7, 8, 'table'], [8, 8, 'barrel'], [9, 8, 'mortar'],
+  [10, 8, 'crates'], [11, 8, 'chest'], [...pageStackTile, 'books']
 ];
 const stockLanterns = [[0, 28], [0, 47], [49, 0]].map(([a, b]) => P(a, b, 75));
 
@@ -1111,6 +1196,149 @@ function drawStockLanterns(t) {
     ell(ctx, x, y, 3, 3, '#d39051');
     dot(ctx, x, y - 1, '#fff1ad');
     rect(ctx, x - 2, y + 4, 5, 1, '#976442');
+  }
+}
+
+const stockPortraits = {
+  witch: ['#40374f', '#825779', '#c78e73', '#35263d'],
+  wizard: ['#35455c', '#565c93', '#c69e82', '#d9c7b5'],
+  goblin: ['#514739', '#80614a', '#94a467', '#586a45'],
+  necromancer: ['#452b46', '#663f65', '#bea7ad', '#38283e'],
+  wraith: ['#283b4b', '#526781', '#8ea4b0', '#2b344b']
+};
+
+function stockPortraitArt(subject, x, y, t) {
+  const [background, cloak, skin, detail] = stockPortraits[subject];
+  const phase = t + Object.keys(stockPortraits).indexOf(subject) * 1.11;
+  const blink = phase % 4.7 > 4.5;
+  const head = x - .09 * Math.sin(phase * 1.35);
+  const face = Math.abs(head);
+  const goblin = subject === 'goblin';
+  const sinister = subject === 'necromancer' || subject === 'wraith';
+  const eye = Math.abs(face - .18) < .09 && Math.abs(y - .21) < .074;
+  if (eye) return blink ? detail : sinister ? '#efa17f' : '#292332';
+  if (goblin && face < .73 && face > .27 && Math.abs(y - .23 - face * .33) < .12) return skin;
+  if (face < .38 && y > -.16 && y < .52) {
+    if (Math.abs(y + .06) < .06 && face < .2) return detail;
+    return head < -.21 ? sh(skin, .77) : skin;
+  }
+  if ((subject === 'witch' || subject === 'wizard') &&
+      ((y >= .49 && y < .62 && face < .71) ||
+       (y >= .62 && face < (1 - y) * 1.25))) return cloak;
+  if (sinister && y > .05 && y < .77 && face < .75 - .4 * y) return cloak;
+  if (subject === 'wizard' && y < -.12 && y > -.61 && face < .32 + y * .38) return detail;
+  if (y < -.1 && y > -.94 && face < .43 - y * .36) return head > 0 ? cloak : sh(cloak, .72);
+  return background;
+}
+
+function stockPaintingArt(subject, x, y, t) {
+  if (stockPortraits[subject]) return stockPortraitArt(subject, x, y, t);
+  switch (subject) {
+    case 'castle': {
+      if (y < -.46 + .19 * Math.sin(x * 8)) return '#394752';
+      const tower = Math.abs(x + .39) < .13 || Math.abs(x - .34) < .15;
+      if (Math.abs(x) < .55 && y < (tower ? .47 : .13)) {
+        return tower && Math.abs(y + .04) < .09 ? '#e9b16b' : '#5a4b60';
+      }
+      return y > .3 ? '#a8717a' : '#cf9382';
+    }
+    case 'woods':
+      if (y < -.64) return '#414b4f';
+      if (Math.abs(x + .38) < .07 || Math.abs(x - .49) < .06) return '#63463d';
+      if ((x + .48) ** 2 + (y - .37) ** 2 < .32) return '#b4774e';
+      if ((x - .42) ** 2 + (y - .49) ** 2 < .31) return '#865448';
+      return '#6b7473';
+    case 'potion':
+      if (Math.abs(x) < .23 && y > .45 && y < .69) return '#bd875a';
+      if ((Math.abs(x) < .2 && y > .06 && y <= .45) ||
+          (x / .56) ** 2 + ((y + .22) / .48) ** 2 < 1) {
+        if (x < -.24 && y > -.46) return '#c3dadd';
+        return y < -.16 ? '#677baf' : '#82a8aa';
+      }
+      return y < -.65 ? '#53515e' : '#3c354a';
+    case 'herb': {
+      const stem = .14 * y;
+      if (Math.abs(x - stem) < .09 && Math.abs(y) < .82) return '#636f4e';
+      for (const [leafX, leafY] of [[-.31, -.36], [.34, -.05], [-.26, .25], [.23, .55]]) {
+        if (((x - leafX) / .31) ** 2 + ((y - leafY) / .16) ** 2 < 1) {
+          return leafX < 0 ? '#788058' : '#94966b';
+        }
+      }
+      return '#b3936d';
+    }
+    case 'moon':
+      if ((x + .22) ** 2 + (y - .24) ** 2 < .31 && (x - .03) ** 2 + (y - .38) ** 2 > .23) return '#e5c891';
+      if (y < -.59 + .11 * Math.sin(x * 12)) return '#44475b';
+      return '#34344d';
+    case 'comet':
+      return Math.abs(y - x * .48) < .1 && x > -.68 && x < .65 ? '#e4ab88' : '#403b60';
+    case 'mountains':
+      return y < .52 - Math.abs(x + .18) * 1.26 ? (y > .14 ? '#c5c7bc' : '#626d83') : '#a88d9b';
+    case 'mushrooms': {
+      const cap = ((x + .2) / .53) ** 2 + ((y - .15) / .32) ** 2 < 1;
+      if (cap && y > .05) return '#a55e5f';
+      return Math.abs(x + .22) < .14 && y > -.68 && y < .19 ? '#d3b888' : '#68645e';
+    }
+    case 'raven':
+      return (x + .24) ** 2 + (y - .12) ** 2 < .19 || Math.abs(y + x * .65) < .13 && Math.abs(x) < .83
+        ? '#36334a' : '#ae8991';
+    case 'hourglass':
+      return Math.abs(y) < .72 && Math.abs(x) < .12 + Math.abs(y) * .62
+        ? (Math.abs(y) > .57 ? '#956846' : '#dabb83') : '#564458';
+    case 'crystal':
+      return (Math.abs(x) * 1.55 + Math.abs(y) * .72 < .65)
+        ? (x > .04 ? '#876ea0' : '#bda8c6') : '#443751';
+    case 'eye':
+      if (x * x + Math.abs(y) * 1.24 < .68) return Math.abs(x) < .15 ? '#49334e' : '#c9986f';
+      return '#513f53';
+    case 'candle':
+      if (x * x + (y - .44) ** 2 < .085) return '#e0aa70';
+      return Math.abs(x) < .24 && y < .16 && y > -.69 ? '#b89978' : '#444354';
+    case 'sea':
+      if (y > .14) return '#aa8284';
+      return Math.sin(x * 9 + y * 18) > .62 ? '#829a9a' : '#495c70';
+    case 'flower':
+      if (Math.abs(x) < .08 && y < .3 && y > -.78) return '#7f8b60';
+      if (x * x + (y - .27) ** 2 < .25) return Math.abs(x) < .17 && Math.abs(y - .27) < .17 ? '#c9a365' : '#a86983';
+      return '#5f5261';
+  }
+}
+
+function drawStockPaintings(g, t = 0, animateOnly = false) {
+  const oak = ['#a57b52', '#765137', '#51382d'];
+  const brass = ['#c2a36c', '#927047', '#59443b'];
+  const walnut = ['#896656', '#64463d', '#493239'];
+  // Frame coordinates are in wall columns and height above the floor.
+  const groups = [
+    [wallL, [
+      [8, 90, 33, 11, 'woods', walnut], [103, 91, 34, 10, 'comet', oak],
+      [46, 52, 15, 13, 'herb', oak], [64, 51, 24, 17, 'sea', walnut],
+      [90, 50, 11, 15, 'candle', walnut], [65, 80, 22, 18, 'witch', brass],
+      [143, 48, 13, 25, 'flower', oak], [143, 79, 13, 16, 'hourglass', brass]
+    ]],
+    [wallR, [
+      [7, 52, 19, 25, 'potion', oak], [8, 82, 18, 16, 'moon', walnut],
+      [31, 57, 36, 34, 'wizard', brass], [72, 48, 19, 24, 'crystal', oak],
+      [72, 78, 20, 19, 'goblin', walnut], [95, 48, 20, 17, 'mushrooms', walnut],
+      [97, 84, 16, 14, 'raven', oak], [115, 69, 23, 26, 'necromancer', brass],
+      [121, 46, 26, 16, 'mountains', oak], [143, 69, 30, 25, 'castle', walnut],
+      [153, 48, 16, 16, 'eye', brass], [178, 52, 10, 37, 'wraith', oak]
+    ]]
+  ];
+  for (const [paintWall, frames] of groups) {
+    for (const [u, z, width, height, subject, frame] of frames) {
+      if (animateOnly && !stockPortraits[subject]) continue;
+      paintWall(g, 0, animateOnly ? u + 2 : u, animateOnly ? u + width - 2 : u + width + 2,
+        animateOnly ? z + 2 : z - 2, animateOnly ? z + height - 2 : z + height, (column, level) => {
+        const x = column - u, y = level - z;
+        if (x >= width || y < 0) return '#32313c';
+        if (y === height - 1 || x === 0) return frame[0];
+        if (y === 0 || x === width - 1) return frame[2];
+        if (x === 1 || y === 1 || x === width - 2 || y === height - 2) return frame[1];
+        const color = stockPaintingArt(subject, 2 * (x - 2) / (width - 5) - 1, 2 * (y - 2) / (height - 5) - 1, t);
+        return hash(column, level) > .86 ? sh(color, .87) : color;
+      });
+    }
   }
 }
 
@@ -1134,6 +1362,51 @@ function drawStockContainer(g, a, b, kind) {
   ell(g, x, y, 9, 4, '#4b434d');
   ell(g, x, y, 6, 2, '#353039');
   const furnitureWood = woodC('#9b6345'), darkWood = woodC('#673f2c');
+  if (kind === 'still') {
+    box(g, a - 3, b - 2.5, 0, 6, 5, 2, darkWood);
+    ell(g, x - 2, y - 7, 6, 6, '#78463b');
+    ell(g, x - 3, y - 8, 4, 4, '#b67650');
+    line(g, x - 5, y - 9, x - 3, y - 11, '#e0aa74');
+    rect(g, x - 3, y - 15, 3, 4, '#bb8059');
+    line(g, x - 2, y - 15, x + 5, y - 15, '#d79865');
+    line(g, x + 5, y - 15, x + 7, y - 8, '#a35e45');
+    ell(g, x + 7, y - 5, 3, 4, '#466866');
+    dot(g, x + 6, y - 6, '#8aaba0');
+    return;
+  }
+  if (kind === 'basket') {
+    ell(g, x, y - 3, 9, 5, '#80553d');
+    ell(g, x, y - 6, 9, 4, '#bd8958');
+    ell(g, x, y - 6, 7, 3, '#60463c');
+    for (const [dx, dy, color] of [[-4, -7, '#a57b64'], [-1, -8, '#cfb788'], [3, -6, '#80678d'], [5, -7, '#abb17a']]) {
+      ell(g, x + dx, y + dy, 2, 2, color);
+    }
+    for (const dx of [-6, -3, 0, 3, 6]) dot(g, x + dx, y - 3, '#d2a06a');
+    return;
+  }
+  if (kind === 'rug') {
+    for (const [db, color] of [[-2, '#68506d'], [1, '#74657d']]) {
+      const start = P(a - 3, b + db, 3);
+      const end = P(a + 3, b + db, 3);
+      line(g, ...start, ...end, '#493746');
+      line(g, start[0], start[1] - 2, end[0], end[1] - 2, color);
+      ell(g, ...end, 3, 3, '#ad8e77');
+      ell(g, ...end, 1, 1, color);
+      const [tieX, tieY] = P(a + 1, b + db, 3);
+      line(g, tieX, tieY - 4, tieX, tieY + 2, '#d3b579');
+    }
+    return;
+  }
+  if (kind === 'mortar') {
+    box(g, a - 2.5, b - 2.5, 0, 5, 5, 3, darkWood);
+    ell(g, x, y - 5, 7, 5, '#555564');
+    ell(g, x, y - 8, 7, 3, '#92919a');
+    ell(g, x, y - 8, 5, 2, '#494754');
+    dot(g, x - 2, y - 8, '#8b9b64');
+    line(g, x, y - 8, x + 6, y - 15, '#ada7a0');
+    line(g, x + 1, y - 8, x + 7, y - 15, '#7a7481');
+    return;
+  }
   if (kind === 'chair' || kind === 'table') {
     const chair = kind === 'chair';
     const height = chair ? 7 : 11;
@@ -1244,7 +1517,7 @@ function drawStockContainer(g, a, b, kind) {
   }
 }
 
-function buildStatic(sg, room) {
+function buildStatic(sg, room, doorStyle) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
   const stockroom = room === rooms.stockroom;
@@ -1272,12 +1545,13 @@ function buildStatic(sg, room) {
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
     drawWallIvy(sg, [[0, 71, 30], [80, 0, 22]]);
+    drawStockPaintings(sg);
     drawStockShelves(sg);
   }
-  if (room === rooms.tower || library) drawPassage(sg, library);
+  if (room === rooms.tower || library) drawPassage(sg, library, doorStyle);
   for (const exit of room.exits) {
-    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false);
-    if (exit.wallB !== undefined) drawStockPassage(sg, exit);
+    if (exit.wallA !== undefined) drawSidePassage(sg, exit, false, doorStyle);
+    if (exit.wallB !== undefined) drawStockPassage(sg, exit, doorStyle);
   }
 }
 
@@ -1484,8 +1758,7 @@ function buildFront() {
   });
 
   // Voorraadkist langs de rechterwand
-  box(g, 48, 1, 0, 8, 6, 8, woodD);
-  box(g, 51, 6.5, 4, 2, 1, 4, flat('#dfbc68', '#a78040', '#c4974d'));
+  drawChestBody(g, 52, 4, woodD);
   store(56, drawChest);
 
   // Kristal op een sokkel langs de linkerwand
@@ -1538,15 +1811,16 @@ const loadingScreen = document.getElementById('game-loading');
 const loadingProgress = document.getElementById('game-loading-progress');
 if (loadingProgress) loadingProgress.value = 1;
 
-for (const room of Object.values(rooms)) {
+for (const [roomName, room] of Object.entries(rooms)) {
+  const doorStyle = doorStyles[roomName];
   const background = room.canvas.getContext('2d');
-  buildStatic(background, room);
+  buildStatic(background, room, doorStyle);
   outline(background, '#14183a');
   const frontExits = room.exits.filter(({ wallA }) => wallA > 0);
   if (frontExits.length) {
     room.foreground = mk();
     const foreground = room.foreground.getContext('2d');
-    for (const exit of frontExits) drawSidePassage(foreground, exit, true);
+    for (const exit of frontExits) drawSidePassage(foreground, exit, true, doorStyle);
   }
 }
 buildFront();
@@ -1941,31 +2215,54 @@ function drawDiamond(t) {
 
 function drawChest(t, dt) {
   chestOpening = Math.max(0, Math.min(1, chestOpening + (chestInventory?.open ? dt : -dt) * 2.2));
-  const opening = chestOpening * chestOpening * (3 - 2 * chestOpening);
-  const angle = opening * 1.7;
-  const [x, y] = P(52, 4, 8);
-  if (opening) {
+  drawChestLid(t, 52, 4, chestOpening);
+}
+
+function drawChestBody(g, a, b, wood) {
+  box(g, a - 4, b - 3, 0, 8, 6, 8, wood);
+  box(g, a - 1, b + 2.5, 4, 2, 1, 4, flat('#dfbc68', '#a78040', '#c4974d'));
+}
+
+function drawStockChest(t, dt) {
+  stockChestOpening = Math.max(0, Math.min(1, stockChestOpening + (chestInventory?.open ? dt : -dt) * 2.2));
+  drawChestLid(t, stockChestA, stockChestB, stockChestOpening, true, window.CHEST_INVENTORY?.hasStockLoot());
+}
+
+function drawChestLid(t, a, b, progress, halfOpen = false, sparkling = true) {
+  const opening = progress * progress * (3 - 2 * progress);
+  const angle = opening * (halfOpen ? 1.18 : 1.7);
+  const scale = halfOpen ? stockChestScale : 1;
+  const project = (width, depth, height) => halfOpen
+    ? P(a + depth * scale, b + width * scale, height * scale)
+    : P(a + width, b + depth, height);
+  const [x, y] = project(0, 0, 8);
+  if (opening && sparkling) {
     const glow = ctx.createRadialGradient(x, y - 6, 1, x, y - 6, 44);
     glow.addColorStop(0, 'rgba(255, 235, 169, ' + .65 * opening + ')');
     glow.addColorStop(.4, 'rgba(255, 192, 75, ' + .3 * opening + ')');
     glow.addColorStop(1, 'rgba(255, 192, 75, 0)');
     ctx.fillStyle = glow;
     ctx.fillRect(x - 44, y - 50, 88, 88);
+  }
 
-    topFace(ctx, 8, 48, 56, 1, 7, (a, b) => {
-      if (a < 48.5 || a > 55.5 || b < 1.5 || b > 6.5) return '#e1a750';
+  if (opening) {
+    const extentA = (halfOpen ? 3 : 4) * scale;
+    const extentB = (halfOpen ? 4 : 3) * scale;
+    topFace(ctx, 8 * scale, a - extentA, a + extentA, b - extentB, b + extentB, (u, v) => {
+      if (Math.abs(u - a) > extentA - .5 || Math.abs(v - b) > extentB - .5) return '#e1a750';
+      if (halfOpen) return '#563923';
       return opening > .4 ? '#fff4bd' : '#d8983f';
     });
 
   }
 
   // Het deksel draait om het scharnier langs de achterzijde van de kist.
-  const lid = (a, length, thickness = 0) => {
+  const lid = (offset, length, thickness = 0) => {
     // Schaal de vorm naar de buitenmaten van de bak (8 × 6).
     const span = length * 6 / 7;
-    return P(
-      48 + a * 8 / 9,
-      1 + span * Math.cos(angle) - thickness * Math.sin(angle),
+    return project(
+      -4 + offset * 8 / 9,
+      -3 + span * Math.cos(angle) - thickness * Math.sin(angle),
       8 + span * Math.sin(angle) + thickness * Math.cos(angle)
     );
   };
@@ -2014,12 +2311,12 @@ function drawChest(t, dt) {
   for (let i = 0; i < boards.length; i++) {
     line(ctx, ...lid(9, rim[i], arch[i]), ...lid(9, rim[i + 1], arch[i + 1]), '#75472e');
   }
-  if (!opening) return;
+  if (!opening || !sparkling) return;
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < (halfOpen ? 14 : 40); i++) {
     const age = (t * (.46 + hash(i, 9) * .3) + hash(i, 3)) % 1;
     const dx = (hash(i, 1) - .5) * (15 + 36 * age) + 2 * Math.sin(t * 2.5 + i);
-    const dy = 3 + age * (27 + hash(i, 2) * 24);
+    const dy = 3 + age * (27 + hash(i, 2) * 24) * (halfOpen ? .55 : 1);
     ctx.globalAlpha = opening * (1 - age * .85) * (.65 + .35 * Math.sin(t * 6 + i) ** 2);
     dot(ctx, x + dx, y - dy, i % 3 ? '#ffdc7a' : '#fffbdc');
     if (i % 9 === 0) {
@@ -2109,6 +2406,15 @@ const stockFurnishings = stockLayout.map(([column, row, kind]) => {
   const isPageStack = column === pageStackTile[0] && row === pageStackTile[1];
   return { canvas, depth: a + b, animate: isPageStack ? drawMissingPage : undefined };
 });
+rooms.stockroom.floor[stockChestTile[1]][stockChestTile[0]] = 'X';
+const stockChestCanvas = mk();
+const stockChestContext = stockChestCanvas.getContext('2d');
+box(stockChestContext, stockChestA - 3 * stockChestScale, stockChestB - 4 * stockChestScale,
+  0, 6 * stockChestScale, 8 * stockChestScale, 8 * stockChestScale, woodC('#805037'));
+box(stockChestContext, stockChestA + 2.5 * stockChestScale, stockChestB - stockChestScale,
+  4 * stockChestScale, stockChestScale, 2 * stockChestScale, 4 * stockChestScale,
+  flat('#dfbc68', '#a78040', '#c4974d'));
+stockFurnishings.push({ canvas: stockChestCanvas, depth: stockChestA + stockChestB, animate: drawStockChest });
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
 const skeletonMage = new Image();
@@ -2210,12 +2516,15 @@ let wandLightFade = 0;
 let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
+const loreScroll = document.getElementById('lore-scroll');
+const teleportDialogue = document.getElementById('teleport-room-dialogue');
 let requestedSeat = null, activeSeat = null;
 let requestedChest = false;
 let seatProgress = 0;
 let route = [];
 let destination = null;
-const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.';
+const isWalkable = (a, b) => currentFloor()[b]?.[a] === '.' &&
+  (currentRoom !== rooms.potion || a !== POTION_STOCK_DOOR_COLUMN || b !== 0 || isStockroomUnlocked());
 
 const questDialogue = document.getElementById('quest-dialogue');
 const resetQuestDialogue = document.getElementById('reset-quest-dialogue');
@@ -2231,6 +2540,11 @@ const searchBookStack = document.getElementById('search-book-stack');
 let cauldronHeat = 0;
 let cauldronWarmup = isCauldronLit() ? 1 : 0;
 let dialogueQuest = null;
+
+function isStockroomUnlocked() {
+  const stage = questManager?.status(pageQuest);
+  return stage === 'active' || stage === 'ready' || stage === 'complete';
+}
 
 function isCauldronLit() {
   const stage = questManager?.status(cauldronQuest);
@@ -2381,6 +2695,9 @@ function drawStockDarkness(x, y, wandTip, t) {
   }
 
   reveal(...P(5, (STOCK_DOOR_ROW + .5) * TILE_SIZE, 14), 45, .7);
+  if (stockChestOpening > 0 && window.CHEST_INVENTORY?.hasStockLoot()) {
+    reveal(...P(stockChestA, stockChestB, 14), 30, .85 * stockChestOpening);
+  }
   if (light > 0) {
     const [tipX, tipY] = wandTip;
     reveal(tipX, tipY, tipRadius, light);
@@ -2656,14 +2973,20 @@ function clearRoute() {
   requestedChest = false;
 }
 
+function roomChestTile() {
+  if (currentRoom === rooms.tower) return CHEST_TILE;
+  if (currentRoom === rooms.stockroom) return stockChestTile;
+}
+
 function nextToChest(a = wizard.a, b = wizard.b) {
-  return currentRoom === rooms.tower && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
+  const tile = roomChestTile();
+  return tile && Math.abs(a - tile[0]) + Math.abs(b - tile[1]) === 1;
 }
 
 function requestChest() {
   if (chestInventory.open) return;
   const start = wizard.step ?? wizard;
-  const [a, b] = CHEST_TILE;
+  const [a, b] = roomChestTile();
   const approaches = Array.from(moves.values(), ([da, db]) => [a + da, b + db]);
   const paths = approaches.filter(tile => isWalkable(...tile))
     .map(tile => ({ tile, path: findRoute(start, ...tile) }))
@@ -2683,7 +3006,7 @@ if (!preview) {
     const key = event.key.toLowerCase();
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    if (questDialogue?.open || resetQuestDialogue?.open) return;
+    if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open || teleportDialogue?.open) return;
     if (key === 'e' && !event.repeat && canSearchBookStack()) {
       event.preventDefault();
       findMissingPage();
@@ -2770,16 +3093,17 @@ if (!preview) {
       talkToSkeletonMage();
       return;
     }
-    if (currentRoom === rooms.tower && chestInventory) {
-      const [x, y] = P(52, 4, 8);
-      if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
+    if (roomChestTile() && chestInventory) {
+      const inStockroom = currentRoom === rooms.stockroom;
+      const [x, y] = inStockroom ? P(stockChestA, stockChestB, 8 * stockChestScale) : P(52, 4, 8);
+      if (Math.abs(px + CX - x) <= 15 && py + CY >= y - (inStockroom ? 13 : 10) && py + CY <= y + 12) {
         requestChest();
         return;
       }
     }
     if (currentRoom === rooms.library && librarianHit) {
       const [x, y] = librarianHit;
-      if (Math.abs(px + CX - x) <= 8 && py + CY >= y - 43 && py + CY <= y) {
+      if (Math.abs(px + CX - x) <= 13 && py + CY >= y - 43 && py + CY <= y) {
         librarianDialogue.hidden = !librarianDialogue.hidden;
         clearRoute();
         requestedSeat = null;
@@ -2876,8 +3200,56 @@ function updateStockroomHint() {
   if (movementHint.textContent !== hint) movementHint.textContent = hint;
 }
 
+function enterRoom(exit) {
+  if (exit.target === 'stockroom' && !isStockroomUnlocked()) return;
+  currentRoom = rooms[exit.target];
+  iceBalls.length = 0;
+  castTime = 0;
+  fireCharge = 0;
+  librarianDialogue.hidden = true;
+  [wizard.a, wizard.b] = exit.arrival;
+  wizard.direction = exit.direction;
+  requestedSeat = null;
+  clearRoute();
+  clearHover();
+  heldKeys.clear();
+  const hints = {
+    library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
+    potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
+    stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
+  };
+  movementHint.textContent = hints[exit.target] ?? defaultHint;
+  fit();
+}
+
+const teleportChoice = document.getElementById('teleport-room-choice');
+document.getElementById('teleport-room')?.addEventListener('click', () => {
+  const stockroomOption = teleportChoice.querySelector('[value="stockroom"]');
+  stockroomOption.disabled = !isStockroomUnlocked();
+  stockroomOption.textContent = stockroomOption.disabled ? 'Potion Stockroom (locked)' : 'Potion Stockroom';
+  teleportChoice.value = Object.keys(rooms).find(key => rooms[key] === currentRoom);
+  heldKeys.clear();
+  fireHeld = false;
+  teleportDialogue.showModal();
+});
+
+document.getElementById('teleport-room-form')?.addEventListener('submit', event => {
+  if (event.submitter?.value !== 'teleport') return;
+  const target = teleportChoice.value;
+  const entrance = Object.values(rooms).flatMap(room => room.exits).find(exit => exit.target === target);
+  if (!entrance || rooms[target] === currentRoom || (target === 'stockroom' && !isStockroomUnlocked())) return;
+  event.preventDefault();
+  chestInventory?.close();
+  wizard.step = null;
+  activeSeat = null;
+  seatProgress = 0;
+  enterRoom(entrance);
+  teleportDialogue.close();
+  cv.focus({ preventScroll: true });
+});
+
 function updateWizard(dt) {
-  if (questDialogue?.open || resetQuestDialogue?.open) return;
+  if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open || teleportDialogue?.open) return;
   if (seatProgress > 0 && activeSeat !== requestedSeat) {
     seatProgress = Math.max(0, seatProgress - dt / .3);
     if (!seatProgress) activeSeat = null;
@@ -2886,9 +3258,10 @@ function updateWizard(dt) {
   if (requestedChest && !wizard.step && !route.length && nextToChest()) {
     clearRoute();
     clearHover();
-    const [da, db] = [CHEST_TILE[0] - wizard.a, CHEST_TILE[1] - wizard.b];
+    const [a, b] = roomChestTile();
+    const [da, db] = [a - wizard.a, b - wizard.b];
     wizard.direction = Array.from(moves.values()).find(([a, b]) => a === da && b === db)[2];
-    chestInventory.show();
+    window.CHEST_INVENTORY.open(currentRoom === rooms.stockroom);
     return;
   }
   if (requestedSeat && !wizard.step &&
@@ -2913,30 +3286,15 @@ function updateWizard(dt) {
   if (wizard.step) {
     wizard.step.elapsed += dt;
     if (wizard.step.elapsed >= STEP_TIME) {
+      if (!isWalkable(wizard.step.a, wizard.step.b)) {
+        wizard.step = null;
+        clearRoute();
+        return;
+      }
       wizard.a = wizard.step.a;
       wizard.b = wizard.step.b;
       const exit = currentRoom.exits.find(({ tile }) => wizard.a === tile[0] && wizard.b === tile[1]);
-      if (exit) {
-        const wasStockroom = currentRoom === rooms.stockroom;
-        currentRoom = rooms[exit.target];
-        if (wasStockroom !== (currentRoom === rooms.stockroom)) fit();
-        iceBalls.length = 0;
-        castTime = 0;
-        fireCharge = 0;
-        librarianDialogue.hidden = true;
-        [wizard.a, wizard.b] = exit.arrival;
-        wizard.direction = exit.direction;
-        requestedSeat = null;
-        clearRoute();
-        clearHover();
-        heldKeys.clear();
-        const hints = {
-          library: 'Library · The back arch leads to the main room. The front-right arch leads to the potion room.',
-          potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
-          stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
-        };
-        movementHint.textContent = hints[exit.target] ?? defaultHint;
-      }
+      if (exit) enterRoom(exit);
       wizard.step = null;
       if (!route.length) destination = null;
     }
@@ -3099,14 +3457,14 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
 }
 
 const librarianStops = [
-  { a: 0, b: 2, action: 'shelve', face: -1 },
-  { a: 0, b: 4, action: 'shelve', face: -1 },
-  { a: 0, b: 7, action: 'shelve', face: -1 },
-  { a: 2, b: 0, action: 'shelve', face: 1 },
-  { a: 6, b: 0, action: 'shelve', face: 1 },
-  { a: 1, b: 3, action: 'read', face: 1 },
-  { a: 4, b: 3, action: 'read', face: 1 },
-  { a: 3, b: 6, action: 'read', face: 1 }
+  { a: 0, b: 2, face: -1 },
+  { a: 0, b: 4, face: -1 },
+  { a: 0, b: 7, face: -1 },
+  { a: 2, b: 0, face: 1 },
+  { a: 6, b: 0, face: 1 },
+  { a: 1, b: 3, face: 1 },
+  { a: 4, b: 3, face: 1 },
+  { a: 3, b: 6, face: 1 }
 ];
 const librarian = {
   a: 0, b: 2, stop: librarianStops[0], route: [], step: null,
@@ -3132,7 +3490,7 @@ function updateLibrarian(dt) {
     }
     librarian.stop = stop;
     librarian.route = route;
-    librarian.dwell = (stop.action === 'read' ? 3 : 2) + Math.random() * 2.8;
+    librarian.dwell = 2.4 + Math.random() * 2.8;
   }
   const move = librarian.route.pop();
   if (move) {
@@ -3155,9 +3513,8 @@ if (!preview) {
 }
 
 function librarianLayer() {
-  const { a, b, step, stop, elapsed, dwell } = librarian;
-  const action = step ? 'walk' : stop.action;
-  const progress = step ? elapsed : Math.min(1, elapsed / dwell);
+  const { a, b, step, stop, elapsed } = librarian;
+  const progress = step ? elapsed : 0;
   const da = (a + .5 + (step ? (step.a - a) * progress : 0)) * TILE_SIZE;
   const db = (b + .5 + (step ? (step.b - b) * progress : 0)) * TILE_SIZE;
   const [x, y] = P(da, db, 0);
@@ -3166,90 +3523,36 @@ function librarianLayer() {
   const face = watching ? Math.sign(wa - wb - da + db) || 1
     : step ? Math.sign(step.a - a - step.b + b) || 1 : stop.face;
   librarianHit = [x, y];
-  return { depth: da + db, animate: () => drawLibrarian(x, y, face, action, progress, watching, stop.face) };
+  return { depth: da + db, animate: () => drawLibrarian(x, y, face, progress) };
 }
 
-function drawLibrarian(x, y, face, action, progress, watching, shelfSide) {
-  const stride = action === 'walk' ? Math.round(Math.sin(progress * Math.PI * 6)) : 0;
-  const head = y - (action === 'read' && !watching ? 23 : 25);
-  const ink = '#272334', robe = '#537460', trim = '#ac9868';
+const librarianSprite = new Image();
+librarianSprite.src = 'data:image/png;base64,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';
+
+function drawLibrarian(x, y, face, progress) {
+  const stride = Math.round(Math.sin(progress * Math.PI * 6));
   ell(ctx, x, y, 6, 2, '#49392e');
-  rect(ctx, x - 4 + stride, y - 3, 3, 3, ink);
-  rect(ctx, x + 1 - stride, y - 3, 3, 3, ink);
-  for (let row = 0; row < 16; row++) {
-    const half = row > 10 ? 6 : 5;
-    rect(ctx, x - half, y - 19 + row, half * 2 + 1, 1, ink);
-    rect(ctx, x - half + 1, y - 19 + row, half * 2 - 1, 1, robe);
-    dot(ctx, x - 2, y - 19 + row, '#698875');
+  if (!librarianSprite.naturalWidth) return;
+
+  const width = librarianSprite.naturalWidth;
+  const height = librarianSprite.naturalHeight;
+  const left = -Math.floor(width / 2);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(face < 0 ? -1 : 1, 1);
+  ctx.imageSmoothingEnabled = false;
+  if (stride === 0) {
+    ctx.drawImage(librarianSprite, left, -height);
+  } else {
+    const bodyHeight = height - 5;
+    const split = Math.floor(width / 2);
+    ctx.drawImage(librarianSprite, 0, 0, width, bodyHeight, left, -height, width, bodyHeight);
+    ctx.drawImage(librarianSprite, 0, bodyHeight, split, 5, left + stride, -5, split, 5);
+    ctx.drawImage(librarianSprite, split, bodyHeight, width - split, 5,
+      split + left - stride, -5, width - split, 5);
   }
-  // Schoudermantel met donkere plooien en geborduurde randen.
-  for (let row = 0; row < 11; row++) {
-    const half = row < 3 ? 5 + row : 7;
-    const yy = y - 21 + row;
-    rect(ctx, x - half, yy, half * 2 + 1, 1, ink);
-    rect(ctx, x - half + 1, yy, half * 2 - 1, 1, '#39564d');
-    dot(ctx, x - half + 1, yy, trim);
-    dot(ctx, x + half - 1, yy, '#7d7155');
-    dot(ctx, x - 3 + Math.floor(row / 4), yy, '#60816d');
-  }
-  rect(ctx, x - 4, y - 8, 9, 1, '#334840');
-  rect(ctx, x - 2, y - 17, 5, 1, trim);
-  dot(ctx, x, y - 16, '#d2b878');
-  rect(ctx, x - 4, y - 5, 9, 1, '#998656');
+  ctx.restore();
 
-  ell(ctx, x, head, 6, 6, ink);
-  ell(ctx, x + face, head, 4, 5, '#d8aa89');
-  rect(ctx, x - 4 * face - 1, head - 3, 2, 7, '#b6adb6');
-  dot(ctx, x - 4 * face, head + 2, '#e7dfe2');
-  const eye = x + 2 * face;
-  rect(ctx, eye - 2, head - 1, 4, 3, '#66544b');
-  rect(ctx, eye - 1, head, 2, 1, '#c5e7e4');
-  dot(ctx, x + 5 * face, head + 1, '#d8aa89');
-  dot(ctx, x + 3 * face, head + 3, '#9d695e');
-
-  // De rand loopt over de haarlijn; de kroon sluit direct op de rand aan.
-  const brim = head - 4;
-  for (let row = 0; row < 11; row++) {
-    const half = Math.min(5, Math.floor(row / 2) + 1);
-    const tip = x - face * Math.max(0, 3 - Math.floor(row / 2));
-    const yy = brim - 11 + row;
-    rect(ctx, tip - half, yy, half * 2 + 1, 1, ink);
-    if (row > 0) rect(ctx, tip - half + 1, yy, half * 2 - 1, 1, '#466657');
-    if (row > 2) dot(ctx, tip - half + 1, yy, '#71917a');
-    if (row > 5) dot(ctx, tip + half - 1, yy, '#30463e');
-  }
-  rect(ctx, x - 5, brim - 2, 11, 2, '#887451');
-  rect(ctx, x + face * 3 - 1, brim - 2, 3, 2, '#d9b46c');
-  dot(ctx, x + face * 3, brim - 1, '#65513d');
-  rect(ctx, x - 7, brim, 15, 2, ink);
-  rect(ctx, x - 6, brim, 13, 1, '#6b8a76');
-  rect(ctx, x - 4, brim + 2, 9, 1, '#987767');
-
-  // Sluiting en goudsteken langs de zoom.
-  dot(ctx, x, y - 17, '#f0d59b');
-  dot(ctx, x + 1, y - 16, '#806249');
-  for (const dx of [-4, -2, 0, 2, 4]) dot(ctx, x + dx, y - 5, '#c0a577');
-
-  if (action === 'shelve' && !watching) {
-    const raise = Math.min(1, progress * 1.8);
-    const hand = y - 12 - Math.round(12 * raise);
-    line(ctx, x + shelfSide * 4, y - 16, x + shelfSide * 8, hand, robe);
-    if (progress < .76) drawLibrarianBook(x + shelfSide * 9, hand - 2, shelfSide);
-    dot(ctx, x + shelfSide * 8, hand, '#d8aa89');
-  } else if (action === 'walk') {
-    const handX = x + face * 4, handY = y - 13 + stride;
-    drawLibrarianBook(handX, handY - 1, face);
-    dot(ctx, handX, handY + 2, '#dac292');
-  }
-}
-
-function drawLibrarianBook(x, y, face) {
-  rect(ctx, x - 3, y - 4, 7, 8, '#32202c');
-  rect(ctx, x - 2, y - 3, 5, 5, '#88514b');
-  rect(ctx, x - 2, y + 2, 5, 1, '#e3d0aa');
-  const spine = x - face * 2;
-  rect(ctx, spine, y - 3, 1, 5, '#b7755a');
-  dot(ctx, spine + face * 2, y - 2, '#d2a96b');
 }
 
 const dittoPixels = [
@@ -3379,6 +3682,7 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
+  if (!preview && zoom > 100) positionCamera();
   updateWandLight(dt);
   updateStockroomHint();
   if (searchBookStack) searchBookStack.hidden = !canSearchBookStack();
@@ -3389,6 +3693,7 @@ function frame(ms) {
   ctx.drawImage(currentRoom.canvas, 0, 0);
   drawRoomWindowLife(t);
   if (currentRoom === rooms.potion) {
+    if (!isStockroomUnlocked()) ctx.drawImage(closedStockDoor, 0, 0);
     drawRackBubbles(t);
     ctx.drawImage(rackGlass, 0, 0);
   }
@@ -3402,6 +3707,7 @@ function frame(ms) {
     } else if (currentRoom === rooms.potion) {
       drawPotionLight(t);
     } else {
+      drawStockPaintings(ctx, t, true);
       drawStockLanterns(t);
     }
     drawRoomOccupants(t, dt);
@@ -3440,26 +3746,47 @@ const zoomOut = document.getElementById('zoom-out');
 const zoomIn = document.getElementById('zoom-in');
 const zoomReset = document.getElementById('zoom-reset');
 const MIN_ZOOM = 75, MAX_ZOOM = 200, ZOOM_STEP = 25;
-let zoom = 150;
+let zoom = 100;
+let cameraScale = 1;
+let roomWidth, roomHeight;
+
+function positionCamera() {
+  const { clientWidth, clientHeight } = sceneView;
+  const step = wizard.step;
+  const progress = step ? step.elapsed / STEP_TIME : 0;
+  const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
+  const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
+  const [x, y] = P(a, b, 16);
+  const roomLeft = (W - roomWidth) / 2;
+  const offset = (viewport, start, length, focus) => {
+    const scaled = length * cameraScale;
+    if (scaled <= viewport) return (viewport - scaled) / 2 - start * cameraScale;
+    const withinRoom = (focus - start) * cameraScale - viewport / 2;
+    return -start * cameraScale - Math.max(0, Math.min(scaled - viewport, withinRoom));
+  };
+  const left = Math.round(offset(clientWidth, roomLeft, roomWidth, x));
+  const top = Math.round(offset(clientHeight, 0, roomHeight, y));
+  const transform = `translate(${left}px, ${top}px)`;
+  if (cv.style.transform !== transform) {
+    cv.style.transform = transform;
+    clearHover();
+  }
+}
 
 function fit() {
-  clearHover();
-  const center = (offset, total, visible) => visible < total ? (offset + visible / 2) / total : .5;
-  const x = center(sceneView.scrollLeft, sceneView.scrollWidth, sceneView.clientWidth);
-  const y = center(sceneView.scrollTop, sceneView.scrollHeight, sceneView.clientHeight);
-  const availableHeight = Math.min(innerHeight * .7, Math.max(140, innerHeight - 230));
   const stockroom = currentRoom === rooms.stockroom;
-  const viewWidth = stockroom ? W : 4 * (N + T) + 10;
-  const viewHeight = stockroom ? H : CY + 2 * N + F + 12;
-  const scale = Math.min(sceneView.offsetWidth / viewWidth, availableHeight / viewHeight) * zoom / 100;
-  cv.style.width = W * scale + 'px';
-  cv.style.height = H * scale + 'px';
-  sceneView.scrollLeft = sceneView.scrollWidth * x - sceneView.clientWidth / 2;
-  sceneView.scrollTop = sceneView.scrollHeight * y - sceneView.clientHeight / 2;
+  roomWidth = stockroom ? W : 4 * (N + T) + 10;
+  roomHeight = stockroom ? H : CY + 2 * N + F + 12;
+  const fitScale = Math.min(sceneView.clientWidth / roomWidth, sceneView.clientHeight / roomHeight);
+  cameraScale = fitScale * zoom / 100;
+  cv.style.width = W * cameraScale + 'px';
+  cv.style.height = H * cameraScale + 'px';
+  clearHover();
+  positionCamera();
   zoomOut.disabled = zoom === MIN_ZOOM;
   zoomIn.disabled = zoom === MAX_ZOOM;
-  zoomReset.textContent = zoom + '%';
-  zoomReset.setAttribute('aria-label', 'Zoom ' + zoom + ' percent. Reset to 100 percent.');
+  zoomReset.textContent = zoom === 100 ? 'Fit' : zoom + '%';
+  zoomReset.setAttribute('aria-label', `Zoom ${zoom} percent. Fit the full room.`);
 }
 function setZoom(value) {
   zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
@@ -3468,7 +3795,7 @@ function setZoom(value) {
 zoomOut.addEventListener('click', () => setZoom(zoom - ZOOM_STEP));
 zoomIn.addEventListener('click', () => setZoom(zoom + ZOOM_STEP));
 zoomReset.addEventListener('click', () => setZoom(100));
-sceneView.addEventListener('scroll', clearHover, { passive: true });
-addEventListener('resize', fit); fit();
+new ResizeObserver(fit).observe(sceneView);
+fit();
 
 })();
