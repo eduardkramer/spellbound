@@ -1093,6 +1093,10 @@ function stockroomFloor(a, b) {
 const stockShelfStarts = [4, 34, 64];
 const stockBookcases = [[0, 3], [6, 9]];
 const pageStackTile = [11, 9];
+const stockChestTile = [0, 9];
+const [stockChestA, stockChestB] = stockChestTile.map(tile => (tile + .5) * TILE_SIZE);
+let stockChestOpen = false;
+let stockChestOpening = 0;
 const stockLayout = [
   // Keep the entrance aisle clear all the way to the shelves.
   [2, 2, 'table'], [3, 2, 'books'], [4, 2, 'still'], [5, 2, 'chest'],
@@ -1537,8 +1541,7 @@ function buildFront() {
   });
 
   // Voorraadkist langs de rechterwand
-  box(g, 48, 1, 0, 8, 6, 8, woodD);
-  box(g, 51, 6.5, 4, 2, 1, 4, flat('#dfbc68', '#a78040', '#c4974d'));
+  drawChestBody(g, 52, 4, woodD);
   store(56, drawChest);
 
   // Kristal op een sokkel langs de linkerwand
@@ -1994,9 +1997,23 @@ function drawDiamond(t) {
 
 function drawChest(t, dt) {
   chestOpening = Math.max(0, Math.min(1, chestOpening + (chestInventory?.open ? dt : -dt) * 2.2));
-  const opening = chestOpening * chestOpening * (3 - 2 * chestOpening);
-  const angle = opening * 1.7;
-  const [x, y] = P(52, 4, 8);
+  drawChestLid(t, 52, 4, chestOpening);
+}
+
+function drawChestBody(g, a, b, wood) {
+  box(g, a - 4, b - 3, 0, 8, 6, 8, wood);
+  box(g, a - 1, b + 2.5, 4, 2, 1, 4, flat('#dfbc68', '#a78040', '#c4974d'));
+}
+
+function drawStockChest(t, dt) {
+  stockChestOpening = Math.max(0, Math.min(1, stockChestOpening + (stockChestOpen ? dt : -dt) * 2.2));
+  drawChestLid(t, stockChestA, stockChestB, stockChestOpening, true);
+}
+
+function drawChestLid(t, a, b, progress, halfOpen = false) {
+  const opening = progress * progress * (3 - 2 * progress);
+  const angle = opening * (halfOpen ? 1.18 : 1.7);
+  const [x, y] = P(a, b, 8);
   if (opening) {
     const glow = ctx.createRadialGradient(x, y - 6, 1, x, y - 6, 44);
     glow.addColorStop(0, 'rgba(255, 235, 169, ' + .65 * opening + ')');
@@ -2005,20 +2022,21 @@ function drawChest(t, dt) {
     ctx.fillStyle = glow;
     ctx.fillRect(x - 44, y - 50, 88, 88);
 
-    topFace(ctx, 8, 48, 56, 1, 7, (a, b) => {
-      if (a < 48.5 || a > 55.5 || b < 1.5 || b > 6.5) return '#e1a750';
+    topFace(ctx, 8, a - 4, a + 4, b - 3, b + 3, (u, v) => {
+      if (Math.abs(u - a) > 3.5 || Math.abs(v - b) > 2.5) return '#e1a750';
+      if (halfOpen) return '#563923';
       return opening > .4 ? '#fff4bd' : '#d8983f';
     });
 
   }
 
   // Het deksel draait om het scharnier langs de achterzijde van de kist.
-  const lid = (a, length, thickness = 0) => {
+  const lid = (offset, length, thickness = 0) => {
     // Schaal de vorm naar de buitenmaten van de bak (8 × 6).
     const span = length * 6 / 7;
     return P(
-      48 + a * 8 / 9,
-      1 + span * Math.cos(angle) - thickness * Math.sin(angle),
+      a - 4 + offset * 8 / 9,
+      b - 3 + span * Math.cos(angle) - thickness * Math.sin(angle),
       8 + span * Math.sin(angle) + thickness * Math.cos(angle)
     );
   };
@@ -2069,10 +2087,10 @@ function drawChest(t, dt) {
   }
   if (!opening) return;
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < (halfOpen ? 14 : 40); i++) {
     const age = (t * (.46 + hash(i, 9) * .3) + hash(i, 3)) % 1;
     const dx = (hash(i, 1) - .5) * (15 + 36 * age) + 2 * Math.sin(t * 2.5 + i);
-    const dy = 3 + age * (27 + hash(i, 2) * 24);
+    const dy = 3 + age * (27 + hash(i, 2) * 24) * (halfOpen ? .55 : 1);
     ctx.globalAlpha = opening * (1 - age * .85) * (.65 + .35 * Math.sin(t * 6 + i) ** 2);
     dot(ctx, x + dx, y - dy, i % 3 ? '#ffdc7a' : '#fffbdc');
     if (i % 9 === 0) {
@@ -2162,6 +2180,10 @@ const stockFurnishings = stockLayout.map(([column, row, kind]) => {
   const isPageStack = column === pageStackTile[0] && row === pageStackTile[1];
   return { canvas, depth: a + b, animate: isPageStack ? drawMissingPage : undefined };
 });
+rooms.stockroom.floor[stockChestTile[1]][stockChestTile[0]] = 'X';
+const stockChestCanvas = mk();
+drawChestBody(stockChestCanvas.getContext('2d'), stockChestA, stockChestB, woodC('#805037'));
+stockFurnishings.push({ canvas: stockChestCanvas, depth: stockChestA + stockChestB, animate: drawStockChest });
 const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
 const skeletonMage = new Image();
@@ -2434,6 +2456,9 @@ function drawStockDarkness(x, y, wandTip, t) {
   }
 
   reveal(...P(5, (STOCK_DOOR_ROW + .5) * TILE_SIZE, 14), 45, .7);
+  if (stockChestOpening > 0) {
+    reveal(...P(stockChestA, stockChestB, 14), 30, .85 * stockChestOpening);
+  }
   if (light > 0) {
     const [tipX, tipY] = wandTip;
     reveal(tipX, tipY, tipRadius, light);
@@ -2709,14 +2734,20 @@ function clearRoute() {
   requestedChest = false;
 }
 
+function roomChestTile() {
+  if (currentRoom === rooms.tower) return CHEST_TILE;
+  if (currentRoom === rooms.stockroom) return stockChestTile;
+}
+
 function nextToChest(a = wizard.a, b = wizard.b) {
-  return currentRoom === rooms.tower && Math.abs(a - CHEST_TILE[0]) + Math.abs(b - CHEST_TILE[1]) === 1;
+  const tile = roomChestTile();
+  return tile && Math.abs(a - tile[0]) + Math.abs(b - tile[1]) === 1;
 }
 
 function requestChest() {
   if (chestInventory.open) return;
   const start = wizard.step ?? wizard;
-  const [a, b] = CHEST_TILE;
+  const [a, b] = roomChestTile();
   const approaches = Array.from(moves.values(), ([da, db]) => [a + da, b + db]);
   const paths = approaches.filter(tile => isWalkable(...tile))
     .map(tile => ({ tile, path: findRoute(start, ...tile) }))
@@ -2823,9 +2854,10 @@ if (!preview) {
       talkToSkeletonMage();
       return;
     }
-    if (currentRoom === rooms.tower && chestInventory) {
-      const [x, y] = P(52, 4, 8);
-      if (Math.abs(px + CX - x) <= 15 && py + CY >= y - 10 && py + CY <= y + 12) {
+    if (roomChestTile() && chestInventory) {
+      const inStockroom = currentRoom === rooms.stockroom;
+      const [x, y] = inStockroom ? P(stockChestA, stockChestB, 8) : P(52, 4, 8);
+      if (Math.abs(px + CX - x) <= 15 && py + CY >= y - (inStockroom ? 13 : 10) && py + CY <= y + 12) {
         requestChest();
         return;
       }
@@ -2939,9 +2971,11 @@ function updateWizard(dt) {
   if (requestedChest && !wizard.step && !route.length && nextToChest()) {
     clearRoute();
     clearHover();
-    const [da, db] = [CHEST_TILE[0] - wizard.a, CHEST_TILE[1] - wizard.b];
+    const [a, b] = roomChestTile();
+    const [da, db] = [a - wizard.a, b - wizard.b];
     wizard.direction = Array.from(moves.values()).find(([a, b]) => a === da && b === db)[2];
-    chestInventory.show();
+    if (currentRoom === rooms.stockroom) stockChestOpen = !stockChestOpen;
+    else chestInventory.show();
     return;
   }
   if (requestedSeat && !wizard.step &&
@@ -2959,7 +2993,10 @@ function updateWizard(dt) {
     const a = wizard.a + da, b = wizard.b + db;
     wizard.direction = direction;
     if (isWalkable(a, b)) {
-      if (chestInventory?.open && !nextToChest(a, b)) chestInventory.close();
+      if (!nextToChest(a, b)) {
+        if (chestInventory?.open) chestInventory.close();
+        if (currentRoom === rooms.stockroom) stockChestOpen = false;
+      }
       wizard.step = { a, b, elapsed: 0 };
     }
   }
