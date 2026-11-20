@@ -21,6 +21,7 @@ const LIBRARY_HALL_DOOR_COLUMN = 7;
 const HALL_COLUMNS = 4, HALL_ROWS = 14;
 const HALL_WIDTH = HALL_COLUMNS * TILE_SIZE, HALL_DEPTH = HALL_ROWS * TILE_SIZE;
 const HALL_ENTRANCE_COLUMN = 1;
+const HALL_CLASSROOM_DOOR_ROW = 7, CLASSROOM_DOOR_ROW = 3;
 const hallEdge = (row, arrivalRow, target, direction) =>
   Array.from({ length: HALL_COLUMNS }, (_, column) => ({
     tile: [column, row], target, arrival: [column, arrivalRow], direction
@@ -40,7 +41,7 @@ if (preview && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
-const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk(), hallC = mk(), hallEndC = mk();
+const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk(), hallC = mk(), hallEndC = mk(), classroomC = mk();
 const rooms = {
   tower: { canvas: statC, exits: [
     { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' }
@@ -57,7 +58,13 @@ const rooms = {
     ...hallEdge(HALL_ROWS - 1, 1, 'hallEnd', 'sw')
   ] },
   hallEnd: { canvas: hallEndC, corridor: true, exits: [
-    ...hallEdge(0, HALL_ROWS - 2, 'hall', 'ne')
+    ...hallEdge(0, HALL_ROWS - 2, 'hall', 'ne'),
+    { tile: [HALL_COLUMNS - 1, HALL_CLASSROOM_DOOR_ROW], wallA: HALL_WIDTH,
+      target: 'classroom', arrival: [1, CLASSROOM_DOOR_ROW], direction: 'se' }
+  ] },
+  classroom: { canvas: classroomC, exits: [
+    { tile: [0, CLASSROOM_DOOR_ROW], wallA: 0, target: 'hallEnd',
+      arrival: [HALL_COLUMNS - 2, HALL_CLASSROOM_DOOR_ROW], direction: 'nw' }
   ] },
   potion: { canvas: potionC, exits: [
     { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [LIBRARY_COLUMNS - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
@@ -1891,6 +1898,29 @@ function drawHallConnector(g, b) {
   }
 }
 
+const classroomLayout = [
+  [4, 1, 'table'],
+  [2, 3, 'table'], [3, 3, 'table'], [5, 3, 'table'], [6, 3, 'table'],
+  [2, 4, 'chair'], [3, 4, 'chair'], [5, 4, 'chair'], [6, 4, 'chair'],
+  [2, 6, 'table'], [3, 6, 'table'], [5, 6, 'table'], [6, 6, 'table'],
+  [2, 7, 'chair'], [3, 7, 'chair'], [5, 7, 'chair'], [6, 7, 'chair'],
+  [7, 1, 'books']
+];
+const classroomLanterns = [[20, 3], [55, 3]];
+
+function drawClassroomDecor(g) {
+  box(g, 20, 0, 31, 32, 2, 25, woodC('#8e623f'));
+  wallR(g, 2, 42, 102, 33, 54, (u, z) => {
+    if (u < 44 || u >= 100 || z < 35 || z >= 52) return '#9f7851';
+    const x = u - 73, y = z - 43;
+    if (Math.abs(Math.hypot(x, y) - 6) < .6 || Math.abs(x) + Math.abs(y) === 5) return '#c4cbb8';
+    if (z === 39 && (u >= 48 && u < 59 || u >= 87 && u < 96)) return '#879a88';
+    return hash(u, z) > .85 ? '#3f5550' : '#354b46';
+  });
+  box(g, 19.5, 0, 30, 33, 3.25, 1.5, woodC('#a57446'));
+  box(g, 24, 2.1, 31.5, 2.1, .6, .5, flat('#e4d5ab', '#8e7c63', '#c3b997'));
+}
+
 function buildStatic(sg, room, doorStyle) {
   const library = room === rooms.library;
   const potion = room === rooms.potion;
@@ -1902,6 +1932,7 @@ function buildStatic(sg, room, doorStyle) {
   const floor = hall ? (a, b) => hallFloor(a, b, openHallEntrance) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   if (hall) drawHallFloorLight(sg);
+
   wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
   const mer = { top: copingFn, left: brOutL, right: brOutR };
   if (!openHallEntrance) {
@@ -1923,6 +1954,7 @@ function buildStatic(sg, room, doorStyle) {
     drawLibraryClock(sg);
   }
   if (hall) drawHallDecor(sg, room === rooms.hallEnd);
+  if (room === rooms.classroom) drawClassroomDecor(sg);
   if (openHallEntrance) drawHallConnector(sg, 0);
   if (potion) drawPotionWorkshop(sg);
   if (stockroom) {
@@ -2194,7 +2226,7 @@ const loadingProgress = document.getElementById('game-loading-progress');
 if (loadingProgress) loadingProgress.value = 1;
 
 for (const [roomName, room] of Object.entries(rooms)) {
-  const doorStyle = room.corridor ? doorStyles.library : doorStyles[roomName];
+  const doorStyle = room.corridor || room === rooms.classroom ? doorStyles.library : doorStyles[roomName];
   const background = room.canvas.getContext('2d');
   buildStatic(background, room, doorStyle);
   outline(background, '#14183a');
@@ -2808,6 +2840,8 @@ for (const room of [rooms.hall, rooms.hallEnd]) {
   room.floor = Array.from({ length: HALL_ROWS }, () => Array(HALL_COLUMNS).fill('.'));
 }
 rooms.hall.floor[2][0] = rooms.hall.floor[3][0] = 'X';
+rooms.classroom.floor = Array.from({ length: ROOM_TILES }, () => Array(ROOM_TILES).fill('.'));
+for (const [a, b] of classroomLayout) rooms.classroom.floor[b][a] = 'X';
 rooms.hallEnd.floor[6][0] = rooms.hallEnd.floor[7][0] = rooms.hallEnd.floor[9][0] = rooms.hallEnd.floor[11][0] = 'X';
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
 rooms.potion.floor = [
@@ -3650,7 +3684,8 @@ function enterRoom(exit) {
   const hints = {
     library: 'Library · The back arch leads to the main room. The front arches lead to the potion room and the hall.',
     hall: 'Hall · Click the far edge to continue. The arch leads back to the library.',
-    hallEnd: 'Hall · Click the edge you came from to return to the first section.',
+    hallEnd: 'Hall · The side door leads to a classroom. The open arch leads back.',
+    classroom: 'Classroom · The door leads back to the hall.',
     potion: 'Potion room · Click the Skeleton Mage’s floor tile to talk, or press E when beside him. The arch beside the display cabinet leads to the stockroom.',
     stockroom: 'Potion stockroom · Equip your wand and press E to light the way.'
   };
@@ -4073,13 +4108,20 @@ function drawLibraryDitto(t) {
 
 const hallFurnishings = new Map([[rooms.hall, makeHallFurnishings(false)], [rooms.hallEnd, makeHallFurnishings(true)]]);
 
+const classroomFurnishings = classroomLayout.map(([column, row, kind]) => {
+  const canvas = mk();
+  const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
+  drawStockContainer(canvas.getContext('2d'), a, b, kind);
+  return { canvas, depth: a + b };
+});
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
   const a = (wizard.a + (step ? (step.a - wizard.a) * progress : 0) + .5) * TILE_SIZE;
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
-  const roomFurnishings = currentRoom.corridor ? hallFurnishings.get(currentRoom) : currentRoom === rooms.library
+  const roomFurnishings = currentRoom === rooms.classroom ? classroomFurnishings : currentRoom.corridor ? hallFurnishings.get(currentRoom) : currentRoom === rooms.library
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings
       : currentRoom === rooms.potion ? potionFurnishings : currentRoom === rooms.stockroom ? stockFurnishings : [];
@@ -4185,6 +4227,8 @@ function frame(ms) {
       if (currentRoom === rooms.stockroom) {
         drawStockPaintings(ctx, t, true);
         drawStockLanterns(t);
+      } else if (currentRoom === rooms.classroom) {
+        drawLibraryLights(t, classroomLanterns);
       } else {
         drawLibraryLights(t, hallLanterns);
         drawHallCandles(t);
