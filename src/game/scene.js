@@ -50,37 +50,37 @@ const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
 const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk(), hallC = mk(), hallEndC = mk(), classroomC = mk();
 const rooms = {
-  tower: { canvas: statC, exits: [
+  tower: { title: 'Main Room', canvas: statC, exits: [
     { tile: [TOWER_LIBRARY_DOOR_COLUMN, TOWER_TILES - 1], target: 'library',
       arrival: [LIBRARY_TOWER_DOOR_COLUMN, 1], direction: 'sw' }
   ] },
-  library: { canvas: secondC, exits: [
+  library: { title: 'Grand Library', canvas: secondC, exits: [
     { tile: [LIBRARY_TOWER_DOOR_COLUMN, 0], target: 'tower',
       arrival: [TOWER_LIBRARY_DOOR_COLUMN, TOWER_TILES - 2], direction: 'ne' },
     { tile: [LIBRARY_COLUMNS - 1, LIBRARY_POTION_DOOR_ROW], wallA: LIBRARY_WIDTH, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' },
     { tile: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 1], wallB: LIBRARY_DEPTH, archHalfWidth: 19,
       target: 'hall', arrival: [HALL_ENTRANCE_COLUMN, 1], direction: 'sw' }
   ] },
-  hall: { canvas: hallC, corridor: true, exits: [
+  hall: { title: 'Castle Hall', canvas: hallC, corridor: true, exits: [
     { tile: [HALL_ENTRANCE_COLUMN, 0], wallB: 0, target: 'library',
       arrival: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 2], direction: 'ne' },
     ...hallEdge(HALL_ROWS - 1, 1, 'hallEnd', 'sw')
   ] },
-  hallEnd: { canvas: hallEndC, corridor: true, exits: [
+  hallEnd: { title: 'Castle Hall', canvas: hallEndC, corridor: true, exits: [
     ...hallEdge(0, HALL_ROWS - 2, 'hall', 'ne'),
     { tile: [HALL_COLUMNS - 1, HALL_CLASSROOM_DOOR_ROW], wallA: HALL_WIDTH,
       target: 'classroom', arrival: [1, CLASSROOM_DOOR_ROW], direction: 'se' }
   ] },
-  classroom: { canvas: classroomC, exits: [
+  classroom: { title: 'Runes Classroom', canvas: classroomC, exits: [
     { tile: [0, CLASSROOM_DOOR_ROW], wallA: 0, target: 'hallEnd',
       arrival: [HALL_COLUMNS - 2, HALL_CLASSROOM_DOOR_ROW], direction: 'nw' }
   ] },
-  potion: { canvas: potionC, exits: [
+  potion: { title: 'Potion Room', canvas: potionC, exits: [
     { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [LIBRARY_COLUMNS - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
     { tile: [POTION_STOCK_DOOR_COLUMN, 0], wallB: 0,
       target: 'stockroom', arrival: [1, STOCK_DOOR_ROW], direction: 'se' }
   ] },
-  stockroom: { canvas: stockC, exits: [
+  stockroom: { title: 'Potion Stockroom', canvas: stockC, exits: [
     { tile: [0, STOCK_DOOR_ROW], wallA: 0, target: 'potion',
       arrival: [POTION_STOCK_DOOR_COLUMN, 1], direction: 'nw' }
   ] }
@@ -4007,6 +4007,55 @@ function drawTileBorder(tile, color) {
 const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint ? movementHint.textContent : undefined;
 
+// Seven rows per letter, with one bit per pixel from left to right.
+const roomTitleGlyphs = {
+  A: [14, 17, 17, 31, 17, 17, 27], B: [30, 9, 9, 14, 9, 9, 30],
+  C: [15, 17, 16, 16, 16, 17, 14], D: [30, 9, 9, 9, 9, 9, 30],
+  E: [31, 9, 10, 14, 10, 9, 31], F: [31, 9, 10, 14, 10, 8, 28],
+  G: [15, 17, 16, 23, 17, 17, 15], H: [27, 17, 17, 31, 17, 17, 27],
+  I: [14, 4, 4, 4, 4, 4, 14], J: [7, 2, 2, 2, 2, 18, 12],
+  K: [27, 18, 20, 24, 20, 18, 27], L: [28, 8, 8, 8, 8, 9, 31],
+  M: [17, 27, 21, 21, 17, 17, 27], N: [19, 25, 25, 21, 19, 19, 25],
+  O: [14, 17, 17, 17, 17, 17, 14], P: [30, 9, 9, 14, 8, 8, 28],
+  Q: [14, 17, 17, 17, 21, 18, 13], R: [30, 9, 9, 14, 10, 9, 29],
+  S: [15, 17, 16, 14, 1, 17, 30], T: [31, 21, 4, 4, 4, 4, 14],
+  U: [27, 17, 17, 17, 17, 17, 14], V: [27, 17, 17, 17, 10, 10, 4],
+  W: [27, 17, 17, 21, 21, 27, 17], X: [27, 17, 10, 4, 10, 17, 27],
+  Y: [27, 17, 10, 4, 4, 4, 14], Z: [31, 17, 2, 4, 8, 17, 31]
+};
+const roomTitleBanner = document.getElementById('room-title');
+const roomTitleArt = document.getElementById('room-title-art');
+const roomTitleStatus = document.getElementById('room-title-status');
+let roomTitleAnimation;
+
+function showRoomTitle(title) {
+  if (!roomTitleBanner) return;
+  const letters = Array.from(title.toUpperCase());
+  roomTitleArt.width = letters.length * 6;
+  roomTitleArt.height = 8;
+  roomTitleArt.style.setProperty('--title-width', roomTitleArt.width);
+  const art = roomTitleArt.getContext('2d');
+  for (const offset of [1, 0]) {
+    letters.forEach((letter, index) => {
+      roomTitleGlyphs[letter]?.forEach((row, y) => {
+        for (let x = 0; x < 5; x++) {
+          if (row & (16 >> x)) {
+            const color = offset ? '#795435' : y < 3 ? '#fff0c4' : '#e5c486';
+            dot(art, index * 6 + x + offset, y + offset, color);
+          }
+        }
+      });
+    });
+  }
+  roomTitleStatus.textContent = title;
+  roomTitleAnimation?.cancel();
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const keyframes = reduceMotion
+    ? [{ opacity: 1, offset: 0 }, { opacity: 1, offset: 1 }]
+    : [{ opacity: 0 }, { opacity: 1, offset: .17 }, { opacity: 1, offset: .72 }, { opacity: 0 }];
+  roomTitleAnimation = roomTitleBanner.animate(keyframes, { duration: 2600 });
+}
+
 function updateStockroomHint() {
   if (currentRoom !== rooms.stockroom) return;
   const hint = !WIZARD.staffEquipped ? 'Equip your wand, then press E to cast Wand Light.'
@@ -4037,6 +4086,7 @@ function enterRoom(exit) {
   };
   movementHint.textContent = hints[exit.target] ?? defaultHint;
   fit();
+  showRoomTitle(currentRoom.title);
 }
 
 const teleportChoice = document.getElementById('teleport-room-choice');
@@ -4799,6 +4849,7 @@ function frame(ms) {
     loadingProgress.value = loadingProgress.max;
     document.getElementById('wrap').removeAttribute('aria-busy');
     loadingScreen.hidden = true;
+    showRoomTitle(currentRoom.title);
   }
   if (preview && cv.hidden) {
     cv.hidden = false;

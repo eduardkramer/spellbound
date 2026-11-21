@@ -28,6 +28,19 @@
 
   #scene-view{position:relative;width:100%;flex:1 1 0;min-height:120px;overflow:hidden}
   #scene{position:absolute;top:0;left:0}
+  #room-title{
+    position:fixed;inset:0;z-index:2;display:grid;place-items:center;
+    padding:12px;box-sizing:border-box;pointer-events:none;opacity:0
+  }
+  #room-title-plaque{
+    max-width:100%;box-sizing:border-box;padding:14px clamp(12px,4vw,28px);
+    border-block:1px solid #aa8559;
+    background:linear-gradient(90deg,#17152880,#171528f5 18%,#171528f5 82%,#17152880);
+    box-shadow:0 2px #171528bb
+  }
+  #room-title-art{
+    width:calc(var(--title-width, 1) * clamp(2px,.5vw,4px));max-width:100%;height:auto
+  }
   #zoom{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
@@ -182,6 +195,10 @@
   <div id="scene-view">
     <canvas id="scene" tabindex="0" aria-label="Wizard’s room" aria-describedby="movement-hint"></canvas>
   </div>
+  <div id="room-title" aria-hidden="true">
+    <div id="room-title-plaque"><canvas id="room-title-art"></canvas></div>
+  </div>
+  <p id="room-title-status" class="visually-hidden" role="status"></p>
   <aside id="librarian-dialogue" class="npc-dialogue" aria-labelledby="librarian-name" aria-live="polite" hidden>
     <div class="npc-dialogue-layout">
       <figure class="npc-speaker">
@@ -238,7 +255,7 @@
     <label for="teleport-room-choice">Choose a room</label>
     <select id="teleport-room-choice" required autofocus>
       <option value="tower">Main Room</option>
-      <option value="library">Library</option>
+      <option value="library">Grand Library</option>
       <option value="potion">Potion Room</option>
       <option value="stockroom">Potion Stockroom</option>
       <option value="hall">Hall · First Section</option>
