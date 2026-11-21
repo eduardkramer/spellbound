@@ -3599,7 +3599,7 @@ function drawDialogueBubble(x, y, t) {
 function drawDialogueIndicators(t) {
   if (preview) return;
   if (currentRoom === rooms.library && librarianDialogue.hidden && librarianHit && librarianSprite.naturalWidth) {
-    drawDialogueBubble(librarianHit[0], librarianHit[1] - librarianSprite.naturalHeight - 7, t);
+    drawDialogueBubble(librarianHit[0] + 8, librarianHit[1] - librarianSprite.naturalHeight - 7, t);
   }
   if (currentRoom === rooms.potion && !questDialogue?.open && skeletonMage.naturalWidth) {
     const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
