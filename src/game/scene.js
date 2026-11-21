@@ -4197,7 +4197,7 @@ function drawDialogueBubble(x, y, t) {
   dot(ctx, x - 3, y + 5, '#d8d8db');
   const count = matchMedia('(prefers-reduced-motion: reduce)').matches ? 3 : Math.min(3, Math.floor(t % 3.2 / .8) + 1);
   for (let index = 0; index < count; index++) {
-    rect(ctx, x - 6 + index * 5, y - 1, 2, 2, '#302c36');
+    dot(ctx, x - 4 + index * 4, y, '#302c36');
   }
 }
 
