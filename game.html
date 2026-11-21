@@ -287,14 +287,14 @@
 
   /* Six-slot arcane sprite frame; slot hitboxes track the painted recesses. */
   #hotbar{
-    position:relative;display:block;width:min(534px,calc(100vw - 24px));height:auto;
+    position:relative;display:block;width:min(384px,80vw,100%);max-width:100%;height:auto;container-type:inline-size;
     aspect-ratio:534 / 137;padding:0;border:0;box-shadow:none;overflow:visible;
     background:transparent url("assets/sprites/arcane-hotbar.png") center / 100% 100% no-repeat;
     image-rendering:pixelated;flex-shrink:0;
   }
   #hotbar .hotbar-slot{
     position:absolute;left:calc(6.5% + var(--slot-index) * 14.5%);top:34%;
-    width:13.8%;height:53%;padding:7px;min-width:0;
+    width:13.8%;height:53%;padding:clamp(2px,1cqw,4px);min-width:0;
     border:0;background:transparent;box-shadow:none;transform:none;
   }
   #hotbar .hotbar-slot:nth-child(1){--slot-index:0}
@@ -306,13 +306,13 @@
   #hotbar .hotbar-slot:hover{background:#e8cb8420}
   #hotbar .hotbar-slot[aria-pressed="true"]{background:transparent;box-shadow:none;color:#fff0bd}
   #hotbar .hotbar-slot[aria-pressed="true"]::before{
-    content:"";position:absolute;inset:-2px;pointer-events:none;
+    content:"";position:absolute;inset:-1px;pointer-events:none;
     background:url("assets/sprites/arcane-hotbar-selected.png") center / 100% 100% no-repeat;
     image-rendering:pixelated;
   }
   #hotbar .hotbar-slot:focus-visible{outline:2px solid #c6f7ee;outline-offset:-6px}
-  #hotbar .slot-key{top:7px;left:9px;font-size:10px;text-shadow:1px 1px #201726}
-  #hotbar .item-icon{position:relative;width:70%;max-width:40px;height:auto;image-rendering:pixelated}
+  #hotbar .slot-key{top:10%;left:12%;font-size:clamp(7px,2.5cqw,10px);text-shadow:1px 1px #201726}
+  #hotbar .item-icon{position:relative;width:72%;max-width:28px;height:auto;image-rendering:pixelated}
 
 </style>
 <link rel="stylesheet" href="assets/sprites/lore-scroll.css">
