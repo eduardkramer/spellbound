@@ -79,7 +79,15 @@
     background:#d5ad68;box-shadow:1px 0 #785735,-1px 0 #372a24;pointer-events:none
   }
   .npc-dialogue h2{flex:none;font:bold 14px/1.2 Georgia,serif;color:#d8b880;margin:0 0 5px}
-  .npc-dialogue p{flex:1 1 48px;min-height:32px;overflow:auto;scrollbar-width:thin;font-size:clamp(12px,1vw,14px);line-height:1.4;margin:0 0 8px}
+  .npc-dialogue p{
+    flex:1 1 48px;min-height:32px;overflow:auto;scrollbar-width:thin;
+    display:flex;flex-direction:column;justify-content:safe center;
+    font:400 clamp(15px,1.2vw,18px)/1.45 Georgia,"Palatino Linotype",Palatino,serif;
+    margin:0 0 8px
+  }
+  .npc-dialogue-copy:has(#skeleton-topics:not([hidden]) button) p,
+  .npc-dialogue-copy:has(#librarian-topics button) p{justify-content:flex-start}
+  .npc-dialogue button,.npc-speaker figcaption{font-family:Georgia,"Palatino Linotype",Palatino,serif}
   .npc-dialogue form{flex:0 1 auto;min-height:28px;max-height:65%;overflow:auto;display:flex;flex-wrap:wrap;gap:5px;width:100%}
   .npc-dialogue button{
     width:auto;height:auto;min-height:28px;padding:3px 10px;background:#49322d;color:#ffe4a8;
