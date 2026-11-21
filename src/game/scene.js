@@ -3371,30 +3371,111 @@ function renderQuestObjective() {
   document.getElementById('quest-log-entries').replaceChildren(...entries);
 }
 
+const dialogueTyping = new WeakMap();
+
+function typeDialogue(element, text, panel, onComplete) {
+  dialogueTyping.get(element)?.();
+  const characters = Array.from(text);
+  let timer, position = 0;
+  const stop = () => {
+    clearTimeout(timer);
+    element.textContent = text;
+    element.removeAttribute('aria-label');
+    dialogueTyping.delete(element);
+  };
+  dialogueTyping.set(element, stop);
+  element.setAttribute('aria-label', text);
+  element.textContent = '';
+  const tick = () => {
+    if (panel.hidden || (panel.tagName === 'DIALOG' && !panel.open) ||
+        matchMedia('(prefers-reduced-motion: reduce)').matches || position >= characters.length) {
+      const finished = !panel.hidden && (panel.tagName !== 'DIALOG' || panel.open);
+      stop();
+      if (finished && onComplete) {
+        timer = setTimeout(() => { dialogueTyping.delete(element); onComplete(); }, 1200);
+        dialogueTyping.set(element, () => { clearTimeout(timer); dialogueTyping.delete(element); });
+      }
+      return;
+    }
+    element.textContent += characters[position++];
+    timer = setTimeout(tick, /[.!?]/.test(characters[position - 1]) ? 240 : 32);
+  };
+  timer = setTimeout(tick, 32);
+}
+
 function talkToSkeletonMage() {
   if (!questDialogue || questDialogue.open || chestInventory?.open) return;
   const quest = questManager.forGiver('skeleton-mage');
   if (!quest) return;
   dialogueQuest = quest;
-  const stage = questManager.status(quest);
-  const messages = {
-    available: quest.offer,
-    active: quest.remind(questContext()),
-    ready: quest.turnIn,
-    complete: 'Thanks for your help, wizard.'
-  };
-  document.getElementById('quest-title').textContent = quest.title;
-  document.getElementById('quest-message').textContent = messages[stage];
-  const action = document.getElementById('quest-action');
-  action.hidden = stage !== 'available' && stage !== 'ready';
-  action.textContent = stage === 'ready' ? 'Complete quest' : 'Accept';
-  document.getElementById('quest-dismiss').textContent = stage === 'available' ? 'Decline' : 'Close';
+  document.getElementById('quest-title').hidden = true;
+  document.getElementById('quest-action').hidden = true;
+  document.getElementById('quest-dismiss').textContent = 'Goodbye';
+  document.getElementById('quest-dismiss').hidden = false;
+  document.getElementById('skeleton-next').hidden = false;
+  document.getElementById('skeleton-topics').hidden = true;
   clearRoute();
   heldKeys.clear();
   fireHeld = false;
   questDialogue.returnValue = '';
   questDialogue.showModal();
+  const greeting = questManager.status(cauldronQuest) === 'complete'
+    ? 'Ah, a friendly face! There is always something brewing in this classroom. What brings you here?'
+    : "Oh no, my wand doesn't work, and the cauldron is turning cold fast... I could really use a moment to think.";
+  typeDialogue(document.getElementById('quest-message'), greeting, questDialogue);
 }
+
+document.getElementById('skeleton-next')?.addEventListener('click', () => {
+  dialogueTyping.get(document.getElementById('quest-message'))?.();
+  document.getElementById('skeleton-next').hidden = true;
+  document.getElementById('quest-action').hidden = true;
+  const topics = document.getElementById('skeleton-topics');
+  topics.replaceChildren();
+  topics.hidden = false;
+  const choices = [
+    ["What happened to your wand?", "A little too much enthusiasm and one badly pronounced spell. Now it only produces sparks. I should have listened to my own lessons."],
+    ["What are you brewing?", "A warming draught for the students. The ingredients are ready, but the recipe demands a steady flame and a careful hand."],
+    ["Tell me about yourself.", "I have taught potion-making here for longer than I care to count. Losing my flesh did little to dull my curiosity, though it has made tasting my own recipes rather difficult."],
+    [dialogueQuest.title, null]
+  ];
+  for (const [label, response] of choices) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      topics.hidden = true;
+      document.getElementById('quest-title').hidden = !!response;
+      document.getElementById('quest-title').textContent = response ? '' : dialogueQuest.title;
+      document.getElementById('skeleton-next').hidden = !response;
+      const stage = questManager.status(dialogueQuest);
+      const messages = {
+        available: dialogueQuest.offer,
+        active: dialogueQuest.remind(questContext()),
+        ready: dialogueQuest.turnIn,
+        complete: 'Thanks for your help, wizard.'
+      };
+      const action = document.getElementById('quest-action');
+      action.hidden = !!response || (stage !== 'available' && stage !== 'ready');
+      action.textContent = stage === 'ready' ? 'Complete quest' : 'Start quest';
+      typeDialogue(document.getElementById('quest-message'), response ?? messages[stage], questDialogue);
+      document.getElementById(response ? 'skeleton-next' : action.hidden ? 'quest-dismiss' : 'quest-action').focus();
+    });
+    topics.append(button);
+  }
+  topics.querySelector('button').focus();
+});
+
+document.getElementById('quest-dismiss')?.addEventListener('click', event => {
+  event.preventDefault();
+  document.getElementById('quest-title').hidden = true;
+  document.getElementById('skeleton-topics').hidden = true;
+  document.getElementById('skeleton-next').hidden = true;
+  document.getElementById('quest-action').hidden = true;
+  document.getElementById('quest-dismiss').hidden = true;
+  typeDialogue(document.getElementById('quest-message'),
+    'Safe travels, young wizard. May your spells be steady and your cauldron stay warm!',
+    questDialogue, () => questDialogue.close('dismiss'));
+});
 
 function canResetQuest(quest) {
   return ['active', 'ready', 'complete'].includes(questManager.status(quest));
@@ -3429,6 +3510,7 @@ document.getElementById('reset-quest-form')?.addEventListener('submit', event =>
 resetQuestDialogue?.addEventListener('close', () => cv.focus({ preventScroll: true }));
 
 questDialogue?.addEventListener('close', () => {
+  dialogueTyping.get(document.getElementById('quest-message'))?.();
   if (questDialogue.returnValue === 'advance' && dialogueQuest) {
     const stage = questManager.status(dialogueQuest);
     if (stage === 'available') questManager.accept(dialogueQuest);
@@ -3568,6 +3650,43 @@ function warmCauldron(hit, dt) {
   if (questManager?.status(cauldronQuest) !== 'active') return;
   cauldronHeat = hit ? cauldronHeat + dt : 0;
   if (cauldronHeat >= 1 && questManager.record('cauldron-heated')) renderQuestObjective();
+}
+
+function drawDialogueBubble(x, y, t) {
+  x = Math.round(x); y = Math.round(y);
+  // Stepped corners and a slanted tail keep the outline on the pixel grid.
+  for (const [inset, top, width, height] of [[-9,-8,18,14],[-11,-6,22,10],[-12,-4,24,6]]) {
+    rect(ctx, x + inset, y + top, width, height, '#242426');
+  }
+  rect(ctx, x - 9, y - 6, 18, 10, '#ffffff');
+  rect(ctx, x - 10, y - 4, 20, 7, '#ffffff');
+  rect(ctx, x - 7, y - 7, 14, 12, '#ffffff');
+  rect(ctx, x - 8, y + 3, 16, 2, '#ceced0');
+  dot(ctx, x - 10, y + 2, '#ceced0');
+  dot(ctx, x + 9, y + 2, '#ceced0');
+  rect(ctx, x - 5, y + 5, 5, 2, '#242426');
+  rect(ctx, x - 5, y + 7, 3, 2, '#242426');
+  dot(ctx, x - 5, y + 9, '#242426');
+  rect(ctx, x - 4, y + 4, 3, 2, '#ffffff');
+  rect(ctx, x - 4, y + 6, 2, 1, '#ffffff');
+  dot(ctx, x - 4, y + 7, '#ffffff');
+  dot(ctx, x - 3, y + 6, '#ceced0');
+  dot(ctx, x + 6, y - 5, '#dedee0');
+  const count = matchMedia('(prefers-reduced-motion: reduce)').matches ? 3 : Math.min(3, Math.floor(t % 3.2 / .8) + 1);
+  for (let index = 0; index < count; index++) {
+    rect(ctx, x - 6 + index * 5, y - 1, 2, 2, '#302c36');
+  }
+}
+
+function drawDialogueIndicators(t) {
+  if (preview) return;
+  if (currentRoom === rooms.library && librarianDialogue.hidden && librarianHit && librarianSprite.naturalWidth) {
+    drawDialogueBubble(librarianHit[0] + 8, librarianHit[1] - librarianSprite.naturalHeight - 7, t);
+  }
+  if (currentRoom === rooms.potion && !questDialogue?.open && skeletonMage.naturalWidth) {
+    const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
+    drawDialogueBubble(x + 19, y - 5, t);
+  }
 }
 
 function drawQuestMarker(t) {
@@ -4354,11 +4473,66 @@ function updateLibrarian(dt) {
 }
 
 const librarianDialogue = document.getElementById('librarian-dialogue');
+const librarianConversations = {
+  greeting: { text: 'Keep your voice down, apprentice. Someone has been returning books that were never borrowed... and one of them bears Madame Aubert’s handwriting.',
+    choices: [['What happened to Madame Aubert?', 'aubert'], ['Which book was returned?', 'book'], ['Tell me about yourself.', 'keeper'], ['Where should I look?', 'explore']] },
+  aubert: { text: 'She came here before she vanished. She asked whether a portrait could remember something its painter had forgotten. When I turned around, her chair was empty. Her tea was still warm.',
+    choices: [['What did she leave behind?', 'note'], ['Could the portrait know?', 'portrait'], ['Ask something else.', 'greeting']] },
+  note: { text: 'A note between two blank pages: "If it answers in my voice, ask what I was afraid of." I have read it a hundred times. I still cannot decide whether it is a warning or a test.',
+    choices: [['What was she afraid of?', 'fear'], ['Ask about the portrait.', 'portrait'], ['Ask something else.', 'greeting']] },
+  fear: { text: 'Forgetting a student’s name. Such a small fear for someone so powerful. Whatever happened to her, remember that she cared about the people in this castle.',
+    choices: [['Ask something else.', 'greeting']] },
+  portrait: { text: 'People say her painted eyes open after midnight. I have only seen them move once. They were watching the doorway behind me. There was nobody there when I looked.',
+    choices: [['Which book was returned?', 'book'], ['Ask something else.', 'greeting']] },
+  book: { text: 'A register of Oakhaven’s students. The binding was wet, though it had not rained. Its last entry was written in fresh ink. The name had been carefully scratched away.',
+    choices: [['Did you touch the ink?', 'ink'], ['Who brought it back?', 'visitor'], ['Ask something else.', 'greeting']] },
+  ink: { text: 'With a paper knife. The ink crawled toward the blade. I closed the book before it reached the handle. Since then, I have kept a clean sheet between every page.',
+    choices: [['Who brought it back?', 'visitor'], ['Ask something else.', 'greeting']] },
+  visitor: { text: 'I heard three knocks and found it on the desk. No footsteps. No voice. Only the smell of cold candle wax. Whoever returned it knew exactly when I would be alone.',
+    choices: [['Ask something else.', 'greeting']] },
+  keeper: { text: 'I used to teach protective charms. Now I look after the books. Books are easier to keep safe than students... usually. Madame Aubert used to tease me about that.',
+    choices: [['Were you friends?', 'friend'], ['Ask something else.', 'greeting']] },
+  friend: { text: 'She always returned her books late and brought me tea as an apology. I kept a list of her overdue loans. I have not had the heart to erase it.',
+    choices: [['Ask about her disappearance.', 'aubert'], ['Ask something else.', 'greeting']] },
+  explore: { text: 'Take your time in the castle. The hall leads to the runes classroom. In the potion room, our skeletal colleague may need a steady hand. Bring your wand. Curiosity is safer with a little light.',
+    choices: [['What about the stockroom?', 'stockroom'], ['Ask something else.', 'greeting']] },
+  stockroom: { text: 'Speak to the Skeleton Mage before trying that door. The stockroom is his responsibility. If he sends you inside, keep your wand close: the shelves cast very long shadows.',
+    choices: [['Ask something else.', 'greeting']] }
+};
+
+function showLibrarianConversation(key) {
+  const conversation = librarianConversations[key];
+  const message = librarianDialogue.querySelector('.npc-dialogue-copy p');
+  const topics = document.getElementById('librarian-topics');
+  document.getElementById('close-librarian-dialogue').hidden = false;
+  topics.replaceChildren();
+  for (const [label, destination] of conversation.choices) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      showLibrarianConversation(destination);
+      topics.querySelector('button').focus();
+    });
+    topics.append(button);
+  }
+  typeDialogue(message, conversation.text, librarianDialogue);
+}
+
 let librarianHit = null;
 if (!preview) {
   librarianDialogue.hidden = true;
+  const librarianMessage = librarianDialogue.querySelector('.npc-dialogue-copy p');
+
+  new MutationObserver(() => {
+    if (librarianDialogue.hidden) dialogueTyping.get(librarianMessage)?.();
+    else showLibrarianConversation('greeting');
+  }).observe(librarianDialogue, { attributes: true, attributeFilter: ['hidden'] });
   document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
-    librarianDialogue.hidden = true;
+    document.getElementById('librarian-topics').replaceChildren();
+    document.getElementById('close-librarian-dialogue').hidden = true;
+    typeDialogue(librarianMessage, 'Walk carefully, apprentice. And if a book whispers your name... let it finish before you answer.',
+      librarianDialogue, () => { librarianDialogue.hidden = true; });
   });
   addEventListener('keydown', event => {
     if (event.key === 'Escape') librarianDialogue.hidden = true;
@@ -4783,6 +4957,7 @@ function frame(ms) {
     // De voorste muur staat vóór de meubels en personages op de vloer.
     if (currentRoom.foreground) ctx.drawImage(currentRoom.foreground, 0, 0);
     if (currentRoom === rooms.potion) drawQuestMarker(t);
+    drawDialogueIndicators(t);
     if (currentRoom.corridor) drawHallAtmosphere(t);
     requestAnimationFrame(frame);
     return;
