@@ -204,44 +204,13 @@
   #skeleton-topics,#librarian-topics{grid-template-columns:repeat(2,minmax(0,1fr))}
   #skeleton-topics button,#librarian-topics button{font-size:clamp(10px,1.3vw,12px);line-height:1.2}
 
-  /* ---- muziekspeler ---- */
-  #player{width:min(460px,calc(100vw - 24px));box-sizing:border-box;background:var(--bg);padding:10px 12px;
-    border:2px solid var(--line);box-shadow:0 0 0 2px #0c0f24,4px 4px 0 2px #0c0f24, inset 0 0 0 2px var(--bg2);position:relative}
-  #player::before,#player::after{content:"";position:absolute;width:4px;height:4px;background:var(--gold);top:-5px}
-  #player::before{left:-5px}#player::after{right:-5px}
-  .row{display:flex;align-items:center;gap:10px}
-  #eq{display:flex;align-items:flex-end;gap:2px;height:16px;width:22px;flex:none}
-  #eq i{display:block;width:3px;height:3px;background:var(--pink)}
-  #player.playing #eq i{animation:eq .9s steps(5) infinite}
-  #eq i:nth-child(2){animation-delay:-.3s!important;background:var(--gold)}
-  #eq i:nth-child(3){animation-delay:-.6s!important}
-  #eq i:nth-child(4){animation-delay:-.15s!important;background:var(--gold)}
-  #eq i:nth-child(5){animation-delay:-.45s!important}
-  @keyframes eq{0%{height:3px}20%{height:14px}40%{height:7px}60%{height:16px}80%{height:5px}100%{height:3px}}
-  #info{min-width:0;flex:1}
-  #title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt)}
-  #sub{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-  #time{font-size:11px;color:var(--dim);flex:none;font-variant-numeric:tabular-nums}
+  /* Shared controls used by the game UI. */
   button{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;background:var(--bg2);
     box-shadow:inset 0 0 0 2px var(--line);color:var(--txt)}
   button:hover{background:#262c66;color:var(--gold)}
   button:active{transform:translateY(1px)}
   button:focus-visible{outline:2px solid var(--gold)}
   button svg{width:16px;height:16px;shape-rendering:crispEdges;fill:currentColor}
-  #play{width:34px;height:34px}
-  #play svg{width:20px;height:20px}
-  #controls{margin-top:10px;justify-content:space-between}
-  #left{display:flex;gap:6px;align-items:center}
-  #right{display:flex;gap:8px;align-items:center}
-  button.on{color:var(--pink)}
-  input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer;height:14px}
-  input[type=range]::-webkit-slider-runnable-track{height:6px;background:#0c0f24;box-shadow:0 0 0 2px var(--line)}
-  input[type=range]::-moz-range-track{height:6px;background:#0c0f24;box-shadow:0 0 0 2px var(--line)}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;margin-top:-4px;background:var(--gold);border:0;border-radius:0}
-  input[type=range]::-moz-range-thumb{width:8px;height:14px;background:var(--gold);border:0;border-radius:0}
-  #seek{flex:1;margin-top:10px;display:block;width:100%}
-  #vol{width:70px}
-
   #hotbar{display:flex;gap:5px;padding:6px;background:#211c32;border:2px solid #9a8154;
     box-shadow:inset 0 0 0 2px #3b324b,3px 3px #080b1a;max-width:100%;box-sizing:border-box}
   #hotbar .hotbar-slot{position:relative;box-sizing:border-box;width:clamp(36px,8vw,46px);height:46px;
@@ -370,26 +339,7 @@
   </details>
   <p id="movement-hint">Click to move or sit. Use WASD or the arrow keys to walk. Click the chest to open it, or press E when beside it. With your wand equipped, press F for ice hold Q for fire, or hold R for water.</p>
 
-  <div id="player">
-    <div class="row">
-      <div id="eq"><i></i><i></i><i></i><i></i><i></i></div>
-      <div id="info"><div id="title">…</div><div id="sub"></div></div>
-      <div id="time">0:00 / 0:00</div>
-    </div>
-    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Playback position">
-    <div class="row" id="controls">
-      <div id="left">
-        <button id="prev" title="Previous" aria-label="Previous"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="1" height="6"/><rect x="2" y="3.5" width="1" height="1"/><rect x="3" y="2.5" width="1" height="3"/><rect x="4" y="1.5" width="1" height="5"/><rect x="5" y="0.5" width="1" height="7"/><rect x="6" y="0" width="1" height="0"/></svg></button>
-        <button id="play" title="Play / pause" aria-label="Play"></button>
-        <button id="next" title="Next" aria-label="Next"><svg viewBox="0 0 8 8"><rect x="7" y="1" width="1" height="6"/><rect x="5" y="3.5" width="1" height="1"/><rect x="4" y="2.5" width="1" height="3"/><rect x="3" y="1.5" width="1" height="5"/><rect x="2" y="0.5" width="1" height="7"/></svg></button>
-        <button id="shuffle" title="Shuffle" aria-label="Shuffle"><svg viewBox="0 0 8 8"><rect x="0" y="1" width="2" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="6" y="6" width="2" height="1"/></svg></button>
-      </div>
-      <div id="right">
-        <button id="mute" title="Sound" aria-label="Sound"></button>
-        <input id="vol" type="range" min="0" max="100" value="60" aria-label="Volume">
-      </div>
-    </div>
-  </div>
+
 </div>
 <dialog id="teleport-room-dialogue" aria-labelledby="teleport-room-title">
   <h2 id="teleport-room-title">Teleport</h2>
@@ -452,13 +402,11 @@
   <p>— The Skeleton Mage</p>
   <form method="dialog"><button autofocus>Close</button></form>
 </dialog>
-<script src="src/audio/tracks.js"></script>
 <script src="src/game/wizard.js"></script>
 <script src="src/game/inventory.js"></script>
 <script src="src/game/quests/definitions.js"></script>
 <script src="src/game/quests/manager.js"></script>
 <script src="src/game/scene.js"></script>
-<script src="src/audio/player.js"></script>
 <script>
 (() => {
   const hotbar = document.getElementById('hotbar');
