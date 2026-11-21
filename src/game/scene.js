@@ -1092,6 +1092,15 @@ function drawPotionWorkshop(g) {
     left: (u, z) => sh('#805337', .82 + hash(u, Math.floor(z / 7)) * .26),
     right: (u, z) => sh('#63402f', .82 + hash(u, Math.floor(z / 7)) * .22)
   };
+  // Stone skirting and muted green panels echo the main room's materials.
+  for (const paint of [wallL, wallR]) paint(g, 0, 0, 2 * (paint === wallL ? POTION_ROWS : POTION_COLUMNS) * TILE_SIZE, 0, 25,
+    (u, z) => {
+      if (paint === wallL && Math.abs(u - (POTION_DOOR_ROW + .5) * 16) < 17 ||
+          paint === wallR && Math.abs(u - (POTION_STOCK_DOOR_COLUMN + .5) * 16) < 17) return null;
+      if (paint === wallR && u >= rackStart * 2 && u < rackEnd * 2) return null;
+      return z < 3 || z > 22 || u % 16 < 2 ? '#514a41' : z === 21 ? '#938064' : '#455950';
+    });
+
   drawWallIvy(g, [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]);
   for (const [start, end] of potionBookcases) {
     const depth = 3;
@@ -1140,15 +1149,6 @@ function drawPotionWorkshop(g) {
     if (y > 4 && y < 15 && x > 3 && x < 14 && (y % 4 === 0 || x === 8)) return '#a27754';
     return '#dfbb80';
   });
-  // Stone skirting and muted green panels echo the main room's materials.
-  for (const paint of [wallL, wallR]) paint(g, 0, 0, 2 * (paint === wallL ? POTION_ROWS : POTION_COLUMNS) * TILE_SIZE, 0, 25,
-    (u, z) => {
-      if (paint === wallL && Math.abs(u - (POTION_DOOR_ROW + .5) * 16) < 17 ||
-          paint === wallR && Math.abs(u - (POTION_STOCK_DOOR_COLUMN + .5) * 16) < 17) return null;
-      if (paint === wallR && u >= rackStart * 2 && u < rackEnd * 2) return null;
-      if (paint === wallL && potionBookcases.some(([a,b]) => u >= a && u < b)) return null;
-      return z < 3 || z > 22 || u % 16 < 2 ? '#514a41' : z === 21 ? '#938064' : '#455950';
-    });
   drawFramedPaintings(g, [[wallL, [[118, 63, 11, 22, 'herb', ['#b99a6c','#78583e','#453832']]]]]);
   drawPotionDryingRack(g, timber);
   drawPotionRack(g);
