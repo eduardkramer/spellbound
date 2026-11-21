@@ -3403,25 +3403,60 @@ function talkToSkeletonMage() {
   const quest = questManager.forGiver('skeleton-mage');
   if (!quest) return;
   dialogueQuest = quest;
-  const stage = questManager.status(quest);
-  const messages = {
-    available: quest.offer,
-    active: quest.remind(questContext()),
-    ready: quest.turnIn,
-    complete: 'Thanks for your help, wizard.'
-  };
-  document.getElementById('quest-title').textContent = quest.title;
-  const action = document.getElementById('quest-action');
-  action.hidden = stage !== 'available' && stage !== 'ready';
-  action.textContent = stage === 'ready' ? 'Complete quest' : 'Accept';
-  document.getElementById('quest-dismiss').textContent = stage === 'available' ? 'Decline' : 'Close';
+  document.getElementById('quest-title').textContent = 'Skeleton Mage';
+  document.getElementById('quest-action').hidden = true;
+  document.getElementById('quest-dismiss').textContent = 'Goodbye';
+  document.getElementById('skeleton-next').hidden = false;
+  document.getElementById('skeleton-topics').hidden = true;
   clearRoute();
   heldKeys.clear();
   fireHeld = false;
   questDialogue.returnValue = '';
   questDialogue.showModal();
-  typeDialogue(document.getElementById('quest-message'), messages[stage], questDialogue);
+  const greeting = questManager.status(cauldronQuest) === 'complete'
+    ? 'Ah, a friendly face! There is always something brewing in this classroom. What brings you here?'
+    : "Oh no, my wand doesn't work, and the cauldron is turning cold fast... I could really use a moment to think.";
+  typeDialogue(document.getElementById('quest-message'), greeting, questDialogue);
 }
+
+document.getElementById('skeleton-next')?.addEventListener('click', () => {
+  dialogueTyping.get(document.getElementById('quest-message'))?.();
+  document.getElementById('skeleton-next').hidden = true;
+  document.getElementById('quest-action').hidden = true;
+  const topics = document.getElementById('skeleton-topics');
+  topics.replaceChildren();
+  topics.hidden = false;
+  const choices = [
+    ["What happened to your wand?", "A little too much enthusiasm and one badly pronounced spell. Now it only produces sparks. I should have listened to my own lessons."],
+    ["What are you brewing?", "A warming draught for the students. The ingredients are ready, but the recipe demands a steady flame and a careful hand."],
+    ["Tell me about Oakhaven.", "These halls have taught generations of young wizards. Keep your eyes open: even the books and portraits have stories to tell."],
+    [dialogueQuest.title, null]
+  ];
+  for (const [label, response] of choices) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      topics.hidden = true;
+      document.getElementById('quest-title').textContent = response ? 'Skeleton Mage' : dialogueQuest.title;
+      document.getElementById('skeleton-next').hidden = !response;
+      const stage = questManager.status(dialogueQuest);
+      const messages = {
+        available: dialogueQuest.offer,
+        active: dialogueQuest.remind(questContext()),
+        ready: dialogueQuest.turnIn,
+        complete: 'Thanks for your help, wizard.'
+      };
+      const action = document.getElementById('quest-action');
+      action.hidden = !!response || (stage !== 'available' && stage !== 'ready');
+      action.textContent = stage === 'ready' ? 'Complete quest' : 'Start quest';
+      typeDialogue(document.getElementById('quest-message'), response ?? messages[stage], questDialogue);
+      document.getElementById(response ? 'skeleton-next' : action.hidden ? 'quest-dismiss' : 'quest-action').focus();
+    });
+    topics.append(button);
+  }
+  topics.querySelector('button').focus();
+});
 
 function canResetQuest(quest) {
   return ['active', 'ready', 'complete'].includes(questManager.status(quest));
