@@ -4707,7 +4707,7 @@ if (!preview) {
 }
 
 // Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
-function findRoute(start, targetA, targetB) {
+function findRoute(start, targetA, targetB, canVisit = () => true) {
   const queue = [{ a: start.a, b: start.b, previous: null }];
   const columns = currentFloor()[0].length;
   const tileId = (a, b) => b * columns + a;
@@ -4723,7 +4723,7 @@ function findRoute(start, targetA, targetB) {
       const [da, db] = move;
       const a = tile.a + da, b = tile.b + db;
       const id = tileId(a, b);
-      if (!isWalkable(a, b) || visited.has(id)) continue;
+      if (!isWalkable(a, b) || !canVisit(a,b) || visited.has(id)) continue;
       visited.add(id);
       queue.push({ a, b, previous: tile, move });
     }
@@ -5072,17 +5072,19 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
 }
 
 const librarianStops = [
-  { a: 0, b: 2, face: -1 },
-  { a: 0, b: 4, face: -1 },
-  { a: 0, b: 7, face: -1 },
-  { a: 2, b: 0, face: 1 },
-  { a: 6, b: 0, face: 1 },
-  { a: 1, b: 3, face: 1 },
-  { a: 4, b: 3, face: 1 },
-  { a: 3, b: 6, face: 1 }
+  { a: 6, b: 1, face: 1 },
+  { a: 9, b: 1, face: 1 },
+  { a: 11, b: 5, face: 1 },
+  { a: 11, b: 6, face: -1 },
+  { a: 6, b: 6, face: -1 }
 ];
+function librarianTileClear(a,b) {
+  return !libraryStudents.some(student => student.id === 0
+    ? Math.abs(a-student.a)+Math.abs(b-student.b)<=2
+    : (a===student.a && b===student.b)||(a===student.step?.a && b===student.step?.b));
+}
 const librarian = {
-  a: 0, b: 2, stop: librarianStops[0], route: [], step: null,
+  a: 6, b: 1, stop: librarianStops[0], route: [], step: null,
   elapsed: 0, dwell: 2.4
 };
 
@@ -5098,7 +5100,7 @@ function updateLibrarian(dt) {
   if (!librarian.route.length && librarian.elapsed >= librarian.dwell) {
     const stops = librarianStops.filter(stop => stop !== librarian.stop);
     const stop = stops[Math.floor(Math.random() * stops.length)];
-    const route = findRoute(librarian, stop.a, stop.b);
+    const route = findRoute(librarian, stop.a, stop.b, librarianTileClear);
     if (!route?.length) {
       librarian.elapsed = 0;
       return;
@@ -5110,6 +5112,9 @@ function updateLibrarian(dt) {
   const move = librarian.route.pop();
   if (move) {
     const [da, db] = move;
+    if(!librarianTileClear(librarian.a+da,librarian.b+db)) {
+      librarian.route=[];librarian.elapsed=0;return;
+    }
     librarian.step = { a: librarian.a + da, b: librarian.b + db };
     librarian.elapsed = 0;
   }
