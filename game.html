@@ -40,7 +40,7 @@
   #room-title-plaque{
     position:relative;margin:0;max-width:calc(100% - 28px);box-sizing:border-box;padding:16px clamp(24px,5vw,44px) 18px;
     color:#ffe1a0;text-shadow:0 2px #593a2d,0 0 12px #d59a4544;text-align:center;
-    font:400 clamp(24px,4.2vw,46px)/1.18 "UnifrakturMaguntia",Georgia,serif;
+    font:400 clamp(22px,3.6vw,40px)/1.18 "UnifrakturMaguntia",Georgia,serif;
     border:1px solid #aa8559;
     background:
       linear-gradient(#dfbd80,#dfbd80) left top/12px 2px no-repeat,
@@ -54,8 +54,8 @@
       linear-gradient(#fff1c4,#fff1c4) center/11px 3px no-repeat;
     filter:drop-shadow(0 0 4px #e4b265);animation:room-star 1.6s ease-in-out infinite
   }
-  #room-title-plaque::before{left:7px;top:7px}
-  #room-title-plaque::after{right:7px;bottom:7px;animation-delay:-.8s}
+  #room-title-plaque::before{left:7px;top:7px;filter:drop-shadow(0 0 4px #e4b265) drop-shadow(-17px 13px 0 #e8ce94) drop-shadow(17px -16px 0 #e8ce94)}
+  #room-title-plaque::after{right:7px;bottom:7px;animation-delay:-.8s;filter:drop-shadow(0 0 4px #e4b265) drop-shadow(17px -13px 0 #e8ce94) drop-shadow(-17px 16px 0 #e8ce94)}
   @keyframes room-star{0%,100%{opacity:.2;transform:scale(.55)}50%{opacity:1;transform:scale(1)}}
   @media(prefers-reduced-motion:reduce){
     #room-title-plaque::before,#room-title-plaque::after{animation:none;opacity:.65}
