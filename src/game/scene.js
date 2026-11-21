@@ -779,7 +779,7 @@ function drawLibraryShelves(g) {
   }
 }
 
-const potionBookcases = [[3, 31], [87, 119], [130, 155]];
+const potionBookcases = [[3, 29], [90, 116]];
 const cauldronA = 8 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
 const workbenchA = 4.5 * TILE_SIZE, workbenchB = 6.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
@@ -1048,7 +1048,7 @@ function drawPotionDryingRack(g, timber) {
 const potionRoomProps = [
   [2, 8, 'station'], [7, 8, 'station'],
   [10, 5, 'barrel'], [10, 6, 'basket'], [9, 1, 'crates'],
-  [1, 7, 'plant'], [10, 8, 'plant']
+  [1, 7, 'plant'], [10, 8, 'plant'], [0, 8, 'cabinet']
 ];
 function drawPotionStation(g, a, b, variant) {
   const wood = woodC('#78503a'), trim = flat('#ac8656','#725035','#8f6540');
@@ -1071,6 +1071,15 @@ function drawPotionStation(g, a, b, variant) {
     }
   }
   for (const da of [0, 5, 10]) box(g, a + da, b + 3.8, 10.4, 1, .3, .6, trim);
+  // Tool rail, labelled ingredients and a scratched, waxed work surface.
+  box(g, a - 2, b + 1.5, 3, 12, .6, 1, wood);
+  for (const da of [-2, 3, 8]) {
+    line(g, ...P(a+da,b+2.5,14.1), ...P(a+da+1.8,b+2.8,14.1), '#b58d61');
+    box(g,a+da,b-2.6,14,1.8,1.3,.3,flat('#d5bf93','#9b805b','#b39a70'));
+  }
+  const [sx,sy] = P(a+7,b+1,14.2);
+  ell(g,sx,sy,2,1,'#4c5b50');
+  dot(g,sx-1,sy,'#789273');
 }
 
 function drawPotionWorkshop(g) {
@@ -1085,8 +1094,15 @@ function drawPotionWorkshop(g) {
   };
   drawWallIvy(g, [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]);
   for (const [start, end] of potionBookcases) {
-    box(g, 0, start / 2, 0, 4, (end - start) / 2, 87, timber);
-    wallL(g, 4, start, end, 0, 87, libraryShelf(start, end, null));
+    const depth = 3;
+    box(g, 0, start / 2, 0, depth, (end - start) / 2, 81, timber);
+    wallL(g, depth, start, end, 0, 80, libraryShelf(start, end, null));
+    // Separate crown, plinth and a brass catalogue label on each bookcase.
+    box(g, 0, start / 2 - .3, 80, depth + .4, (end - start) / 2 + .6, 2, timber);
+    box(g, 0, start / 2, 0, depth + .3, (end - start) / 2, 2, woodC('#573e30'));
+    const middle = (start + end) / 2;
+    wallL(g, depth + .05, middle - 3, middle + 3, 76, 79,
+      (u,z) => z === 77 && u > middle - 2 && u < middle + 2 ? '#66503c' : '#c3a26b');
   }
 
   for (const center of potionWindowCenters) {
@@ -3611,6 +3627,19 @@ for (const [column, row, kind] of potionRoomProps) {
   const canvas = mk(), g = canvas.getContext('2d');
   const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
   if (kind === 'station') drawPotionStation(g, a, b, column > 4);
+  else if (kind === 'cabinet') {
+    const timber = woodC('#78523c'), brass = flat('#ba9a63','#765638','#977447');
+    box(g, 0, b - 4, 0, 6, 8, 20, timber);
+    box(g, 0, b - 4.3, 20, 6.5, 8.6, 1.5, timber);
+    for (const level of [3, 9, 15]) {
+      box(g, 6, b - 3.5, level, .3, 7, 4, woodC('#936b49'));
+      box(g, 6.3, b - .7, level + 1, .3, 1.4, 1, brass);
+    }
+    for (const offset of [-2, 1.5]) {
+      const [jx,jy] = P(3,b+offset,21.5);
+      flask(g,jx,jy,offset < 0 ? '#a6b890' : '#b19ab2','tube',null);
+    }
+  }
   else if (kind === 'plant') drawAubertPlant(g, a, b, column > 4 ? 1 : 2);
   else drawStockContainer(g, a, b, kind);
   outline(g, '#0f1226');
