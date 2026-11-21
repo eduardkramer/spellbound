@@ -959,6 +959,11 @@ const workshopStone = brickFn({
   hi: '#697783', lo: '#343d49'
 }, 22, 10);
 
+const alchemyStone = brickFn({
+  mortar: '#1b2029', c: ['#303b45', '#394650', '#43515b'],
+  hi: '#53636b', lo: '#27313b'
+}, 22, 10);
+
 function drawWallIvy(g, vines) {
   // Getekend vóór de meubels, zodat de ranken tegen het metselwerk blijven.
   for (const [a, b, length] of vines) {
@@ -1098,7 +1103,7 @@ function drawPotionWorkshop(g) {
       if (paint === wallL && Math.abs(u - (POTION_DOOR_ROW + .5) * 16) < 17 ||
           paint === wallR && Math.abs(u - (POTION_STOCK_DOOR_COLUMN + .5) * 16) < 17) return null;
       if (paint === wallR && u >= rackStart * 2 && u < rackEnd * 2) return null;
-      return z < 3 || z > 22 || u % 16 < 2 ? '#514a41' : z === 21 ? '#938064' : '#455950';
+      return z < 3 || z > 22 || u % 16 < 2 ? '#383b35' : z === 21 ? '#74674e' : '#30463f';
     });
 
   drawWallIvy(g, [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]);
@@ -2415,10 +2420,10 @@ function buildStatic(sg, room, doorStyle) {
   topFace(sg, 0, 0, width, 0, depth, floor);
   if (hall) drawHallFloorLight(sg);
 
-  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : workshopStone);
+  wallL(sg, 0, 0, 2 * depth, 0, WH, room === rooms.tower ? leftFn : potion ? alchemyStone : workshopStone);
   const mer = { top: copingFn, left: brOutL, right: brOutR };
   if (!openHallEntrance) {
-    wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : workshopStone);
+    wallR(sg, 0, 0, 2 * width, 0, WH, room === rooms.tower ? rightFn : potion ? alchemyStone : workshopStone);
     topFace(sg, WH, -T, width, -T, 0, copingFn);
     box(sg, -T, -T, WH, T, T, 12, mer);
     box(sg, width - 8, -T, WH, 8, T, 10, mer);
