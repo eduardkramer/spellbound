@@ -1096,7 +1096,22 @@ function drawPotionWorkshop(g) {
   for (const [start, end] of potionBookcases) {
     const depth = 3;
     box(g, 0, start / 2, 0, depth, (end - start) / 2, 81, timber);
-    wallL(g, depth, start, end, 0, 80, libraryShelf(start, end, null));
+    // Fit all six shelves inside the shorter cabinet instead of cutting the top row off.
+    const books = libraryShelf(start, end, null);
+    wallL(g, depth, start, end, 0, 80, (u,z) => {
+      const edge = Math.min(u - start, end - 1 - u);
+      if (edge < 3) {
+        if (edge === 0) return '#4e382c';
+        return edge === 1 ? '#b58a5c' : '#80573c';
+      }
+      if (z < 6) return z === 5 ? '#aa7e51' : '#60422f';
+      if (z >= 75) return z === 79 ? '#c09965' : z === 75 ? '#4a342b' : '#926a46';
+      return books(u, 4 + Math.floor((z - 6) * 82 / 69));
+    });
+    // Narrow mouldings close the book recess against the side panels.
+    for (const b of [start / 2, end / 2 - .7]) {
+      box(g, depth - .15, b, 2, .5, .7, 77, woodC('#946b47'));
+    }
     // Separate crown, plinth and a brass catalogue label on each bookcase.
     box(g, 0, start / 2 - .3, 80, depth + .4, (end - start) / 2 + .6, 2, timber);
     box(g, 0, start / 2, 0, depth + .3, (end - start) / 2, 2, woodC('#573e30'));
