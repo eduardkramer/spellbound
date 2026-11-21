@@ -3408,7 +3408,7 @@ function talkToSkeletonMage() {
   const quest = questManager.forGiver('skeleton-mage');
   if (!quest) return;
   dialogueQuest = quest;
-  document.getElementById('quest-title').textContent = 'Skeleton Mage';
+  document.getElementById('quest-title').hidden = true;
   document.getElementById('quest-action').hidden = true;
   document.getElementById('quest-dismiss').textContent = 'Goodbye';
   document.getElementById('quest-dismiss').hidden = false;
@@ -3444,7 +3444,8 @@ document.getElementById('skeleton-next')?.addEventListener('click', () => {
     button.textContent = label;
     button.addEventListener('click', () => {
       topics.hidden = true;
-      document.getElementById('quest-title').textContent = response ? 'Skeleton Mage' : dialogueQuest.title;
+      document.getElementById('quest-title').hidden = !!response;
+      document.getElementById('quest-title').textContent = response ? '' : dialogueQuest.title;
       document.getElementById('skeleton-next').hidden = !response;
       const stage = questManager.status(dialogueQuest);
       const messages = {
@@ -3466,7 +3467,7 @@ document.getElementById('skeleton-next')?.addEventListener('click', () => {
 
 document.getElementById('quest-dismiss')?.addEventListener('click', event => {
   event.preventDefault();
-  document.getElementById('quest-title').textContent = 'Skeleton Mage';
+  document.getElementById('quest-title').hidden = true;
   document.getElementById('skeleton-topics').hidden = true;
   document.getElementById('skeleton-next').hidden = true;
   document.getElementById('quest-action').hidden = true;
