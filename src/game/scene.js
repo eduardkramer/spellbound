@@ -3308,6 +3308,8 @@ const aliases = { w: 'arrowup', d: 'arrowright', s: 'arrowdown', a: 'arrowleft' 
 const heldKeys = new Set();
 let wandLight = false;
 let wandLightFade = 0;
+let waterHeld = false;
+let waterCharge = 0;
 let fireHeld = false;
 let fireCharge = 0;
 const chestInventory = document.getElementById('chest-inventory');
@@ -3416,7 +3418,7 @@ function talkToSkeletonMage() {
   document.getElementById('skeleton-topics').hidden = true;
   clearRoute();
   heldKeys.clear();
-  fireHeld = false;
+  fireHeld = false; waterHeld = false;
   questDialogue.returnValue = '';
   questDialogue.showModal();
   const greeting = questManager.status(cauldronQuest) === 'complete'
@@ -3489,7 +3491,7 @@ document.getElementById('reset-quest')?.addEventListener('click', () => {
   document.getElementById('confirm-quest-reset').disabled = !quests.length;
   clearRoute();
   heldKeys.clear();
-  fireHeld = false;
+  fireHeld = false; waterHeld = false;
   resetQuestDialogue.showModal();
 });
 
@@ -3716,7 +3718,7 @@ function drawQuestMarker(t) {
 const iceBalls = [];
 let iceCooldown = 0;
 let castTime = 0;
-const castStrength = () => Math.max(fireCharge,
+const castStrength = () => Math.max(fireCharge, waterCharge,
   castTime > .2 ? (.32 - castTime) / .12 : Math.max(0, castTime / .2));
 
 function canBreatheFire() {
@@ -3792,6 +3794,52 @@ function drawFireBreath(t, a, b, dt) {
     fireFrameWidth, fireFrameHeight, -5 * scale, -24 * widthScale,
     fireFrameWidth * scale, fireFrameHeight * widthScale);
   drawFireBreathSmoke(t, visibleLength);
+  ctx.restore();
+}
+
+// Four generated water frames, cropped to equal 88 by 38 cells.
+const waterSprite = new Image();
+waterSprite.src = 'assets/sprites/water-breath.png';
+function canCastWater() {
+  return waterHeld && WIZARD.staffEquipped && !seatProgress && !chestInventory?.open &&
+    !questDialogue?.open && !resetQuestDialogue?.open && !loreScroll?.open &&
+    !teleportDialogue?.open && librarianDialogue.hidden;
+}
+function drawWaterBreath(t, a, b) {
+  if (!canCastWater() || !waterCharge || !waterSprite.naturalWidth) return;
+  const [da, db] = Array.from(moves.values()).find(move => move[2] === wizard.direction);
+  const hand = WIZARD.castingHand(wizard.direction, castStrength());
+  const z = 13;
+  const originA = a + (hand.y + z + hand.x / 2) / 2;
+  const originB = b + (hand.y + z - hand.x / 2) / 2;
+  let reach = 22 * waterCharge;
+  const floor = currentFloor();
+  for (let d = 0; d < reach; d += .5) {
+    const column = Math.floor((originA + d * da) / TILE_SIZE);
+    const row = Math.floor((originB + d * db) / TILE_SIZE);
+    if (!floor[row]?.[column] || (currentRoom === rooms.potion && !isStockroomUnlocked() &&
+        column === POTION_STOCK_DOOR_COLUMN && row === 0)) { reach = Math.max(0, d - .5); break; }
+  }
+  if (!reach) return;
+  const [x, y] = P(originA, originB, z);
+  const dx = 2 * (da - db), dy = da + db, projected = Math.hypot(dx, dy);
+  const ux = dx / projected, uy = dy / projected, side = Math.sign(dx);
+  const length = reach * projected;
+  const frame = Math.floor(t / .11) % 4;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.translate(x, y);
+  ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
+  ctx.beginPath(); ctx.rect(0, -24, length, 48); ctx.clip();
+  ctx.drawImage(waterSprite, frame % 2 * 88, Math.floor(frame / 2) * 38, 88, 38,
+    -3, -16, 66, 32);
+  // Small falling droplets follow the stream, instead of smoke.
+  for (let i = 0; i < 7; i++) {
+    const age = (t * 1.9 + i / 7) % 1;
+    const px = length * (.4 + age * .57), py = 4 + age * age * 12;
+    ctx.globalAlpha = (1 - age) * .8;
+    rect(ctx, px, py, 1, 2, i % 2 ? '#9de9ef' : '#5da6d5');
+  }
   ctx.restore();
 }
 
@@ -3949,9 +3997,15 @@ if (!preview) {
       if (!event.repeat) updateStockroomHint();
       return;
     }
+    if (key === 'r') {
+      event.preventDefault();
+      waterHeld = true; fireHeld = false;
+      if (WIZARD.staffEquipped && !chestInventory?.open && librarianDialogue.hidden) requestedSeat = null;
+      return;
+    }
     if (key === 'q') {
       event.preventDefault();
-      fireHeld = true;
+      fireHeld = true; waterHeld = false;
       if (WIZARD.staffEquipped && !chestInventory?.open && librarianDialogue.hidden) requestedSeat = null;
       return;
     }
@@ -3975,11 +4029,12 @@ if (!preview) {
   addEventListener('keyup', event => {
     const key = event.key.toLowerCase();
     if (key === 'q') fireHeld = false;
+    if (key === 'r') waterHeld = false;
     heldKeys.delete(key);
   });
   const releaseControls = () => {
     heldKeys.clear();
-    fireHeld = false;
+    fireHeld = false; waterHeld = false;
   };
   addEventListener('blur', releaseControls);
   document.addEventListener('visibilitychange', () => {
@@ -4153,7 +4208,7 @@ function enterRoom(exit) {
   currentRoom = rooms[exit.target];
   iceBalls.length = 0;
   castTime = 0;
-  fireCharge = 0;
+  fireCharge = 0; waterCharge = 0;
   librarianDialogue.hidden = true;
   [wizard.a, wizard.b] = exit.arrival;
   wizard.direction = exit.direction;
@@ -4181,7 +4236,7 @@ document.getElementById('teleport-room')?.addEventListener('click', () => {
   stockroomOption.textContent = stockroomOption.disabled ? 'Potion Stockroom (locked)' : 'Potion Stockroom';
   teleportChoice.value = Array.from(teleportChoice.options).find(option => rooms[option.value] === currentRoom)?.value ?? 'library';
   heldKeys.clear();
-  fireHeld = false;
+  fireHeld = false; waterHeld = false;
   teleportDialogue.showModal();
 });
 
@@ -4868,6 +4923,7 @@ function drawRoomOccupants(t, dt) {
     : undefined;
   for (; index < occupants.length; index++) drawFurnishing(occupants[index], t, dt);
   drawFireBreath(t, a, b, dt);
+  drawWaterBreath(t, a, b);
   if (currentRoom === rooms.stockroom) drawStockDarkness(x, y, wandTip, t);
 }
 
@@ -4936,6 +4992,7 @@ function frame(ms) {
   updateWandLight(dt);
   updateStockroomHint();
   if (searchBookStack) searchBookStack.hidden = !canSearchBookStack();
+  waterCharge = canCastWater() ? Math.min(1, waterCharge + dt * 7) : 0;
   fireCharge = canBreatheFire() ? Math.min(1, fireCharge + dt * 7) : 0;
   ctx.clearRect(0, 0, W, H);
   if (!preview && !chestInventory?.open && librarianDialogue.hidden) updateIceBalls(dt);
