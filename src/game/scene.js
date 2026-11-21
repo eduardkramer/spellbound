@@ -1022,12 +1022,19 @@ function drawPotionDryingRack(g, timber) {
     [19.5, 'herb', '#819354'],
     [23, 'flower', '#a87b9c'],
     [35.5, 'mushroom', '#b76d4a'],
-    [39.5, 'mushroom', '#94705d']
+    [39.5, 'mushroom', '#94705d'], [26.5, 'garlic', '#d5c9a1']
   ];
   for (const [b, kind, color] of bundles) {
     const [x, y] = P(2, b, railZ - 1);
     line(g, x, y, x, y + 6, '#c29a69');
-    if (kind === 'mushroom') {
+    if (kind === 'garlic') {
+      for (let i = 0; i < 3; i++) {
+        const dx = i % 2 ? 2 : -1, dy = 9 + i * 4;
+        line(g,x,y+5,x+dx,y+dy,'#9b9472');
+        ell(g,x+dx,y+dy,3,2,'#c5b894');
+        line(g,x+dx,y+dy-2,x+dx,y+dy+1,'#eee0bb');
+      }
+    } else if (kind === 'mushroom') {
       line(g, x, y + 6, x - 2, y + 14, '#cbb090');
       line(g, x, y + 6, x + 2, y + 16, '#d6bc99');
       ell(g, x - 2, y + 14, 2, 1, color);
@@ -1053,7 +1060,7 @@ function drawPotionDryingRack(g, timber) {
 const potionRoomProps = [
   [2, 8, 'station'], [7, 8, 'station'],
   [10, 5, 'barrel'], [10, 6, 'basket'], [9, 1, 'crates'],
-  [1, 7, 'plant'], [10, 8, 'plant'], [0, 8, 'cabinet']
+  [1, 7, 'plant'], [10, 8, 'plant'], [0, 8, 'cabinet'], [10, 3, 'wash']
 ];
 function drawPotionStation(g, a, b, variant) {
   const wood = woodC('#78503a'), trim = flat('#ac8656','#725035','#8f6540');
@@ -1085,6 +1092,56 @@ function drawPotionStation(g, a, b, variant) {
   const [sx,sy] = P(a+7,b+1,14.2);
   ell(g,sx,sy,2,1,'#4c5b50');
   dot(g,sx-1,sy,'#789273');
+  if (!variant) {
+    // Brass balance with two shallow pans and suspended chains.
+    const [x,y] = P(a+4,b-1,14);
+    ell(g,x,y,4,1,'#755b3e');
+    line(g,x,y,x,y-15,'#b69b62');
+    line(g,x-7,y-13,x+7,y-13,'#d0b57d');
+    for(const side of [-1,1]) {
+      line(g,x+side*7,y-13,x+side*7,y-6,'#968563');
+      ell(g,x+side*7,y-5,4,1,'#b49a6c');
+    }
+    const [mx,my] = P(a+9,b+1,14);
+    ell(g,mx,my-2,4,3,'#777c7e'); ell(g,mx,my-4,4,2,'#a2a69b');
+    ell(g,mx,my-4,2,1,'#454c4f');
+    line(g,mx,my-4,mx+4,my-9,'#bab9a2');
+    for(const dx of [-3,0,2]) dot(g,mx+dx,my+1,'#acba85');
+  } else {
+    // Tall glass condenser, copper joints and a coiled cooling tube.
+    const [x,y] = P(a+7,b-1.5,14);
+    rect(g,x-2,y-20,5,15,'#527d82');
+    rect(g,x-1,y-19,2,12,'#85b2b1');
+    line(g,x-2,y-20,x+2,y-20,'#c2d4c8');
+    line(g,x-1,y-18,x-1,y-8,'#d7eee1');
+    for(let i=0;i<4;i++) {
+      line(g,x-3,y-17+i*3,x+3,y-15+i*3,'#bd8e5a');
+      dot(g,x+3,y-15+i*3,'#e0b77b');
+    }
+    line(g,x,y-21,x-6,y-24,'#bd8e5a');
+  }
+
+}
+
+function drawAlchemyDetails(t,a,b,kind,distill) {
+  ctx.save();
+  if(kind==='wash') {
+    const [x,y]=P(a-1,b-2,17);
+    const age=(t*.65)%1;
+    dot(ctx,x,y+Math.floor(age*6),'#b5e3df');
+  } else if(distill) {
+    const [x,y]=P(a+7,b-1.5,14);
+    for(let i=0;i<3;i++) {
+      const age=(t*.55+i/3)%1;
+      dot(ctx,x+(i%2),y-7-Math.floor(age*10),'#d1e6ce');
+    }
+    const [dx,dy]=P(a+5,b,14);
+    dot(ctx,dx+9,dy-6+Math.floor((t*.7%1)*5),'#a8d4bd');
+  } else {
+    const [x,y]=P(a,b,14);
+    dot(ctx,x-1,y-3-Math.floor((t*.45%1)*4),'#d2e4c1');
+  }
+  ctx.restore();
 }
 
 function drawPotionWorkshop(g) {
@@ -1155,6 +1212,21 @@ function drawPotionWorkshop(g) {
     return '#dfbb80';
   });
   drawFramedPaintings(g, [[wallL, [[118, 63, 11, 22, 'herb', ['#b99a6c','#78583e','#453832']]]]]);
+  // Recipe board below the second window, clear of the rack and stockroom door.
+  wallR(g,0,107,147,12,42,(u,z) => {
+    const x=u-107,y=z-12;
+    if(x<2 || x>37 || y<2 || y>27) return x===0 || y===29 ? '#b08a59' : '#674c37';
+    if(y>21 && y<24 && x>5 && x<31) return x%5<3 ? '#c1c8ad' : '#293e39';
+    if(y>5 && y<19) {
+      const cx=x%12,cy=y-11;
+      if(Math.abs(cx-6)+Math.abs(cy)<4 && Math.abs(cx-6)+Math.abs(cy)>2) return '#a7b5a1';
+      if(y===7 && x>5 && x<32) return x%6 ? '#8c9e8e' : '#293e39';
+      if(x>28 && y===15) return '#b0baa3';
+    }
+    return '#293e39';
+  });
+  box(g,53.5,.4,11,20,1.8,1,woodC('#805f42'));
+  box(g,57,1,12,2.5,.6,.5,flat('#d2d1b7','#9eaa96','#b7c0a8'));
   drawPotionDryingRack(g, timber);
   drawPotionRack(g);
 
@@ -1182,6 +1254,12 @@ function drawPotionWorkbench(g) {
   for (let row = 0; row < 3; row++) {
     line(g, ...P(a - 2, b - .4 + row * .7, 14), ...P(a + (row === 2 ? -.6 : .6), b - .4 + row * .7, 14), '#a47b58');
   }
+  // Bound recipe book, central gutter, botanical sketch and cloth bookmark.
+  box(g,a-2.9,b-1.2,12.9,4.5,3.5,.3,flat('#644b60','#473447','#594451'));
+  line(g,...P(a-.7,b-.8,14.1),...P(a-.7,b+1.8,14.1),'#927a55');
+  line(g,...P(a-1.9,b-.6,14.1),...P(a-1.7,b+1,14.1),'#667c57');
+  for(const db of [-.3,.3,.8]) line(g,...P(a-1.7,b+db,14.1),...P(a-2.2,b+db+.3,14.1),'#82936a');
+  box(g,a+.5,b+1.5,14.1,.45,1.8,.1,flat('#a65f62','#87464e','#98555a'));
   const [stainX, stainY] = P(a + .4, b + 1.25, 14);
   ell(g, stainX, stainY, 2, 1, '#b88e5c');
   const [fx, fy] = P(a - 2.7, b + 2.8, 13);
@@ -1194,6 +1272,10 @@ function drawPotionWorkbench(g) {
   rect(g, fx - 1, fy - 8, 4, 1, '#be8151');
   rect(g, fx - 2, fy - 9, 6, 1, '#dfa26a');
   rect(g, fx - 1, fy - 9, 4, 1, '#624338');
+  box(g,a+1.8,b+1.8,13,1.5,1.5,.5,flat('#bc9c62','#7e5e3c','#a1804f'));
+  box(g,a+2.2,b+2.2,13.5,.7,.7,2,flat('#e7d3a4','#b99b6a','#c6b083'));
+  const [wx,wy]=P(a+2.7,b+2.8,13);
+  rect(g,wx,wy,2,1,'#d8c395'); dot(g,wx+2,wy+1,'#c3aa7f');
   const [mx, my] = P(a + 2, b - 2, 13);
   ell(g, mx, my - 1, 4, 3, '#514b5d');
   ell(g, mx, my - 3, 4, 2, '#8c8799');
@@ -1344,6 +1426,10 @@ function potionFloor(a, b) {
     else if (seam < 1.15) color = '#7c8081';
     else color = sh('#606674', .78 + variation * .35 + (grain > .91 ? .13 : 0));
   }
+  const sootDistance=Math.hypot((a-cauldronA)/10,(b-cauldronB)/8);
+  if(sootDistance<1 && grain>.55) color=sh(color,.72);
+  if(Math.hypot((a-65)/3,(b-71)/1.7)<1 && grain>.3) color='#415a54';
+  if(Math.hypot((a-27)/2,(b-70)/1.4)<1 && grain>.62) color='#a29370';
   return tintFloor(color, contact, daylight * .84);
 }
 
@@ -3640,13 +3726,30 @@ function drawPotionPumpkin(t) {
 const potionFurnishings = [
   { depth: pumpkinA + pumpkinB, animate: drawPotionPumpkin },
   { depth: skeletonMageA + skeletonMageB, animate: drawSkeletonMage },
-  { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: drawReturnedPage },
+  { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: t => { drawReturnedPage(t); const [x,y]=P(workbenchA+2.55,workbenchB+2.55,15.7); flame(x,y-1,t,12); } },
   { depth: cauldronA + cauldronB, animate: drawCauldron }
 ];
 for (const [column, row, kind] of potionRoomProps) {
   const canvas = mk(), g = canvas.getContext('2d');
   const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
   if (kind === 'station') drawPotionStation(g, a, b, column > 4);
+  else if (kind === 'wash') {
+    const stone=flat('#8c9390','#525f64','#687779');
+    box(g,a-2.8,b-3,0,5.6,6,10,stone);
+    box(g,a-3,b-3.2,10,6,6.4,1.5,stone);
+    const [x,y]=P(a,b,11.5);
+    ell(g,x,y,8,3,'#3d5763'); ell(g,x,y,6,2,'#709caa');
+    line(g,x-5,y,x+2,y+1,'#afd6cf');
+    line(g,...P(a+1,b-2,12),...P(a+1,b-2,18),'#b69a65');
+    line(g,...P(a+1,b-2,18),...P(a-1,b-2,18),'#d4bb80');
+    box(g,a-3,b+.8,11.6,2,2.5,.2,flat('#b7b2a0','#787c75','#969f90'));
+    const [bx,by]=P(a,b+1.5,0);
+    ell(g,bx,by-2,4,2,'#86664a'); rect(g,bx-3,by-6,6,4,'#9b7b51');
+    ell(g,bx,by-6,4,2,'#c0a477'); ell(g,bx,by-6,2,1,'#526d75');
+    line(g,bx-3,by-7,bx-2,by-11,'#625d50');
+    line(g,bx-2,by-11,bx+2,by-11,'#bda16e');
+    line(g,bx+2,by-11,bx+3,by-7,'#625d50');
+  }
   else if (kind === 'cabinet') {
     const timber = woodC('#78523c'), brass = flat('#ba9a63','#765638','#977447');
     box(g, 0, b - 4, 0, 6, 8, 20, timber);
@@ -3655,15 +3758,17 @@ for (const [column, row, kind] of potionRoomProps) {
       box(g, 6, b - 3.5, level, .3, 7, 4, woodC('#936b49'));
       box(g, 6.3, b - .7, level + 1, .3, 1.4, 1, brass);
     }
-    for (const offset of [-2, 1.5]) {
+    for (const offset of [-2.3, 0, 2.3]) {
       const [jx,jy] = P(3,b+offset,21.5);
       flask(g,jx,jy,offset < 0 ? '#a6b890' : '#b19ab2','tube',null);
+      rect(g,jx-1,jy-4,3,2,'#dec69d'); dot(g,jx,jy-3,'#806847');
     }
   }
   else if (kind === 'plant') drawAubertPlant(g, a, b, column > 4 ? 1 : 2);
   else drawStockContainer(g, a, b, kind);
   outline(g, '#0f1226');
-  potionFurnishings.push({ canvas, depth: a + b + (kind === 'station' ? 7 : 0) });
+  potionFurnishings.push({ canvas, depth: a + b + (kind === 'station' ? 7 : 0),
+    animate: kind === 'station' || kind === 'wash' ? t => drawAlchemyDetails(t,a,b,kind,column>4) : undefined });
 }
 potionFurnishings.sort((a,b) => a.depth - b.depth);
 let currentRoom = rooms.tower;
