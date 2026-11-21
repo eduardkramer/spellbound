@@ -142,6 +142,59 @@
   #reset-quest-dialogue button,#teleport-room-dialogue button{width:auto;padding:0 12px}
   #movement-hint{margin:0;color:var(--txt);font-size:12px;text-align:center}
 
+  /* A stable portrait and panel frame: only the content inside may scroll. */
+  .npc-dialogue{
+    --dialogue-height:min(215px,calc(100dvh - var(--dialogue-bottom) - 56px));
+    overflow:visible;
+  }
+  .npc-dialogue-layout{height:var(--dialogue-height);min-height:0}
+  .npc-speaker,#quest-dialogue .npc-speaker{height:var(--dialogue-height);min-height:0;align-self:stretch}
+  .npc-dialogue-copy{
+    height:var(--dialogue-height);min-height:0;overflow:hidden;
+    justify-content:flex-start;padding:12px clamp(6px,1vw,14px) 10px;
+  }
+  .npc-dialogue h2{flex:0 0 auto;font-size:13px;margin-bottom:5px}
+  .npc-dialogue p{
+    flex:1 1 auto;min-height:28px;overflow:auto;scrollbar-width:thin;
+    display:flex;flex-direction:column;justify-content:safe center;
+    font-size:clamp(12px,1.25vw,15px);line-height:1.5;margin:0 0 8px;
+  }
+  .npc-dialogue-copy:has(#skeleton-topics:not([hidden]) button) p,
+  .npc-dialogue-copy:has(#librarian-topics button) p{justify-content:flex-start}
+  .npc-dialogue form{
+    flex:0 1 auto;min-height:32px;max-height:58%;overflow:auto;
+    gap:6px;padding:2px;box-sizing:border-box;scrollbar-width:thin;
+  }
+  #librarian-topics,#skeleton-topics{
+    min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:0 0 5px;
+  }
+  #librarian-topics{flex:0 1 auto;max-height:55%;overflow:auto;scrollbar-width:thin;padding:2px;box-sizing:border-box}
+  .npc-dialogue button{
+    position:relative;box-sizing:border-box;flex-shrink:0;min-height:30px;
+    padding:5px 12px 5px 25px;border:1px solid #b89358;
+    background:linear-gradient(180deg,#493447,#2c263c);color:#ffe4aa;
+    box-shadow:inset 0 0 0 1px #201b2c,inset 0 2px #ddbd7833,inset 0 -2px #171423;
+    font:400 13px/1.3 Georgia,serif;text-shadow:0 1px #191525;
+  }
+  #skeleton-topics button,#librarian-topics button{
+    padding:5px 9px 5px 25px;min-height:30px;font-size:12px;overflow-wrap:anywhere;
+  }
+  .npc-dialogue button::before{
+    content:"";position:absolute;left:9px;top:calc(50% - 4px);width:8px;height:8px;
+    background:#d7ba7e;clip-path:polygon(50% 0,63% 35%,100% 50%,63% 63%,50% 100%,35% 63%,0 50%,35% 35%);
+    pointer-events:none;
+  }
+  .npc-dialogue button:hover,.npc-dialogue button:focus-visible{
+    background:linear-gradient(180deg,#675071,#3b304c);color:#fff0c9;border-color:#efd491;
+    box-shadow:inset 0 0 0 1px #57405f,inset 0 2px #e3c18555,0 0 7px #b99ade55;
+  }
+  .npc-dialogue button:focus-visible{outline:2px solid #ebd399;outline-offset:-4px}
+  .npc-dialogue button:active{transform:none;background:#292336}
+  @media(max-width:540px){
+    #librarian-topics,#skeleton-topics{grid-template-columns:1fr}
+    .npc-dialogue-copy{padding-inline:5px}
+  }
+
   /* ---- muziekspeler ---- */
   #player{width:min(460px,calc(100vw - 24px));box-sizing:border-box;background:var(--bg);padding:10px 12px;
     border:2px solid var(--line);box-shadow:0 0 0 2px #0c0f24,4px 4px 0 2px #0c0f24, inset 0 0 0 2px var(--bg2);position:relative}
