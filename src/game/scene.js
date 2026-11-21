@@ -4218,6 +4218,11 @@ function drawDialogueIndicators(t) {
   if (currentRoom === rooms.library && librarianDialogue.hidden && librarianHit && librarianSprite.naturalWidth) {
     drawDialogueBubble(librarianHit[0] + 8, librarianHit[1] - librarianSprite.naturalHeight - 7, t);
   }
+  if(currentRoom===rooms.library && librarianDialogue.hidden && libraryStudents[0]) {
+    const student=libraryStudents[0];
+    const [sx,sy]=P((student.a+.5)*TILE_SIZE,(student.b+.5)*TILE_SIZE,48);
+    drawDialogueBubble(sx,sy-5,t);
+  }
   if (currentRoom === rooms.potion && !questDialogue?.open && skeletonMage.naturalWidth) {
     const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
     drawDialogueBubble(x + 19, y - 5, t);
@@ -4546,6 +4551,10 @@ if (!preview) {
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
     if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open || teleportDialogue?.open) return;
+    if(key==='e' && !event.repeat && currentRoom===rooms.library && libraryStudents[0] &&
+       Math.abs(wizard.a-libraryStudents[0].a)+Math.abs(wizard.b-libraryStudents[0].b)<=1) {
+      event.preventDefault();talkToLibraryStudent();return;
+    }
     if (key === 'e' && !event.repeat && canSearchBookStack()) {
       event.preventDefault();
       findMissingPage();
@@ -4655,10 +4664,19 @@ if (!preview) {
         return;
       }
     }
+    if(currentRoom===rooms.library && libraryStudents[0]) {
+      const student=libraryStudents[0];
+      const [sx,sy]=P((student.a+.5)*TILE_SIZE,(student.b+.5)*TILE_SIZE,0);
+      if(Math.abs(px+CX-sx)<=14 && py+CY>=sy-52 && py+CY<=sy) {
+        talkToLibraryStudent();return;
+      }
+    }
     if (currentRoom === rooms.library && librarianHit) {
       const [x, y] = librarianHit;
       if (Math.abs(px + CX - x) <= 13 && py + CY >= y - 43 && py + CY <= y) {
-        librarianDialogue.hidden = !librarianDialogue.hidden;
+        libraryDialogueSpeaker='librarian';
+        if(librarianDialogue.hidden) librarianDialogue.hidden=false;
+        else showLibrarianConversation('greeting');
         clearRoute();
         requestedSeat = null;
         heldKeys.clear();
@@ -4701,7 +4719,7 @@ if (!preview) {
 }
 
 // Doorzoek de vloer vanaf de eerstvolgende vaste positie, één tegel per stap.
-function findRoute(start, targetA, targetB) {
+function findRoute(start, targetA, targetB, canVisit = () => true) {
   const queue = [{ a: start.a, b: start.b, previous: null }];
   const columns = currentFloor()[0].length;
   const tileId = (a, b) => b * columns + a;
@@ -4717,7 +4735,7 @@ function findRoute(start, targetA, targetB) {
       const [da, db] = move;
       const a = tile.a + da, b = tile.b + db;
       const id = tileId(a, b);
-      if (!isWalkable(a, b) || visited.has(id)) continue;
+      if (!isWalkable(a, b) || !canVisit(a,b) || visited.has(id)) continue;
       visited.add(id);
       queue.push({ a, b, previous: tile, move });
     }
@@ -5066,17 +5084,19 @@ function drawLibraryCat(t, x, y, face, jumping, walking, progress) {
 }
 
 const librarianStops = [
-  { a: 0, b: 2, face: -1 },
-  { a: 0, b: 4, face: -1 },
-  { a: 0, b: 7, face: -1 },
-  { a: 2, b: 0, face: 1 },
-  { a: 6, b: 0, face: 1 },
-  { a: 1, b: 3, face: 1 },
-  { a: 4, b: 3, face: 1 },
-  { a: 3, b: 6, face: 1 }
+  { a: 6, b: 1, face: 1 },
+  { a: 9, b: 1, face: 1 },
+  { a: 11, b: 5, face: 1 },
+  { a: 11, b: 6, face: -1 },
+  { a: 6, b: 6, face: -1 }
 ];
+function librarianTileClear(a,b) {
+  return !libraryStudents.some(student => student.id === 0
+    ? Math.abs(a-student.a)+Math.abs(b-student.b)<=2
+    : (a===student.a && b===student.b)||(a===student.step?.a && b===student.step?.b));
+}
 const librarian = {
-  a: 0, b: 2, stop: librarianStops[0], route: [], step: null,
+  a: 6, b: 1, stop: librarianStops[0], route: [], step: null,
   elapsed: 0, dwell: 2.4
 };
 
@@ -5092,7 +5112,7 @@ function updateLibrarian(dt) {
   if (!librarian.route.length && librarian.elapsed >= librarian.dwell) {
     const stops = librarianStops.filter(stop => stop !== librarian.stop);
     const stop = stops[Math.floor(Math.random() * stops.length)];
-    const route = findRoute(librarian, stop.a, stop.b);
+    const route = findRoute(librarian, stop.a, stop.b, librarianTileClear);
     if (!route?.length) {
       librarian.elapsed = 0;
       return;
@@ -5104,6 +5124,9 @@ function updateLibrarian(dt) {
   const move = librarian.route.pop();
   if (move) {
     const [da, db] = move;
+    if(!librarianTileClear(librarian.a+da,librarian.b+db)) {
+      librarian.route=[];librarian.elapsed=0;return;
+    }
     librarian.step = { a: librarian.a + da, b: librarian.b + db };
     librarian.elapsed = 0;
   }
@@ -5137,8 +5160,26 @@ const librarianConversations = {
     choices: [['Ask something else.', 'greeting']] }
 };
 
+let libraryDialogueSpeaker = 'librarian';
+const studentConversations = {
+  greeting:{text:"Oh! Sorry, I thought you were another moving bookshelf. I’m Mira. I’m looking for an atlas that refuses to stay on the same shelf.",choices:[["What are you looking for?",'atlas'],["Can I help?",'help'],["How is studying here?",'school']]},
+  atlas:{text:"The Atlas of Wandering Places. Its maps change whenever a hidden passage opens. Yesterday, a staircase appeared in the margin. Today, the whole book has disappeared.",choices:[["Any clues?",'help'],["Ask something else.",'greeting']]},
+  help:{text:"Look for a blue spine with a little silver compass. And listen carefully. The atlas rustles its pages when someone mentions a place it has never visited.",choices:[["Does the librarian know?",'keeper'],["Ask something else.",'greeting']]},
+  keeper:{text:"He told me to search patiently. Then he winked. I suspect finding the book is part of the lesson.",choices:[["Ask something else.",'greeting']]},
+  school:{text:"The lessons are wonderful. The homework less so. My last essay turned into a moth and escaped through a window. I’m still hoping that counts as practical magic.",choices:[["Ask something else.",'greeting']]}
+};
+function talkToLibraryStudent() {
+  libraryDialogueSpeaker='student';
+  clearRoute();heldKeys.clear();requestedSeat=null;fireHeld=false;waterHeld=false;
+  if(librarianDialogue.hidden) librarianDialogue.hidden=false;
+  else showLibrarianConversation('greeting');
+}
+
 function showLibrarianConversation(key) {
-  const conversation = librarianConversations[key];
+  const student=libraryDialogueSpeaker==='student';
+  const conversation = (student ? studentConversations : librarianConversations)[key];
+  document.getElementById('librarian-name').textContent=student ? 'Mira · Apprentice' : 'Librarian';
+  document.getElementById('librarian-portrait').style.backgroundImage=student ? 'url("assets/sprites/student-mira-portrait.png")' : '';
   const message = librarianDialogue.querySelector('.npc-dialogue-copy p');
   const topics = document.getElementById('librarian-topics');
   document.getElementById('close-librarian-dialogue').hidden = false;
@@ -5149,7 +5190,7 @@ function showLibrarianConversation(key) {
     button.textContent = label;
     button.addEventListener('click', () => {
       showLibrarianConversation(destination);
-      topics.querySelector('button').focus();
+      topics.querySelector('button')?.focus();
     });
     topics.append(button);
   }
@@ -5168,7 +5209,7 @@ if (!preview) {
   document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
     document.getElementById('librarian-topics').replaceChildren();
     document.getElementById('close-librarian-dialogue').hidden = true;
-    typeDialogue(librarianMessage, 'Walk carefully, apprentice. And if a book whispers your name... let it finish before you answer.',
+    typeDialogue(librarianMessage, libraryDialogueSpeaker==='student' ? 'Good luck exploring! If you spot that atlas, tell it I’m still waiting.' : 'Walk carefully, apprentice. And if a book whispers your name... let it finish before you answer.',
       librarianDialogue, () => { librarianDialogue.hidden = true; });
   });
   addEventListener('keydown', event => {
@@ -5469,6 +5510,81 @@ classroomFurnishings.push({ canvas: classroomDemo, depth: 104, animate: t => {
   dot(ctx, x + 10 * Math.sin(t * 1.5), y + 4 * Math.cos(t * 1.5), '#eaf9ff');
 } });
 
+// Ambient library students share the walkable floor without blocking player routes.
+const studentSprite = new Image();
+studentSprite.src = 'assets/sprites/library-students.png';
+const libraryStudents = [];
+function studentTileOpen(a,b) {
+  return a>0 && b>0 && a<LIBRARY_COLUMNS-1 && b<LIBRARY_ROWS-1 &&
+    rooms.library.floor[b]?.[a] === '.' &&
+    !rooms.library.exits.some(exit => Math.abs(exit.tile[0]-a)+Math.abs(exit.tile[1]-b)<2);
+}
+function initLibraryStudents() {
+  if(libraryStudents.length) return;
+  for(const [id,anchor] of [[1,3],[6,6],[7,5],[9,5]].entries()) {
+    const free=[];
+    for(let b=1;b<LIBRARY_ROWS-1;b++) for(let a=1;a<LIBRARY_COLUMNS-1;a++) {
+      if(studentTileOpen(a,b) && !libraryStudents.some(s=>s.a===a && s.b===b)) free.push([a,b]);
+    }
+    free.sort((l,r)=>Math.abs(l[0]-anchor[0])+Math.abs(l[1]-anchor[1])-Math.abs(r[0]-anchor[0])-Math.abs(r[1]-anchor[1]));
+    if(free.length) { const [a,b]=free[0];libraryStudents.push({id,a,b,home:[a,b],step:null,wait:1+id*.8,elapsed:0,turn:0,face:id===2 || id===1 ? 1 : -1}); }
+  }
+}
+function updateLibraryStudents(dt) {
+  initLibraryStudents();
+  if(!librarianDialogue.hidden || chestInventory?.open || questDialogue?.open) return;
+  for(const student of libraryStudents) {
+    if(student.id !== 1) {student.face=student.id === 2 ? 1 : -1;continue;}
+    if(student.step) {
+      student.elapsed+=dt;
+      if(student.elapsed>=.65) {
+        student.a=student.step.a; student.b=student.step.b;student.step=null;
+        student.elapsed=0;student.wait=.15;
+      }
+      continue;
+    }
+    student.wait-=dt;
+    if(student.wait>0) continue;
+    const choices=[[1,0],[0,1],[-1,0],[0,-1]].map(([da,db])=>[student.a+da,student.b+db]);
+    const free=choices.filter(([a,b])=>studentTileOpen(a,b) &&
+      Math.abs(a-wizard.a)+Math.abs(b-wizard.b)>1 &&
+      !(wizard.step && wizard.step.a===a && wizard.step.b===b) &&
+      Math.abs(a-librarian.a)+Math.abs(b-librarian.b)>1 &&
+      !(librarian.step && librarian.step.a===a && librarian.step.b===b) &&
+      !libraryStudents.some(other=>other!==student &&
+        ((other.a===a && other.b===b)||(other.step?.a===a && other.step?.b===b))));
+    student.turn++;
+    if(!free.length || student.turn%5===0) {student.wait=2+hash(student.id,student.turn)*3;continue;}
+    const [a,b]=free[Math.floor(hash(student.id+7,student.turn)*free.length)];
+    student.face=Math.sign(a-student.a-b+student.b)||student.face;
+    student.step={a,b};student.elapsed=0;
+  }
+}
+function libraryStudentLayers(t) {
+  return libraryStudents.map(student=>{
+    const progress=student.step ? Math.min(1,student.elapsed/.65) : 0;
+    const a=(student.a+.5+(student.step ? student.step.a-student.a : 0)*progress)*TILE_SIZE;
+    const b=(student.b+.5+(student.step ? student.step.b-student.b : 0)*progress)*TILE_SIZE;
+    const [x,y]=P(a,b,0);
+    return {depth:a+b,animate:()=>{
+      if(!studentSprite.naturalWidth) return;
+      ctx.save();ctx.imageSmoothingEnabled=false;
+      ell(ctx,x,y-1,6,2,'rgba(18,20,33,.3)');
+      ctx.translate(Math.round(x),Math.round(y));ctx.scale(student.face,1);
+      const frame=student.step ? Math.floor(progress*4)%4 : 1;
+      ctx.drawImage(studentSprite,frame*32,student.id*48,32,48,-16,-46,32,48);
+      ctx.restore();
+      if(student.id===0) {
+        // An open book and a small reaching movement suggest browsing the shelves.
+        const reach=Math.floor(t%6)>3 ? 1 : 0;
+        rect(ctx,x-11,y-16-reach,7,5,'#826b49');
+        rect(ctx,x-10,y-15-reach,5,3,'#d6c49b');
+        line(ctx,x-8,y-15-reach,x-8,y-12-reach,'#8e7857');
+      }
+    }};
+  });
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
@@ -5476,7 +5592,7 @@ function drawRoomOccupants(t, dt) {
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
   const roomFurnishings = currentRoom === rooms.classroom ? classroomFurnishings : currentRoom.corridor ? hallFurnishings.get(currentRoom) : currentRoom === rooms.library
-    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
+    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto, ...libraryStudentLayers(t)].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings
       : currentRoom === rooms.potion ? potionFurnishings : currentRoom === rooms.stockroom ? stockFurnishings : [];
   const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
@@ -5575,6 +5691,7 @@ function frame(ms) {
   if (currentRoom !== rooms.tower) {
     if (currentRoom === rooms.library) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
+      updateLibraryStudents(dt);
       drawLibraryPortrait(t);
       animateLibraryClock(t);
       drawLibraryLights(t);
