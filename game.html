@@ -34,6 +34,7 @@
   .npc-dialogue{
     --dialogue-bottom:calc(var(--hotbar-bottom,20dvh) + clamp(12px,3dvh,36px));
     --portrait-width:clamp(86px,20vw,172px);
+    --dialogue-height:clamp(190px,27dvh,240px);
     position:fixed;inset:auto 0 var(--dialogue-bottom);margin:0 auto;z-index:3;
     width:min(880px,calc(100% - 24px));max-height:calc(100dvh - var(--dialogue-bottom) - 12px);
     box-sizing:border-box;overflow:auto;border:0;padding:44px 0 0;color:#f5e6ce;background:transparent;
@@ -41,11 +42,11 @@
   .npc-dialogue::backdrop{background:#12102555}
   .npc-dialogue-layout{
     position:relative;display:grid;grid-template-columns:var(--portrait-width) minmax(0,1fr);
-    align-items:stretch;gap:0
+    align-items:stretch;gap:0;height:var(--dialogue-height)
   }
   .npc-speaker,#quest-dialogue .npc-speaker{
     position:static;margin:0;align-self:end;display:flex;align-items:center;justify-content:center;
-    height:clamp(150px,24vh,215px);box-sizing:border-box;border:solid transparent;border-width:25px 12px 15px;
+    height:var(--dialogue-height);box-sizing:border-box;border:solid transparent;border-width:25px 12px 15px;
     border-image:url("assets/sprites/dialogue-portrait.png") 25 12 15 fill / 25px 12px 15px stretch;
     image-rendering:pixelated
   }
@@ -67,8 +68,8 @@
   }
   .npc-dialogue-copy{
     position:relative;
-    align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
-    min-width:0;min-height:140px;box-sizing:border-box;padding:24px clamp(6px,1vw,14px) 12px;
+    align-self:stretch;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;
+    min-width:0;min-height:0;height:var(--dialogue-height);box-sizing:border-box;padding:12px clamp(6px,1vw,14px) 8px;
     border:solid transparent;border-width:10px 14px 14px 5px;
     border-image:url("assets/sprites/dialogue-panel.png") 10 14 14 5 fill / 10px 14px 14px 5px stretch;
     overflow-wrap:anywhere;image-rendering:pixelated
@@ -77,9 +78,9 @@
     content:"";position:absolute;left:-5px;top:0;bottom:0;width:3px;
     background:#d5ad68;box-shadow:1px 0 #785735,-1px 0 #372a24;pointer-events:none
   }
-  .npc-dialogue h2{font:bold 15px/1.25 Georgia,serif;color:#d8b880;margin:0 0 7px}
-  .npc-dialogue p{font-size:clamp(13px,1.25vw,16px);line-height:1.55;margin:0 0 12px}
-  .npc-dialogue form{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+  .npc-dialogue h2{flex:none;font:bold 14px/1.2 Georgia,serif;color:#d8b880;margin:0 0 5px}
+  .npc-dialogue p{flex:1 1 48px;min-height:32px;overflow:auto;scrollbar-width:thin;font-size:clamp(12px,1vw,14px);line-height:1.4;margin:0 0 8px}
+  .npc-dialogue form{flex:0 1 auto;min-height:28px;max-height:65%;overflow:auto;display:flex;flex-wrap:wrap;gap:5px;width:100%}
   .npc-dialogue button{
     width:auto;height:auto;min-height:28px;padding:3px 10px;background:#49322d;color:#ffe4a8;
     box-shadow:inset 0 0 0 1px #b28a55,inset 0 -3px #281d26
@@ -88,7 +89,7 @@
   #close-librarian-dialogue[hidden],#quest-dismiss[hidden],#quest-title[hidden]{display:none}
   @media(max-width:440px){
     .npc-speaker figcaption{font-size:12px;min-width:130px;padding-inline:4px}
-    .npc-dialogue-copy{padding:24px 4px 12px}
+    .npc-dialogue-copy{padding:12px 4px 8px}
   }
   #reset-quest,#teleport-room{width:auto;padding:0 10px;font-size:12px}
   #quest-log{max-width:95%;color:var(--txt);font-size:12px}
@@ -96,11 +97,14 @@
   #quest-log ul{margin:6px 0;padding-left:20px}
   #search-book-stack{width:auto;padding:0 10px;font-size:12px}
   #search-book-stack[hidden],#quest-action[hidden]{display:none}
-  #librarian-topics{display:grid;gap:6px;width:100%;margin:8px 0}
-  #librarian-topics button{height:auto;min-height:32px;text-align:left;justify-items:start;padding:7px 10px;box-sizing:border-box;width:100%}
-  #skeleton-topics{display:grid;gap:6px;width:100%;margin:8px 0}
+  #librarian-topics{flex:0 1 auto;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;width:100%;margin:0 0 6px}
+  #librarian-topics button{height:auto;min-height:28px;font-size:12px;text-align:left;justify-items:start;padding:5px 7px;box-sizing:border-box;width:100%}
+  #skeleton-topics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;width:100%;margin:0 0 4px}
   #skeleton-topics[hidden],#skeleton-next[hidden]{display:none}
-  #skeleton-topics button{width:100%;height:auto;min-height:32px;padding:7px 10px;box-sizing:border-box;text-align:left;justify-items:start}
+  #skeleton-topics button{width:100%;height:auto;min-height:28px;font-size:12px;padding:5px 7px;box-sizing:border-box;text-align:left;justify-items:start}
+  @media(max-width:540px){
+    #skeleton-topics,#librarian-topics{grid-template-columns:1fr}
+  }
   #reset-quest-choice,#teleport-room-choice{display:block;width:100%;margin:8px 0 12px}
   #reset-quest-dialogue button:disabled{opacity:.45;cursor:default}
   #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
