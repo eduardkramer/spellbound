@@ -1360,10 +1360,23 @@ function stockPortraitArt(subject, x, y, t, gaze = 0) {
 
 function stockPaintingArt(subject, x, y, t) {
   if (stockPortraits[subject]) return stockPortraitArt(subject, x, y, t);
-  if (subject === 'aubert' || subject === 'aubert-young') {
+  if (subject.startsWith('aubert')) {
     // The same silver-haired witch at two ages, in plum robes and a brass brooch.
     const young = subject === 'aubert-young';
-    const face = Math.abs(x + .06);
+    const study = subject === 'aubert-study';
+    const moonlit = subject === 'aubert-moon';
+    const face = Math.abs(x + (study ? -.12 : .06));
+    if (study && y < -.45 && x > .12 && x < .82) {
+      if (Math.abs(x - .46) < .025) return '#957757';
+      return y < -.7 ? '#b6a77e' : '#d0bc93';
+    }
+    if (moonlit && (x + .58) ** 2 + (y - .6) ** 2 < .07 &&
+        (x + .47) ** 2 + (y - .67) ** 2 > .055) return '#dbd2ab';
+    if (y < -.18 && y > -.88 && Math.abs(x) < .52 - y * .26) {
+      if (Math.abs(x - .13) < .045 && y < -.53) return '#bca175';
+      if ((x + .1) ** 2 + (y + .51) ** 2 < .015) return '#e4c77f';
+      return x < 0 ? '#775274' : '#523b58';
+    }
     if (y > .52 && y < .65 && Math.abs(x) < .72) return '#382b4a';
     if (y >= .65 && Math.abs(x + .13) < (1 - y) * 1.35) return x < 0 ? '#765079' : '#503c62';
     if (y > .37 && y < .55 && face < .43) return young ? '#654337' : '#bab6ac';
@@ -1373,11 +1386,7 @@ function stockPaintingArt(subject, x, y, t) {
       return x < -.18 ? '#ad8473' : '#dfb99a';
     }
     if (y > -.38 && y < .43 && face < .46) return young ? '#654337' : '#b6b8b2';
-    if (y < -.27 && y > -.88 && Math.abs(x) < .52 - y * .26) {
-      if ((x + .1) ** 2 + (y + .51) ** 2 < .015) return '#e4c77f';
-      return x < 0 ? '#775274' : '#523b58';
-    }
-    return y > .25 ? '#59675d' : '#303945';
+    return y > .25 ? (moonlit ? '#465464' : '#59675d') : '#303945';
   }
   switch (subject) {
     case 'castle': {
@@ -1476,11 +1485,20 @@ function drawStockPaintings(g, t = 0, animateOnly = false) {
 
 function drawFramedPaintings(g, groups, t = 0, animateOnly = false) {
   for (const [paintWall, frames] of groups) {
-    for (const [u, z, width, height, subject, frame] of frames) {
+    for (const [u, z, width, height, subject, frame, style] of frames) {
       if (animateOnly && !stockPortraits[subject]) continue;
       paintWall(g, 0, animateOnly ? u + 2 : u, animateOnly ? u + width - 2 : u + width + 2,
         animateOnly ? z + 2 : z - 2, animateOnly ? z + height - 2 : z + height, (column, level) => {
         const x = column - u, y = level - z;
+        if (style === 'oval') {
+          const radius = ((x - width / 2) / (width / 2)) ** 2 + ((y - height / 2) / (height / 2)) ** 2;
+          if (radius > 1) return null;
+          if (radius > .76) return radius > .9 ? frame[2] : x < width / 2 ? frame[0] : frame[1];
+        }
+        if (style === 'carved' && x >= 2 && x < width - 2 && y >= 2 && y < height - 2 &&
+            (x < 4 || x >= width - 4 || y < 4 || y >= height - 4)) {
+          return (x + y) % 4 === 0 ? frame[0] : frame[2];
+        }
         if (x >= width || y < 0) return '#32313c';
         if (y === height - 1 || x === 0) return frame[0];
         if (y === 0 || x === width - 1) return frame[2];
@@ -2279,8 +2297,8 @@ function buildStatic(sg, room, doorStyle) {
     const gildedWood = ['#b6956a', '#856348', '#574337'];
     drawWallIvy(sg, [[0, 32.5, 21], [0, 66, 24]]);
     drawFramedPaintings(sg, [
-      [wallL, [[105, 59, 22, 31, 'aubert-young', gildedWood], [139, 64, 20, 28, 'aubert', gildedWood]]],
-      [wallR, [[101, 60, 23, 33, 'aubert', gildedWood], [143, 66, 20, 27, 'aubert-young', gildedWood]]]
+      [wallL, [[105, 59, 22, 31, 'aubert-young', gildedWood], [139, 64, 20, 28, 'aubert-moon', ['#c6c2ac','#808779','#4f5b58'], 'oval']]],
+      [wallR, [[101, 60, 23, 33, 'aubert', gildedWood, 'carved'], [143, 64, 24, 29, 'aubert-study', ['#bd9469','#80543c','#49352f'], 'carved']]]
     ]);
   }
   if (library) {
@@ -2342,9 +2360,21 @@ function drawAubertPlant(g, a, b, variety, height = 0) {
   const [x, y] = P(a, b, height);
   if (!height) ell(g, x, y, 7, 3, '#34333c');
   box(g, a - 1.8, b - 1.8, height, 3.6, 3.6, 4,
-    flat('#ba8b63', '#78503e', '#94654a'));
-  ell(g, x, y - 4, 7, 3, '#c3946c');
+    flat(variety === 1 ? '#839a91' : '#ba8b63', variety === 1 ? '#415c5b' : '#78503e', variety === 1 ? '#587c76' : '#94654a'));
+  ell(g, x, y - 4, 7, 3, variety === 1 ? '#a7b9a6' : '#c3946c');
   ell(g, x, y - 5, 5, 2, '#403c32');
+  if (variety === 2) {
+    // Arching fronds, rather than the upright flowering stems.
+    for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
+      const tx = x + side * (3 + k * 2), ty = y - 18 + k * 3;
+      line(g, x, y - 5, tx, ty, '#50735d');
+      for (let n = 1; n < 4; n++) {
+        const lx = x + (tx - x) * n / 4, ly = y - 5 + (ty - y + 5) * n / 4;
+        line(g, lx - 2, ly - 2, lx + 2, ly, n % 2 ? '#77956d' : '#a0ad7d');
+      }
+    }
+    return;
+  }
   for (let stem = 0; stem < 5; stem++) {
     const dx = (stem - 2) * 3, top = y - 13 - (stem % 3) * 3;
     line(g, x, y - 5, x + dx, top, '#55745a');
@@ -2573,6 +2603,12 @@ function buildFront() {
     box(g, a, 2, 22.5, 1.7, 1.7, .6, gilding);
     box(g, a, 3.7, 20.2, 1.4, .1, 1, pages);
   }
+  // Raised corner caps, recessed drawer panels and little worn handles.
+  for (const a of [49, 61]) box(g, a, 5.9, 1, .6, .5, 17, gilding);
+  for (const z of [3, 8, 13]) {
+    line(g, ...P(50.5, 6.3, z + .5), ...P(60.5, 6.3, z + .5), '#49312b');
+    line(g, ...P(50.5, 6.3, z + 3.4), ...P(60.5, 6.3, z + 3.4), '#a47650');
+  }
   // A scalloped runner and tiny botanical labels on each drawer.
   box(g, 50, 1, 19.6, 11, 4.5, .2, flat('#586d61', '#3f5149', '#47584c'));
   for (const a of [50, 53, 56, 59]) line(g, ...P(a, 5.7, 19.7), ...P(a, 6.1, 18.5), '#c0a77c');
@@ -2590,6 +2626,11 @@ function buildFront() {
   for (const b of [22, 27, 32]) line(g, ...P(2.4, b, 9.1), ...P(6.5, b, 9.1), '#b18a9b');
   for (let b = 18; b < 36; b += 2) dot(g, ...P(7, b, 5), '#bb9b65');
   for (let b = 26; b < 30; b += .8) line(g, ...P(3, b, 9.6), ...P(7, b, 9.6), '#99ac90');
+  // Rolled arms and carved feet make this a chaise, distinct from the desk chair.
+  for (const b of [17, 34]) {
+    box(g, 2, b, 9, 5, 1.5, 4, flat('#906c82','#573d56','#725168'));
+    line(g, ...P(2, b + 1.5, 12.5), ...P(7, b + 1.5, 12.5), '#b3969c');
+  }
   store(43);
 
   // Narrow correspondence table, loose parchment and a broken wax seal.
@@ -2609,11 +2650,23 @@ function buildFront() {
   rect(g, cupX - 1, cupY - 3, 3, 3, '#ded1ad');
   rect(g, cupX - 1, cupY - 3, 3, 1, '#674c3c');
   dot(g, cupX + 2, cupY - 2, '#baa376');
+  // Cross stretcher, apron moulding and an inlaid edge on the writing table.
+  box(g, 71, 24.9, 9, 13, .5, 2, woodD);
+  box(g, 71, 22.3, 3, 13, .8, .8, woodD);
+  line(g, ...P(70.5, 26.6, 14), ...P(84.5, 26.6, 14), '#c19b68');
+  for (const a of [72, 82]) box(g, a, 25.5, 9, .7, .5, 3, gilding);
   store(112);
 
   // Travel trunk and folded blankets; the owner never packed them.
   drawStockContainer(g, 76, 44, 'chest');
   box(g, 73.5, 42, 8, 5, 3.5, 1.2, flat('#738b7d', '#3c5953', '#526d62'));
+  // Leather straps, rivets and a tarnished lock on the travel trunk.
+  for (const a of [74, 78]) {
+    box(g, a, 42, 9.3, .6, 4, .3, flat('#b19762','#66503d','#927951'));
+    for (const z of [2, 5]) dot(g, ...P(a, 46.1, z), '#cfb47d');
+  }
+  box(g, 75.4, 46.1, 3, 1.3, .3, 2, gilding);
+  dot(g, ...P(76, 46.5, 4), '#302c33');
   store(124);
   drawAubertPlant(g, 6, 51, 0);
   store(63);
