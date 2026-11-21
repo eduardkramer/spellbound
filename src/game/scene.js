@@ -228,7 +228,8 @@ const copingFn = (a, b) => {
 /* ---------- vloer ---------- */
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
-  [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
+  [21.5, 4.5, 11.5, 3.4], [29, 45.5, 4.8, 4.8], [29, 53, 12.5, 4.7],
+  [55, 4, 8, 4], [4, 27, 4, 11], [78, 23, 8, 5], [76, 44, 5, 4],
   [TABLE_A + 1, TABLE_B + 1.5, 5, 5], [towerChestA + 1, towerChestB + 1.5, 4.8, 3.7],
   [5, TOWER_DIAMOND_B + 1.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
   [8, 34.5, 3.4, 3.4]
@@ -251,9 +252,9 @@ function shadedTowerFloor(a, b) {
 }
 
 function floorFn(a, b) {
-  if (a >= 10 && a < 42 && b >= 7 && b < 47) {
-    const edge = Math.min(a - 10, 42 - a, b - 7, 47 - b);
-    if (b < 8.2 || b >= 45.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
+  if (a >= 10 && a < 42 && b >= 7 && b < 71) {
+    const edge = Math.min(a - 10, 42 - a, b - 7, 71 - b);
+    if (b < 8.2 || b >= 69.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
     if (edge < 1.4) return '#3c4441';
     if (edge < 2.15) return '#ad9160';
     if (edge < 3.25) return (Math.floor(a * 2) + Math.floor(b * 2)) % 5 === 0 ? '#a0845d' : '#596455';
@@ -352,7 +353,7 @@ function towerWindowCross(u, z) {
 }
 
 function towerWindowGlass(u, z) {
-  return z >= 60 && towerWindowArch(u, z) < 18 && !towerWindowCross(u, z);
+  return z >= 30 && towerWindowArch(u, z) < 18 && !towerWindowCross(u, z);
 }
 
 function towerPanel(u, z) {
@@ -363,7 +364,7 @@ function towerPanel(u, z) {
 }
 
 function leftFn(u, z) {
-  if (z >= 60) {
+  if (z >= 30) {
     const arch = towerWindowArch(u, z);
     if (arch < 18) return towerWindowCross(u, z) ? (u === 43 || z === 73 ? '#967852' : '#614832') : null;
     if (arch < 22) {
@@ -371,12 +372,6 @@ function leftFn(u, z) {
       if (arch < 19) return '#8e928a';
       return arch >= 20 ? '#606d76' : '#717f86';
     }
-  }
-  if (u >= 22 && u < 66 && z >= 6 && z < 60) {
-    if (u < 24 || u >= 64 || z < 8) return woodEdge(u, z);
-    if (z >= 56 && z < 60) return woodMid(u, z);
-    if (u >= 43 && u < 45) return woodMid(u, z);
-    return bookFn(u, z);
   }
   const h = hatFn(u, z); if (h) return h;
   return towerPanel(u, z) ?? towerWallStone(brL, u, z);
@@ -545,7 +540,7 @@ function drawSidePassage(g, { wallA, tile }, foreground, style) {
 
 /* ---------- bibliotheek ---------- */
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
-const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
+const armchairSeat = { tile: [3, 5], approach: [4, 5], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
 const readingSeat = { tile: [1, 5], approach: [2, 5], direction: 'ne', offsetB: 0, height: 7, hit: [14, 24] };
 const studyTables = [[3, 3], [8, 3], [3, 8], [8, 8]];
 const studySeats = studyTables.flatMap(([column, row]) =>
@@ -2360,7 +2355,7 @@ function buildFront() {
   store(26);
 
   // Fauteuil met de rug naar de haard en de zitting naar het bureau.
-  const seatA = 24.5, seatB = 16.5;
+  const seatA = 24.5, seatB = 40.5;
   const upholstery = flat('#75917f', '#3a5349', '#4b695b');
   const cushion = flat('#8fa995', '#526e60', '#638272');
   const chairPart = (a, b, z, da, db, dz, material) =>
@@ -2398,6 +2393,8 @@ function buildFront() {
   chairPart(5.62, 1.35, 13, 1.34, 3, .3, throwWool);
   store(seatA + seatB + 7);
 
+  // Move the complete desk, including its animated props, away from the hearth.
+  g.save(); g.translate(-48, 24);
   // Donker schrijfbureau met uitgesneden panelen.
   const deskWood = woodC('#64412d');
   const gilding = flat('#aa7f4c', '#7c5233', '#8e633d');
@@ -2435,10 +2432,13 @@ function buildFront() {
   box(g, candleA - .45, candleB - .45, 16.2, .9, .9, 2.7,
     flat('#f1d29f', '#c48a59', '#ad704d'));
   const [candleX, candleY] = P(candleA, candleB, 19);
-  store(56, t => {
+  g.restore();
+  store(80, t => {
+    ctx.save(); ctx.translate(-48, 24);
     drawDeskOrb(t);
     flame(candleX, candleY - 1, t, 3);
     glow(candleX, candleY + 3, 16, 11, '255,188,105', .025);
+    ctx.restore();
   });
 
   // Hoge zitstok voor de sneeuwuil.
@@ -2518,6 +2518,53 @@ function buildFront() {
     return '#bd9257';
   }));
   store(4 + TOWER_DIAMOND_B, drawDiamond);
+
+  // Aubert's herb cabinet: drawers, labelled jars and a sealed letter.
+  box(g, 49, 1, 0, 13, 5, 18, woodD);
+  for (const z of [3, 8, 13]) {
+    box(g, 49.6, 5.8, z, 11.8, .4, 4, wood);
+    for (const a of [52, 59]) box(g, a, 6.2, z + 1.8, 1, .4, .6, gilding);
+  }
+  box(g, 48.5, .5, 18, 14, 6, 1.5, wood);
+  for (const [a, color] of [[51, '#6c956c'], [55, '#a384aa'], [59, '#c5a066']]) {
+    box(g, a, 2, 19.5, 1.7, 1.7, 3, flat(color, '#51424f', '#6e6470'));
+    box(g, a, 2, 22.5, 1.7, 1.7, .6, gilding);
+    box(g, a, 3.7, 20.2, 1.4, .1, 1, pages);
+  }
+  store(68);
+
+  // Velvet chaise beneath the window, with cushions and an abandoned shawl.
+  for (const b of [18, 34]) box(g, 1, b, 0, 5, 1, 3, woodD);
+  box(g, 1, 17, 3, 6, 19, 3, wood);
+  box(g, 1, 17, 6, 6, 19, 3, flat('#795571', '#4d344e', '#60435f'));
+  box(g, 1, 17, 9, 1.3, 19, 8, flat('#87657f', '#49344d', '#67495f'));
+  for (const b of [18, 31]) box(g, 2, b, 9, 4, 3, 2, flat('#b39a71', '#806045', '#927456'));
+  box(g, 3, 26, 9, 4, 4, .5, flat('#557e75', '#36524d', '#47645b'));
+  store(43);
+
+  // Narrow correspondence table, loose parchment and a broken wax seal.
+  for (const a of [71, 83]) for (const b of [20, 25]) box(g, a, b, 0, 1, 1, 12, woodD);
+  box(g, 70, 19, 12, 15, 8, 2, wood);
+  box(g, 73, 21, 14, 6, 3, .3, pages);
+  line(g, ...P(74, 22, 14.4), ...P(77, 22, 14.4), '#866e53');
+  box(g, 78, 23, 14.3, 1, 1, .3, flat('#ad515b', '#73313d', '#984650'));
+  box(g, 81, 20, 14, 1.5, 1.5, 2, iron);
+  store(112);
+
+  // Travel trunk and folded blankets; the owner never packed them.
+  drawStockContainer(g, 76, 44, 'chest');
+  box(g, 73.5, 42, 8, 5, 3.5, 1.2, flat('#738b7d', '#3c5953', '#526d62'));
+  store(124);
+  drawStockContainer(g, 6, 51, 'plant');
+  store(63);
+
+  // Brass coat stand and Madame Aubert's plum-coloured cloak.
+  box(g, 3, 75, 0, 6, 4, 1, woodD);
+  box(g, 5.5, 76.5, 1, 1, 1, 27, gilding);
+  for (const b of [75, 79]) box(g, 3, b, 24, 6, .6, .7, gilding);
+  box(g, 3, 77, 6, 3.5, 1.2, 17, flat('#74506b', '#3f2a46', '#593c58'));
+  line(g, ...P(4, 78.3, 7), ...P(4, 78.3, 21), '#a6856a');
+  store(86);
 
   // tafel
   { const [tx, ty] = P(TABLE_A, TABLE_B, 0);
@@ -2726,7 +2773,7 @@ function drawLibraryLights(t, lanterns = libraryLanterns) {
 /* ---------- animaties ---------- */
 // Zelfde herfstlucht als in het leesraam en de potionkamer.
 function drawSky() {
-  wallL(ctx, 0, 26, 62, 60, 94, (u, z) => towerWindowGlass(u, z) ? autumnSunset(u + 1, (z - 60) / 34) : null);
+  wallL(ctx, 0, 26, 62, 30, 94, (u, z) => towerWindowGlass(u, z) ? autumnSunset(u + 1, (z - 30) / 64) : null);
 }
 
 function windowPixels(paint, start, bottom, inGlass) {
@@ -3152,7 +3199,9 @@ const towerFloor = Array.from({ length: TOWER_TILES }, () => Array(TOWER_TILES).
 towerFloor[0].fill('X', 0, 4);
 towerFloor[CHEST_TILE[1]][CHEST_TILE[0]] = 'X';
 towerFloor[armchairSeat.tile[1]][armchairSeat.tile[0]] = 'X';
-towerFloor[3].fill('X', 2, 5);
+towerFloor[6].fill('X', 2, 5);
+// Furniture footprints leave the central hearth approach and both doorway lanes open.
+for (const [column, row] of [[6,0],[7,0],[0,2],[0,3],[0,4],[0,6],[0,9],[9,2],[10,2],[9,3],[10,3],[9,5]]) towerFloor[row][column] = 'X';
 towerFloor[4][0] = 'X';
 towerFloor[Math.floor(TABLE_B / TILE_SIZE)].fill('X', TABLE_A / TILE_SIZE - 1, TABLE_A / TILE_SIZE + 1);
 towerFloor[Math.floor(TOWER_DIAMOND_B / TILE_SIZE)][0] = 'X';
