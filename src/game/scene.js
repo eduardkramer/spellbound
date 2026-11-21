@@ -3373,7 +3373,7 @@ function renderQuestObjective() {
 
 const dialogueTyping = new WeakMap();
 
-function typeDialogue(element, text, panel) {
+function typeDialogue(element, text, panel, onComplete) {
   dialogueTyping.get(element)?.();
   const characters = Array.from(text);
   let timer, position = 0;
@@ -3389,7 +3389,12 @@ function typeDialogue(element, text, panel) {
   const tick = () => {
     if (panel.hidden || (panel.tagName === 'DIALOG' && !panel.open) ||
         matchMedia('(prefers-reduced-motion: reduce)').matches || position >= characters.length) {
+      const finished = !panel.hidden && (panel.tagName !== 'DIALOG' || panel.open);
       stop();
+      if (finished && onComplete) {
+        timer = setTimeout(() => { dialogueTyping.delete(element); onComplete(); }, 1200);
+        dialogueTyping.set(element, () => { clearTimeout(timer); dialogueTyping.delete(element); });
+      }
       return;
     }
     element.textContent += characters[position++];
@@ -3406,6 +3411,7 @@ function talkToSkeletonMage() {
   document.getElementById('quest-title').textContent = 'Skeleton Mage';
   document.getElementById('quest-action').hidden = true;
   document.getElementById('quest-dismiss').textContent = 'Goodbye';
+  document.getElementById('quest-dismiss').hidden = false;
   document.getElementById('skeleton-next').hidden = false;
   document.getElementById('skeleton-topics').hidden = true;
   clearRoute();
@@ -3429,7 +3435,7 @@ document.getElementById('skeleton-next')?.addEventListener('click', () => {
   const choices = [
     ["What happened to your wand?", "A little too much enthusiasm and one badly pronounced spell. Now it only produces sparks. I should have listened to my own lessons."],
     ["What are you brewing?", "A warming draught for the students. The ingredients are ready, but the recipe demands a steady flame and a careful hand."],
-    ["Tell me about Oakhaven.", "These halls have taught generations of young wizards. Keep your eyes open: even the books and portraits have stories to tell."],
+    ["Tell me about yourself.", "I have taught potion-making here for longer than I care to count. Losing my flesh did little to dull my curiosity, though it has made tasting my own recipes rather difficult."],
     [dialogueQuest.title, null]
   ];
   for (const [label, response] of choices) {
@@ -3456,6 +3462,18 @@ document.getElementById('skeleton-next')?.addEventListener('click', () => {
     topics.append(button);
   }
   topics.querySelector('button').focus();
+});
+
+document.getElementById('quest-dismiss')?.addEventListener('click', event => {
+  event.preventDefault();
+  document.getElementById('quest-title').textContent = 'Skeleton Mage';
+  document.getElementById('skeleton-topics').hidden = true;
+  document.getElementById('skeleton-next').hidden = true;
+  document.getElementById('quest-action').hidden = true;
+  document.getElementById('quest-dismiss').hidden = true;
+  typeDialogue(document.getElementById('quest-message'),
+    'Safe travels, young wizard. May your spells be steady and your cauldron stay warm!',
+    questDialogue, () => questDialogue.close('dismiss'));
 });
 
 function canResetQuest(quest) {
@@ -3491,6 +3509,7 @@ document.getElementById('reset-quest-form')?.addEventListener('submit', event =>
 resetQuestDialogue?.addEventListener('close', () => cv.focus({ preventScroll: true }));
 
 questDialogue?.addEventListener('close', () => {
+  dialogueTyping.get(document.getElementById('quest-message'))?.();
   if (questDialogue.returnValue === 'advance' && dialogueQuest) {
     const stage = questManager.status(dialogueQuest);
     if (stage === 'available') questManager.accept(dialogueQuest);
