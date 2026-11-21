@@ -462,10 +462,30 @@ function passageColor(dx, z, style = doorStyles.tower) {
     if (curve > 14 && curve < 14.8) return sh(style.dark, 1.14);
     return grain > .72 ? sh(style.wood, 1.15) : grain < .28 ? sh(style.wood, .83) : style.wood;
   }
-  if (z < 3) return style.light;
-  if (z < 7) return '#644033';
-  if (dx > 8.5 && z < 32) return '#4b2a2b';
-  return '#27192c';
+  // A shallow, shaded passage: stone threshold, receding flags and masonry reveals.
+  if (z < 3) {
+    if (z === 2) return '#92938a';
+    return Math.abs(dx) < .8 ? '#4d565b' : z === 0 ? '#454d54' : '#697579';
+  }
+  const floorHeight = 12 - Math.abs(dx) * .22;
+  if (z < floorHeight) {
+    const depth = (z - 3) / 9;
+    const seam = z === 6 || z === 9 || Math.abs(dx - (z - 3) * .45) < .5 ||
+      Math.abs(dx + 6 + (z - 3) * .22) < .5;
+    return sh(seam ? '#343d46' : '#69777b', .8 - depth * .35);
+  }
+  const reveal = Math.abs(dx) > 7.5;
+  if (reveal) {
+    const joint = z % 7 === 0;
+    const edge = Math.abs(dx) > 9.5;
+    return joint ? '#252c35' : edge ? '#53606a' : dx < 0 ? '#394750' : '#303b46';
+  }
+  // The far wall falls into shade towards the vaulted ceiling.
+  if (dx > -2.5) return z < 17 ? '#252e3b' : '#1b2230';
+  const row = Math.floor(z / 7);
+  const joint = z % 7 === 0 || (Math.floor(dx + 12) + row % 2 * 4) % 8 === 0;
+  const shade = Math.max(.45, .84 - (z - 12) * .013);
+  return sh(joint ? '#222b35' : '#3d4856', shade);
 }
 
 function drawDoorMat(g, a0, b0, width, depth, style) {
