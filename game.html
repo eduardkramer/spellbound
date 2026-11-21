@@ -195,6 +195,15 @@
     .npc-dialogue-copy{padding-inline:5px}
   }
 
+  /* Page text and choices inside the same frame, never show scrollbars. */
+  .npc-dialogue p{width:100%;flex:1 1 auto;min-height:0;overflow:hidden;overflow-wrap:anywhere}
+  .npc-dialogue form,#librarian-topics{overflow:hidden;max-height:none}
+  .npc-dialogue-copy > [hidden],.npc-dialogue form[hidden],
+  #librarian-topics[hidden],.dialogue-page-next[hidden]{display:none!important}
+  .npc-dialogue .dialogue-page-next{align-self:flex-start;flex:0 0 auto}
+  #skeleton-topics,#librarian-topics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #skeleton-topics button,#librarian-topics button{font-size:clamp(10px,1.3vw,12px);line-height:1.2}
+
   /* ---- muziekspeler ---- */
   #player{width:min(460px,calc(100vw - 24px));box-sizing:border-box;background:var(--bg);padding:10px 12px;
     border:2px solid var(--line);box-shadow:0 0 0 2px #0c0f24,4px 4px 0 2px #0c0f24, inset 0 0 0 2px var(--bg2);position:relative}
