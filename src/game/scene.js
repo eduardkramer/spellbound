@@ -14,8 +14,8 @@ const CHEST_TILE = [9, 0];
 const [towerChestA, towerChestB] = CHEST_TILE.map(tile => (tile + .5) * TILE_SIZE);
 const TABLE_A = 64, TABLE_B = 60;
 const TOWER_DIAMOND_B = 68, TOWER_OWL_A = 72;
-const POTION_COLUMNS = 8;
-const POTION_ROWS = 7;
+const POTION_COLUMNS = 11;
+const POTION_ROWS = 10;
 const POTION_DOOR_ROW = 3;
 const LIBRARY_COLUMNS = 14, LIBRARY_ROWS = 12;
 const LIBRARY_WIDTH = LIBRARY_COLUMNS * TILE_SIZE, LIBRARY_DEPTH = LIBRARY_ROWS * TILE_SIZE;
@@ -779,9 +779,9 @@ function drawLibraryShelves(g) {
   }
 }
 
-const potionBookcases = [[3, 31], [87, 109]];
-const cauldronA = 6 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
-const workbenchA = 3.5 * TILE_SIZE, workbenchB = 5.5 * TILE_SIZE;
+const potionBookcases = [[3, 31], [87, 119], [130, 155]];
+const cauldronA = 8 * TILE_SIZE, cauldronB = 4 * TILE_SIZE;
+const workbenchA = 4.5 * TILE_SIZE, workbenchB = 6.5 * TILE_SIZE;
 const [potionLampX, potionLampY] = P(32, 1, 78);
 const rackStart = 2 * TILE_SIZE + 4;
 const rackEnd = 6 * TILE_SIZE;
@@ -978,7 +978,7 @@ function drawWallIvy(g, vines) {
   }
 }
 
-const potionWindowCenters = [39, 88];
+const potionWindowCenters = [39, 112];
 const potionWindowBase = 48;
 const potionGlassRadius = 18;
 
@@ -1044,6 +1044,35 @@ function drawPotionDryingRack(g, timber) {
   }
 }
 
+// Low furniture at the edges leaves the central carpet and both entrances clear.
+const potionRoomProps = [
+  [2, 8, 'station'], [7, 8, 'station'],
+  [10, 5, 'barrel'], [10, 6, 'basket'], [9, 1, 'crates'],
+  [1, 7, 'plant'], [10, 8, 'plant']
+];
+function drawPotionStation(g, a, b, variant) {
+  const wood = woodC('#78503a'), trim = flat('#ac8656','#725035','#8f6540');
+  for (const da of [-3, 10]) for (const db of [-3, 2]) box(g, a + da, b + db, 0, 1, 1, 13, wood);
+  box(g, a - 3.5, b - 3.5, 12, 15, 7, 2, wood);
+  box(g, a - 3, b + 3.3, 10, 14, .5, 2, trim);
+  box(g, a - 2, b - 2, 14, 6, 4, .3, flat('#59716a','#3e514d','#4c6058'));
+  if (variant) {
+    const [x, y] = P(a + 5, b, 14);
+    ell(g, x, y - 4, 5, 4, '#a16f4b');
+    ell(g, x - 1, y - 5, 3, 3, '#ce9b65');
+    rect(g, x - 1, y - 12, 3, 6, '#b88c5b');
+    line(g, x, y - 12, x + 7, y - 12, '#dab783');
+    line(g, x + 7, y - 12, x + 9, y - 4, '#996e4d');
+    flask(g, x + 9, y, '#81b7a4', 'tube', null);
+  } else {
+    for (const [da, color] of [[0,'#97b18b'],[4,'#b18bae'],[8,'#789eaf']]) {
+      const [x, y] = P(a + da, b, 14);
+      flask(g, x, y, color, da === 4 ? 'tube' : undefined, null);
+    }
+  }
+  for (const da of [0, 5, 10]) box(g, a + da, b + 3.8, 10.4, 1, .3, .6, trim);
+}
+
 function drawPotionWorkshop(g) {
   const timber = {
     top: (a, b) => {
@@ -1080,6 +1109,16 @@ function drawPotionWorkshop(g) {
     if (y > 4 && y < 15 && x > 3 && x < 14 && (y % 4 === 0 || x === 8)) return '#a27754';
     return '#dfbb80';
   });
+  // Stone skirting and muted green panels echo the main room's materials.
+  for (const paint of [wallL, wallR]) paint(g, 0, 0, 2 * (paint === wallL ? POTION_ROWS : POTION_COLUMNS) * TILE_SIZE, 0, 25,
+    (u, z) => {
+      if (paint === wallL && Math.abs(u - (POTION_DOOR_ROW + .5) * 16) < 17 ||
+          paint === wallR && Math.abs(u - (POTION_STOCK_DOOR_COLUMN + .5) * 16) < 17) return null;
+      if (paint === wallR && u >= rackStart * 2 && u < rackEnd * 2) return null;
+      if (paint === wallL && potionBookcases.some(([a,b]) => u >= a && u < b)) return null;
+      return z < 3 || z > 22 || u % 16 < 2 ? '#514a41' : z === 21 ? '#938064' : '#455950';
+    });
+  drawFramedPaintings(g, [[wallL, [[118, 63, 11, 22, 'herb', ['#b99a6c','#78583e','#453832']]]]]);
   drawPotionDryingRack(g, timber);
   drawPotionRack(g);
 
@@ -1249,7 +1288,7 @@ function potionFloor(a, b) {
   const column = Math.floor((a + stagger) / 10);
   const variation = hash(column, row);
   const grain = hash(Math.floor(a * 2), Math.floor(b * 2));
-  const edge = Math.min(a - 11, 39 - a, b - 15, 35 - b);
+  const edge = Math.min(a - 13, 49 - a, b - 15, 68 - b);
   const contact = Math.min(
     contactShade(a, b, cauldronA, cauldronB, 9, 7),
     contactShade(a, b, workbenchA, workbenchB, 5, 5),
@@ -1259,7 +1298,7 @@ function potionFloor(a, b) {
 
   let color;
   if (edge >= 0) {
-    const diamond = Math.abs(a - 25) + Math.abs(b - 25);
+    const diamond = Math.abs(a - 31) + Math.abs((b - 17) % 18 - 9);
     if (edge < 1) color = '#442d47';
     else if (edge < 2 || (diamond >= 5 && diamond < 6)) color = '#b78a63';
     else color = grain > .8 ? '#775369' : '#69475e';
@@ -3445,15 +3484,20 @@ rooms.classroom.floor[2][10] = 'X';
 rooms.classroom.floor[0][10] = rooms.classroom.floor[0][11] = 'X';
 rooms.hallEnd.floor[6][0] = rooms.hallEnd.floor[7][0] = rooms.hallEnd.floor[9][0] = rooms.hallEnd.floor[11][0] = 'X';
 // De boekenkasten, het flessenrek en de ketel nemen elk vloertegels in.
-rooms.potion.floor = [
-  'X.XXXXX.',
-  'X.......',
-  '........',
-  '.....XX.',
-  '.....XX.',
-  'X..XX...',
-  'X.......'
-];
+rooms.potion.floor = Array.from({ length: POTION_ROWS }, () => Array(POTION_COLUMNS).fill('.'));
+for (const [first, end] of potionBookcases) {
+  for (let row = Math.floor(first / 16); row <= Math.floor((end - 1) / 16); row++) rooms.potion.floor[row][0] = 'X';
+}
+for (let column = 2; column < 6; column++) rooms.potion.floor[0][column] = 'X';
+for (const row of [3, 4]) for (const column of [7, 8]) rooms.potion.floor[row][column] = 'X';
+rooms.potion.floor[6][4] = rooms.potion.floor[6][6] = 'X';
+// Every extra piece registers the same footprint used by its drawing.
+for (const [column, row, kind] of potionRoomProps) {
+  rooms.potion.floor[row][column] = 'X';
+  if (kind === 'station') rooms.potion.floor[row][column + 1] = 'X';
+}
+rooms.potion.floor[0][POTION_STOCK_DOOR_COLUMN] = '.';
+rooms.potion.floor[POTION_DOOR_ROW][0] = '.';
 rooms.stockroom.floor = Array.from({ length: STOCK_ROWS }, (_, row) =>
   Array(STOCK_COLUMNS).fill(row === 0 ? 'X' : '.'));
 for (const [first, limit] of stockBookcases) {
@@ -3480,7 +3524,7 @@ const workbenchCanvas = mk();
 drawPotionWorkbench(workbenchCanvas.getContext('2d'));
 const skeletonMage = new Image();
 skeletonMage.src = 'assets/sprites/skeleton-mage.png';
-const skeletonMageTile = [4, 5];
+const skeletonMageTile = [6, 6];
 const [skeletonMageA, skeletonMageB] = skeletonMageTile.map(tile => (tile + .5) * TILE_SIZE);
 
 function drawSkeletonMage(t) {
@@ -3563,6 +3607,16 @@ const potionFurnishings = [
   { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: drawReturnedPage },
   { depth: cauldronA + cauldronB, animate: drawCauldron }
 ];
+for (const [column, row, kind] of potionRoomProps) {
+  const canvas = mk(), g = canvas.getContext('2d');
+  const a = (column + .5) * TILE_SIZE, b = (row + .5) * TILE_SIZE;
+  if (kind === 'station') drawPotionStation(g, a, b, column > 4);
+  else if (kind === 'plant') drawAubertPlant(g, a, b, column > 4 ? 1 : 2);
+  else drawStockContainer(g, a, b, kind);
+  outline(g, '#0f1226');
+  potionFurnishings.push({ canvas, depth: a + b + (kind === 'station' ? 7 : 0) });
+}
+potionFurnishings.sort((a,b) => a.depth - b.depth);
 let currentRoom = rooms.tower;
 const currentFloor = () => currentRoom.floor;
 const wizard = { a: 5, b: 5, direction: 'se', step: null };
