@@ -1165,6 +1165,7 @@ function drawPotionWorkshop(g) {
 
   drawWallIvy(g, [[0, 48, 38], [0, 5, 27], [58, 0, 43], [31, 0, 20]]);
   for (const [start, end] of potionBookcases) {
+    if (start === 90) continue; // Replaced by the depth-sorted alchemy cabinet sprite.
     const depth = 3;
     box(g, 0, start / 2, 0, depth, (end - start) / 2, 81, timber);
     // Fit all six shelves inside the shorter cabinet instead of cutting the top row off.
@@ -3723,7 +3724,18 @@ function drawPotionPumpkin(t) {
   }
 }
 
+const alchemyBookcase = new Image();
+alchemyBookcase.src = 'assets/sprites/alchemy-bookcase.png';
+function drawAlchemyBookcase() {
+  if (!alchemyBookcase.naturalWidth) return;
+  const [x,y] = P(0,58,0);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(alchemyBookcase,Math.round(x),Math.round(y+3-96),36,96);
+  ctx.restore();
+}
+
 const potionFurnishings = [
+  {depth:61, animate:drawAlchemyBookcase},
   { depth: pumpkinA + pumpkinB, animate: drawPotionPumpkin },
   { depth: skeletonMageA + skeletonMageB, animate: drawSkeletonMage },
   { depth: workbenchA + workbenchB, canvas: workbenchCanvas, animate: t => { drawReturnedPage(t); const [x,y]=P(workbenchA+2.55,workbenchB+2.55,15.7); flame(x,y-1,t,12); } },
