@@ -70,6 +70,9 @@
   #quest-log ul{margin:6px 0;padding-left:20px}
   #search-book-stack{width:auto;padding:0 10px;font-size:12px}
   #search-book-stack[hidden],#quest-action[hidden]{display:none}
+  #skeleton-topics{display:grid;gap:6px;width:100%;margin:8px 0}
+  #skeleton-topics[hidden],#skeleton-next[hidden]{display:none}
+  #skeleton-topics button{width:100%;height:auto;min-height:32px;padding:7px 10px;box-sizing:border-box;text-align:left;justify-items:start}
   #reset-quest-choice,#teleport-room-choice{display:block;width:100%;margin:8px 0 12px}
   #reset-quest-dialogue button:disabled{opacity:.45;cursor:default}
   #quest-objective{margin:0;color:#f7d482;font-size:13px;text-align:center}
@@ -268,6 +271,8 @@
       <h2 id="quest-title">Fire Beneath the Cauldron</h2>
       <p id="quest-message"></p>
       <form method="dialog">
+        <button type="button" id="skeleton-next">Next</button>
+        <div id="skeleton-topics" hidden></div>
         <button id="quest-action" value="advance"></button>
         <button id="quest-dismiss" value="dismiss"></button>
       </form>
