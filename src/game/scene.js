@@ -3371,6 +3371,33 @@ function renderQuestObjective() {
   document.getElementById('quest-log-entries').replaceChildren(...entries);
 }
 
+const dialogueTyping = new WeakMap();
+
+function typeDialogue(element, text, panel) {
+  dialogueTyping.get(element)?.();
+  const characters = Array.from(text);
+  let timer, position = 0;
+  const stop = () => {
+    clearTimeout(timer);
+    element.textContent = text;
+    element.removeAttribute('aria-label');
+    dialogueTyping.delete(element);
+  };
+  dialogueTyping.set(element, stop);
+  element.setAttribute('aria-label', text);
+  element.textContent = '';
+  const tick = () => {
+    if (panel.hidden || (panel.tagName === 'DIALOG' && !panel.open) ||
+        matchMedia('(prefers-reduced-motion: reduce)').matches || position >= characters.length) {
+      stop();
+      return;
+    }
+    element.textContent += characters[position++];
+    timer = setTimeout(tick, /[.!?]/.test(characters[position - 1]) ? 240 : 32);
+  };
+  timer = setTimeout(tick, 32);
+}
+
 function talkToSkeletonMage() {
   if (!questDialogue || questDialogue.open || chestInventory?.open) return;
   const quest = questManager.forGiver('skeleton-mage');
@@ -3384,7 +3411,6 @@ function talkToSkeletonMage() {
     complete: 'Thanks for your help, wizard.'
   };
   document.getElementById('quest-title').textContent = quest.title;
-  document.getElementById('quest-message').textContent = messages[stage];
   const action = document.getElementById('quest-action');
   action.hidden = stage !== 'available' && stage !== 'ready';
   action.textContent = stage === 'ready' ? 'Complete quest' : 'Accept';
@@ -3394,6 +3420,7 @@ function talkToSkeletonMage() {
   fireHeld = false;
   questDialogue.returnValue = '';
   questDialogue.showModal();
+  typeDialogue(document.getElementById('quest-message'), messages[stage], questDialogue);
 }
 
 function canResetQuest(quest) {
@@ -4394,6 +4421,12 @@ const librarianDialogue = document.getElementById('librarian-dialogue');
 let librarianHit = null;
 if (!preview) {
   librarianDialogue.hidden = true;
+  const librarianMessage = librarianDialogue.querySelector('.npc-dialogue-copy p');
+  const librarianText = librarianMessage.textContent;
+  new MutationObserver(() => {
+    if (librarianDialogue.hidden) dialogueTyping.get(librarianMessage)?.();
+    else typeDialogue(librarianMessage, librarianText, librarianDialogue);
+  }).observe(librarianDialogue, { attributes: true, attributeFilter: ['hidden'] });
   document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
     librarianDialogue.hidden = true;
   });
