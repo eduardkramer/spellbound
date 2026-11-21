@@ -5543,7 +5543,7 @@ function updateLibraryStudents(dt) {
     student.step={a,b};student.elapsed=0;
   }
 }
-function libraryStudentLayers() {
+function libraryStudentLayers(t) {
   return libraryStudents.map(student=>{
     const progress=student.step ? Math.min(1,student.elapsed/.65) : 0;
     const a=(student.a+.5+(student.step ? student.step.a-student.a : 0)*progress)*TILE_SIZE;
@@ -5575,7 +5575,7 @@ function drawRoomOccupants(t, dt) {
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
   const roomFurnishings = currentRoom === rooms.classroom ? classroomFurnishings : currentRoom.corridor ? hallFurnishings.get(currentRoom) : currentRoom === rooms.library
-    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto, ...libraryStudentLayers()].sort((left, right) => left.depth - right.depth)
+    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto, ...libraryStudentLayers(t)].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings
       : currentRoom === rooms.potion ? potionFurnishings : currentRoom === rooms.stockroom ? stockFurnishings : [];
   const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
