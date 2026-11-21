@@ -5457,6 +5457,74 @@ classroomFurnishings.push({ canvas: classroomDemo, depth: 104, animate: t => {
   dot(ctx, x + 10 * Math.sin(t * 1.5), y + 4 * Math.cos(t * 1.5), '#eaf9ff');
 } });
 
+// Ambient library students share the walkable floor without blocking player routes.
+const studentSprite = new Image();
+studentSprite.src = 'assets/sprites/library-students.png';
+const libraryStudents = [];
+function studentTileOpen(a,b) {
+  return a>0 && b>0 && a<LIBRARY_COLUMNS-1 && b<LIBRARY_ROWS-1 &&
+    rooms.library.floor[b]?.[a] === '.' &&
+    !rooms.library.exits.some(exit => Math.abs(exit.tile[0]-a)+Math.abs(exit.tile[1]-b)<2);
+}
+function initLibraryStudents() {
+  if(libraryStudents.length) return;
+  for(const [id,anchor] of [[2,2],[7,5],[5,10],[11,8]].entries()) {
+    const free=[];
+    for(let b=1;b<LIBRARY_ROWS-1;b++) for(let a=1;a<LIBRARY_COLUMNS-1;a++) {
+      if(studentTileOpen(a,b) && !libraryStudents.some(s=>s.a===a && s.b===b)) free.push([a,b]);
+    }
+    free.sort((l,r)=>Math.abs(l[0]-anchor[0])+Math.abs(l[1]-anchor[1])-Math.abs(r[0]-anchor[0])-Math.abs(r[1]-anchor[1]));
+    if(free.length) { const [a,b]=free[0];libraryStudents.push({id,a,b,home:[a,b],step:null,wait:1+id*.8,elapsed:0,turn:0,face:1}); }
+  }
+}
+function updateLibraryStudents(dt) {
+  initLibraryStudents();
+  if(!librarianDialogue.hidden || chestInventory?.open || questDialogue?.open) return;
+  for(const student of libraryStudents) {
+    if(student.step) {
+      student.elapsed+=dt;
+      if(student.elapsed>=.65) {
+        student.a=student.step.a; student.b=student.step.b;student.step=null;
+        student.elapsed=0;student.wait=.15;
+      }
+      continue;
+    }
+    student.wait-=dt;
+    if(student.wait>0) continue;
+    const choices=[[1,0],[0,1],[-1,0],[0,-1]].map(([da,db])=>[student.a+da,student.b+db]);
+    const free=choices.filter(([a,b])=>studentTileOpen(a,b) &&
+      Math.abs(a-student.home[0])+Math.abs(b-student.home[1])<=3 &&
+      Math.abs(a-wizard.a)+Math.abs(b-wizard.b)>1 &&
+      !(wizard.step && wizard.step.a===a && wizard.step.b===b) &&
+      Math.abs(a-librarian.a)+Math.abs(b-librarian.b)>1 &&
+      !(librarian.step && librarian.step.a===a && librarian.step.b===b) &&
+      !libraryStudents.some(other=>other!==student &&
+        ((other.a===a && other.b===b)||(other.step?.a===a && other.step?.b===b))));
+    student.turn++;
+    if(!free.length || student.turn%5===0) {student.wait=2+hash(student.id,student.turn)*3;continue;}
+    const [a,b]=free[Math.floor(hash(student.id+7,student.turn)*free.length)];
+    student.face=Math.sign(a-student.a-b+student.b)||student.face;
+    student.step={a,b};student.elapsed=0;
+  }
+}
+function libraryStudentLayers() {
+  return libraryStudents.map(student=>{
+    const progress=student.step ? Math.min(1,student.elapsed/.65) : 0;
+    const a=(student.a+.5+(student.step ? student.step.a-student.a : 0)*progress)*TILE_SIZE;
+    const b=(student.b+.5+(student.step ? student.step.b-student.b : 0)*progress)*TILE_SIZE;
+    const [x,y]=P(a,b,0);
+    return {depth:a+b,animate:()=>{
+      if(!studentSprite.naturalWidth) return;
+      ctx.save();ctx.imageSmoothingEnabled=false;
+      ell(ctx,x,y-1,6,2,'rgba(18,20,33,.3)');
+      ctx.translate(Math.round(x),Math.round(y));ctx.scale(student.face,1);
+      const frame=student.step ? Math.floor(progress*4)%4 : 1;
+      ctx.drawImage(studentSprite,frame*32,student.id*48,32,48,-16,-46,32,48);
+      ctx.restore();
+    }};
+  });
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
@@ -5464,7 +5532,7 @@ function drawRoomOccupants(t, dt) {
   const b = (wizard.b + (step ? (step.b - wizard.b) * progress : 0) + .5) * TILE_SIZE;
   const [x, y] = P(a, b, 0);
   const roomFurnishings = currentRoom === rooms.classroom ? classroomFurnishings : currentRoom.corridor ? hallFurnishings.get(currentRoom) : currentRoom === rooms.library
-    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto].sort((left, right) => left.depth - right.depth)
+    ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto, ...libraryStudentLayers()].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings
       : currentRoom === rooms.potion ? potionFurnishings : currentRoom === rooms.stockroom ? stockFurnishings : [];
   const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
@@ -5563,6 +5631,7 @@ function frame(ms) {
   if (currentRoom !== rooms.tower) {
     if (currentRoom === rooms.library) {
       if (librarianDialogue.hidden) updateLibrarian(dt);
+      updateLibraryStudents(dt);
       drawLibraryPortrait(t);
       animateLibraryClock(t);
       drawLibraryLights(t);
