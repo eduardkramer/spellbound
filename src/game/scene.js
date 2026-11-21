@@ -232,7 +232,7 @@ const towerShadows = [
   [55, 4, 8, 4], [4, 27, 4, 11], [78, 23, 8, 5], [76, 44, 5, 4], [84, 68, 4, 4], [6, 61, 4, 4],
   [TABLE_A + 1, TABLE_B + 1.5, 5, 5], [towerChestA + 1, towerChestB + 1.5, 4.8, 3.7],
   [5, TOWER_DIAMOND_B + 1.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
-  [8, 34.5, 3.4, 3.4]
+  [59, 37.5, 3.4, 3.4]
 ];
 
 function contactShade(a, b, centerA, centerB, radiusA, radiusB) {
@@ -2538,8 +2538,8 @@ function buildFront() {
     drawCat(t);
   });
 
-  // kandelaar
-  { const [bx, by] = P(7, 33, 0);
+  // Vrijstaande kandelaar naast het schrijfhoekje, ruim buiten de zitbank.
+  { const [bx, by] = P(58, 36, 0);
     ell(g, bx, by - 1, 6, 3, '#16161f'); ell(g, bx, by - 2, 5, 2, '#2c2c3a');
     rect(g, bx - 1, by - 24, 2, 22, '#23232f'); dot(g, bx + 1, by - 20, '#3c3c4e'); ell(g, bx, by - 8, 2, 1, '#3c3c4e');
     line(g, bx, by - 22, bx - 8, by - 28, '#23232f'); line(g, bx, by - 22, bx + 8, by - 28, '#23232f');
@@ -2550,7 +2550,7 @@ function buildFront() {
       if (lit) cand.push([bx + dx, ty - height - 2]);
     } }
 
-  store(40, t => {
+  store(94, t => {
     for (const [x, y] of cand) flame(x, y, t, x);
   });
 
@@ -3325,6 +3325,7 @@ towerFloor[6].fill('X', 2, 5);
 // Furniture footprints leave the central hearth approach and both doorway lanes open.
 for (const [column, row] of [[6,0],[7,0],[0,2],[0,3],[0,4],[0,6],[0,9],[9,2],[10,2],[9,3],[10,3],[9,5],[10,8],[0,7]]) towerFloor[row][column] = 'X';
 towerFloor[4][0] = 'X';
+towerFloor[4][7] = 'X'; // Vrijstaande kandelaar.
 towerFloor[Math.floor(TABLE_B / TILE_SIZE)].fill('X', TABLE_A / TILE_SIZE - 1, TABLE_A / TILE_SIZE + 1);
 towerFloor[Math.floor(TOWER_DIAMOND_B / TILE_SIZE)][0] = 'X';
 const libraryFloorMap = Array.from({ length: LIBRARY_ROWS }, () => Array(LIBRARY_COLUMNS).fill('.'));
