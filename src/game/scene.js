@@ -7,15 +7,19 @@
 'use strict';
 
 const TILE_SIZE = 8;
-const ROOM_TILES = 8;
-const N = ROOM_TILES * TILE_SIZE;
-const EXIT_COLUMN = 4;
-const EXIT_CENTER = (EXIT_COLUMN + .5) * TILE_SIZE;
+const TOWER_TILES = 11, TOWER_SIZE = TOWER_TILES * TILE_SIZE;
+const TOWER_LIBRARY_DOOR_COLUMN = Math.floor(TOWER_TILES / 2);
+const LIBRARY_TOWER_DOOR_COLUMN = 4;
+const CHEST_TILE = [9, 0];
+const [towerChestA, towerChestB] = CHEST_TILE.map(tile => (tile + .5) * TILE_SIZE);
+const TABLE_A = 64, TABLE_B = 60;
+const TOWER_DIAMOND_B = 68, TOWER_OWL_A = 72;
 const POTION_COLUMNS = 8;
 const POTION_ROWS = 7;
 const POTION_DOOR_ROW = 3;
 const LIBRARY_COLUMNS = 14, LIBRARY_ROWS = 12;
 const LIBRARY_WIDTH = LIBRARY_COLUMNS * TILE_SIZE, LIBRARY_DEPTH = LIBRARY_ROWS * TILE_SIZE;
+const LIBRARY_OUTER_SHELF_TILE = 8;
 const LIBRARY_POTION_DOOR_ROW = 4;
 const LIBRARY_HALL_DOOR_COLUMN = 7;
 const HALL_COLUMNS = 4, HALL_ROWS = 14;
@@ -35,8 +39,8 @@ const POTION_STOCK_DOOR_COLUMN = POTION_COLUMNS - 1, STOCK_DOOR_ROW = 4;
 const T = 20;     // muurdikte
 const WH = 104;   // muurhoogte
 const F = 56;     // dikte onderbouw
-const W = 4 * (Math.max(STOCK_WIDTH, LIBRARY_WIDTH, LIBRARY_DEPTH) + T) + 10, CX = W / 2, CY = 162;
-const H = CY + Math.max(STOCK_WIDTH + STOCK_DEPTH, LIBRARY_WIDTH + LIBRARY_DEPTH) + F + 12;
+const W = 4 * (Math.max(STOCK_WIDTH, LIBRARY_WIDTH, LIBRARY_DEPTH, TOWER_SIZE) + T) + 10, CX = W / 2, CY = 162;
+const H = CY + Math.max(STOCK_WIDTH + STOCK_DEPTH, LIBRARY_WIDTH + LIBRARY_DEPTH, 2 * TOWER_SIZE) + F + 12;
 
 const cv = document.getElementById('scene');
 const preview = cv.dataset?.preview !== undefined;
@@ -47,10 +51,12 @@ const mk = () => { const c = document.createElement('canvas'); c.width = W; c.he
 const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk(), hallC = mk(), hallEndC = mk(), classroomC = mk();
 const rooms = {
   tower: { canvas: statC, exits: [
-    { tile: [EXIT_COLUMN, ROOM_TILES - 1], target: 'library', arrival: [EXIT_COLUMN, 1], direction: 'sw' }
+    { tile: [TOWER_LIBRARY_DOOR_COLUMN, TOWER_TILES - 1], target: 'library',
+      arrival: [LIBRARY_TOWER_DOOR_COLUMN, 1], direction: 'sw' }
   ] },
   library: { canvas: secondC, exits: [
-    { tile: [EXIT_COLUMN, 0], target: 'tower', arrival: [EXIT_COLUMN, ROOM_TILES - 2], direction: 'ne' },
+    { tile: [LIBRARY_TOWER_DOOR_COLUMN, 0], target: 'tower',
+      arrival: [TOWER_LIBRARY_DOOR_COLUMN, TOWER_TILES - 2], direction: 'ne' },
     { tile: [LIBRARY_COLUMNS - 1, LIBRARY_POTION_DOOR_ROW], wallA: LIBRARY_WIDTH, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' },
     { tile: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 1], wallB: LIBRARY_DEPTH, archHalfWidth: 19,
       target: 'hall', arrival: [HALL_ENTRANCE_COLUMN, 1], direction: 'sw' }
@@ -223,8 +229,8 @@ const copingFn = (a, b) => {
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
   [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
-  [49, 45.5, 5, 5], [53, 5.5, 4.8, 3.7],
-  [5, 53.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
+  [TABLE_A + 1, TABLE_B + 1.5, 5, 5], [towerChestA + 1, towerChestB + 1.5, 4.8, 3.7],
+  [5, TOWER_DIAMOND_B + 1.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
   [8, 34.5, 3.4, 3.4]
 ];
 
@@ -245,18 +251,18 @@ function shadedTowerFloor(a, b) {
 }
 
 function floorFn(a, b) {
-  if (a >= 10 && a < 37 && b >= 7 && b < 42) {
-    const edge = Math.min(a - 10, 37 - a, b - 7, 42 - b);
-    if (b < 8.2 || b >= 40.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
+  if (a >= 10 && a < 42 && b >= 7 && b < 47) {
+    const edge = Math.min(a - 10, 42 - a, b - 7, 47 - b);
+    if (b < 8.2 || b >= 45.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
     if (edge < 1.4) return '#3c4441';
     if (edge < 2.15) return '#ad9160';
     if (edge < 3.25) return (Math.floor(a * 2) + Math.floor(b * 2)) % 5 === 0 ? '#a0845d' : '#596455';
-    const diamond = Math.abs(a - 23.5) + Math.abs((b - 7) % 12 - 6);
+    const diamond = Math.abs(a - 26) + Math.abs((b - 9) % 12 - 6);
     if (Math.abs(diamond - 4.25) < .45) return '#ae9468';
     if (diamond < 2) return '#758171';
     return hash(Math.floor(a * 2), Math.floor(b * 2)) > .81 ? '#53685f' : '#4b625a';
   }
-  if (b >= N - .8 || a >= N - .8) return '#747e87';
+  if (b >= TOWER_SIZE - .8 || a >= TOWER_SIZE - .8) return '#747e87';
   const width = 4, length = 4;
   const column = Math.floor(a / width), row = Math.floor(b / width);
   const phase = (column + row) % (length * 2);
@@ -490,9 +496,11 @@ function drawDoorMat(g, a0, b0, width, depth, style) {
 }
 
 function drawPassage(g, rear, style) {
-  const center = EXIT_CENTER * 2;
-  drawDoorMat(g, EXIT_CENTER - 7, rear ? 0 : N - 7, 14, 7, style);
-  wallR(g, rear ? 0 : N, center - 17, center + 18, 0, 49, (u, z) => passageColor(u - center, z, style));
+  const column = rear ? LIBRARY_TOWER_DOOR_COLUMN : TOWER_LIBRARY_DOOR_COLUMN;
+  const center = (column + .5) * TILE_SIZE;
+  const wall = rear ? 0 : TOWER_SIZE;
+  drawDoorMat(g, center - 7, rear ? 0 : wall - 7, 14, 7, style);
+  wallR(g, wall, 2 * center - 17, 2 * center + 18, 0, 49, (u, z) => passageColor(u - 2 * center, z, style));
 }
 
 const acrossArchColor = (offset, z, halfWidth = 15, style) => passageColor(offset * 17 / halfWidth, z, style);
@@ -2235,8 +2243,8 @@ function buildStatic(sg, room, doorStyle) {
   const hall = room.corridor;
   const openHallEntrance = room === rooms.hallEnd;
   const classroom = room === rooms.classroom;
-  const width = classroom ? CLASSROOM_WIDTH : hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : N;
-  const depth = classroom ? CLASSROOM_DEPTH : hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : N;
+  const width = classroom ? CLASSROOM_WIDTH : hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : potion ? POTION_COLUMNS * TILE_SIZE : TOWER_SIZE;
+  const depth = classroom ? CLASSROOM_DEPTH : hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : potion ? POTION_ROWS * TILE_SIZE : TOWER_SIZE;
   const floor = classroom ? classroomFloor : hall ? (a, b) => hallFloor(a, b, openHallEntrance) : stockroom ? stockroomFloor : potion ? potionFloor : library ? shadedLibraryFloor : shadedTowerFloor;
   topFace(sg, 0, 0, width, 0, depth, floor);
   if (hall) drawHallFloorLight(sg);
@@ -2254,8 +2262,12 @@ function buildStatic(sg, room, doorStyle) {
   wallR(sg, depth, -2 * T, 2 * width, -F, WH, facadeFn(brOutL, width));
   wallL(sg, width, openHallEntrance ? 0 : -2 * T, 2 * depth, -F, WH, facadeFn(brOutR, depth));
   if (room === rooms.tower) {
-    drawWallIvy(sg, [[0, 32.5, 21]]);
-    drawFramedPaintings(sg, [[wallL, [[80, 72, 20, 24, 'moon', ['#b6956a', '#856348', '#574337']]]]]);
+    const gildedWood = ['#b6956a', '#856348', '#574337'];
+    drawWallIvy(sg, [[0, 32.5, 21], [0, 66, 24]]);
+    drawFramedPaintings(sg, [
+      [wallL, [[80, 72, 20, 24, 'moon', gildedWood]]],
+      [wallR, [[112, 67, 26, 24, 'castle', gildedWood]]]
+    ]);
   }
   if (library) {
     drawReadingWindow(sg);
@@ -2310,8 +2322,6 @@ function flask(g, x, y, liq, type, collection = flasks) {
 }
 const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
-const TABLE_A = 48, TABLE_B = 44;
-const CHEST_TILE = [6, 0];
 let chestOpening = 0;
 
 function buildFront() {
@@ -2432,8 +2442,8 @@ function buildFront() {
   });
 
   // Hoge zitstok voor de sneeuwuil.
-  box(g, 51, 0, 55, 10, 4.5, 3, woodD);
-  box(g, 55, 0, 50, 2, 2, 5, woodD);
+  box(g, TOWER_OWL_A - 5, 0, 55, 10, 4.5, 3, woodD);
+  box(g, TOWER_OWL_A - 1, 0, 50, 2, 2, 5, woodD);
   store(0, drawOwl);
 
   // planken: rechter plank + drankjes
@@ -2492,22 +2502,22 @@ function buildFront() {
   });
 
   // Voorraadkist langs de rechterwand
-  drawChestBody(g, 52, 4, woodD);
-  store(56, drawChest);
+  drawChestBody(g, towerChestA, towerChestB, woodD);
+  store(towerChestA + towerChestB, drawChest);
 
   // Kristal op een sokkel langs de linkerwand
-  box(g, 1, 49, 0, 6, 6, 3, flat('#777aa1', '#515579', '#616587'));
-  box(g, 2, 50, 3, 4, 4, 11, flat('#9194ae', '#535776', '#686d91'));
-  box(g, 1, 49, 14, 6, 6, 2, flat('#9194ae', '#535776', '#686d91'));
+  box(g, 1, TOWER_DIAMOND_B - 3, 0, 6, 6, 3, flat('#777aa1', '#515579', '#616587'));
+  box(g, 2, TOWER_DIAMOND_B - 2, 3, 4, 4, 11, flat('#9194ae', '#535776', '#686d91'));
+  box(g, 1, TOWER_DIAMOND_B - 3, 14, 6, 6, 2, flat('#9194ae', '#535776', '#686d91'));
   // Messing plakkaat met een gegraveerd diamantje.
-  box(g, 6, 50.3, 6, .5, 3.4, 5, flat('#e2bf78', '#8b6339', (u, z) => {
-    const column = u - 100;
+  box(g, 6, TOWER_DIAMOND_B - 1.7, 6, .5, 3.4, 5, flat('#e2bf78', '#8b6339', (u, z) => {
+    const column = u - 2 * (TOWER_DIAMOND_B - 2);
     if (z === 10 || column === 0) return '#e2bf78';
     if (z === 6 || column === 6) return '#91663b';
     if (Math.abs(column - 3) + Math.abs(z - 8) <= 1) return '#6b4b36';
     return '#bd9257';
   }));
-  store(56, drawDiamond);
+  store(4 + TOWER_DIAMOND_B, drawDiamond);
 
   // tafel
   { const [tx, ty] = P(TABLE_A, TABLE_B, 0);
@@ -2943,7 +2953,7 @@ function drawCatHead(t, bx, by, eyes) {
   dot(ctx, bx, by - 11, '#7a3a4a');
 }
 function drawDiamond(t) {
-  const [x, y] = P(4, 52, 16);
+  const [x, y] = P(4, TOWER_DIAMOND_B, 16);
   const facet = (color, points) => {
     ctx.beginPath();
     ctx.moveTo(x + points[0][0], y + points[0][1]);
@@ -2984,7 +2994,7 @@ function drawDiamond(t) {
 
 function drawChest(t, dt) {
   chestOpening = Math.max(0, Math.min(1, chestOpening + (chestInventory?.open ? dt : -dt) * 2.2));
-  drawChestLid(t, 52, 4, chestOpening);
+  drawChestLid(t, towerChestA, towerChestB, chestOpening);
 }
 
 function drawChestBody(g, a, b, wood) {
@@ -3138,19 +3148,17 @@ function drawFlaskGlints(t) {
 /* ---------- speelbare tovenaar ---------- */
 const STEP_TIME = WIZARD.FRAMES.walk / WIZARD.FPS.walk;
 // Rijen lopen over b, kolommen over a. X staat voor een meubel of de haard.
-const towerFloor = [
-  'XXXX..X.',
-  '........',
-  '...X....',
-  '..XXX...',
-  'X.......',
-  '.....XX.',
-  'X.......',
-  '........'
-];
+const towerFloor = Array.from({ length: TOWER_TILES }, () => Array(TOWER_TILES).fill('.'));
+towerFloor[0].fill('X', 0, 4);
+towerFloor[CHEST_TILE[1]][CHEST_TILE[0]] = 'X';
+towerFloor[armchairSeat.tile[1]][armchairSeat.tile[0]] = 'X';
+towerFloor[3].fill('X', 2, 5);
+towerFloor[4][0] = 'X';
+towerFloor[Math.floor(TABLE_B / TILE_SIZE)].fill('X', TABLE_A / TILE_SIZE - 1, TABLE_A / TILE_SIZE + 1);
+towerFloor[Math.floor(TOWER_DIAMOND_B / TILE_SIZE)][0] = 'X';
 const libraryFloorMap = Array.from({ length: LIBRARY_ROWS }, () => Array(LIBRARY_COLUMNS).fill('.'));
-for (let row = ROOM_TILES; row < LIBRARY_ROWS; row++) libraryFloorMap[row][0] = 'X';
-for (let column = ROOM_TILES; column < LIBRARY_COLUMNS; column++) libraryFloorMap[0][column] = 'X';
+for (let row = LIBRARY_OUTER_SHELF_TILE; row < LIBRARY_ROWS; row++) libraryFloorMap[row][0] = 'X';
+for (let column = LIBRARY_OUTER_SHELF_TILE; column < LIBRARY_COLUMNS; column++) libraryFloorMap[0][column] = 'X';
 for (const [a, b] of libraryLayout) libraryFloorMap[b][a] = 'X';
 for (const [a, b] of studyTables) libraryFloorMap[b].fill('X', a, a + 3);
 rooms.tower.floor = towerFloor;
@@ -3291,7 +3299,7 @@ const potionFurnishings = [
 ];
 let currentRoom = rooms.tower;
 const currentFloor = () => currentRoom.floor;
-const wizard = { a: 4, b: 4, direction: 'se', step: null };
+const wizard = { a: 5, b: 5, direction: 'se', step: null };
 const moves = new Map([
   ['arrowup', [0, -1, 'ne']], ['arrowright', [1, 0, 'se']],
   ['arrowdown', [0, 1, 'sw']], ['arrowleft', [-1, 0, 'nw']]
@@ -3901,7 +3909,7 @@ if (!preview) {
     }
     if (roomChestTile() && chestInventory) {
       const inStockroom = currentRoom === rooms.stockroom;
-      const [x, y] = inStockroom ? P(stockChestA, stockChestB, 8 * stockChestScale) : P(52, 4, 8);
+      const [x, y] = inStockroom ? P(stockChestA, stockChestB, 8 * stockChestScale) : P(towerChestA, towerChestB, 8);
       if (Math.abs(px + CX - x) <= 15 && py + CY >= y - (inStockroom ? 13 : 10) && py + CY <= y + 12) {
         requestChest();
         return;
@@ -4147,7 +4155,7 @@ function updateWizard(dt) {
 }
 
 function drawOwl(t) {
-  const [x, feet] = P(56, 2.5, 58);
+  const [x, feet] = P(TOWER_OWL_A, 2.5, 58);
   const headX = x + Math.round(Math.sin(t * .72) * 1.5);
   const headY = feet - 16 + Math.round(Math.sin(t * 1.7) * .55);
   const outline = '#263248', feather = '#e8edf0', shade = '#9cb5c9';
@@ -4840,8 +4848,8 @@ function fit() {
   const library = currentRoom === rooms.library;
   const hall = currentRoom.corridor;
   const classroom = currentRoom === rooms.classroom;
-  const width = classroom ? CLASSROOM_WIDTH : hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : N;
-  const depth = classroom ? CLASSROOM_DEPTH : hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : N;
+  const width = classroom ? CLASSROOM_WIDTH : hall ? HALL_WIDTH : library ? LIBRARY_WIDTH : stockroom ? STOCK_WIDTH : currentRoom === rooms.tower ? TOWER_SIZE : POTION_COLUMNS * TILE_SIZE;
+  const depth = classroom ? CLASSROOM_DEPTH : hall ? HALL_DEPTH : library ? LIBRARY_DEPTH : stockroom ? STOCK_DEPTH : currentRoom === rooms.tower ? TOWER_SIZE : POTION_COLUMNS * TILE_SIZE;
   roomWidth = hall ? 2 * (width + depth + 2 * T) + 10 : 4 * (Math.max(width, depth) + T) + 10;
   roomHeight = CY + width + depth + F + 12;
   const fitScale = Math.min(sceneView.clientWidth / roomWidth, sceneView.clientHeight / roomHeight);
