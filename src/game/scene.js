@@ -5585,6 +5585,88 @@ function libraryStudentLayers(t) {
   });
 }
 
+// Additional school population: ten students and two subject teachers.
+const schoolSprite = new Image();
+schoolSprite.src = 'assets/sprites/school-population.png';
+const schoolActors = [];
+const populatedSchoolRooms = new Set();
+function schoolTileFree(room,a,b) {
+  const floor=rooms[room].floor;
+  return floor[b]?.[a]==='.' && !rooms[room].exits.some(exit=>
+    Math.abs(exit.tile[0]-a)+Math.abs(exit.tile[1]-b)<2);
+}
+function initSchoolRoom(room) {
+  if(populatedSchoolRooms.has(room)) return;
+  populatedSchoolRooms.add(room);
+  function place(id,anchor,role,face=1) {
+    const free=[];
+    const floor=rooms[room].floor;
+    for(let b=0;b<floor.length;b++) for(let a=0;a<floor[b].length;a++)
+      if(schoolTileFree(room,a,b) && !schoolActors.some(n=>n.room===room && n.a===a && n.b===b)) free.push([a,b]);
+    free.sort((l,r)=>Math.abs(l[0]-anchor[0])+Math.abs(l[1]-anchor[1])-Math.abs(r[0]-anchor[0])-Math.abs(r[1]-anchor[1]));
+    if(!free.length)return;
+    const [a,b]=free[0];schoolActors.push({id,room,a,b,role,face,step:null,elapsed:0,wait:1+id*.23,turn:0,previous:null});
+  }
+  function pair(first,anchor) {
+    const floor=rooms[room].floor,candidates=[];
+    for(let b=1;b<floor.length-1;b++) for(let a=0;a<floor[b].length-2;a++) {
+      if([a,a+1,a+2].every(x=>schoolTileFree(room,x,b) && !schoolActors.some(n=>n.room===room&&n.a===x&&n.b===b))) candidates.push([a,b]);
+    }
+    candidates.sort((l,r)=>Math.abs(l[0]-anchor[0])+Math.abs(l[1]-anchor[1])-Math.abs(r[0]-anchor[0])-Math.abs(r[1]-anchor[1]));
+    const [a,b]=candidates[0] || anchor;
+    place(first,[a,b],'talk',1);place(first+1,[a+2,b],'talk',-1);
+  }
+  if(room==='hall') {place(0,[1,3],'walk');place(1,[2,7],'walk');place(2,[1,10],'walk');}
+  if(room==='hallEnd') {pair(3,[1,3]);pair(5,[1,10]);}
+  if(room==='classroom') {pair(7,[5,9]);place(9,[6,5],'walk');place(10,[4,2],'walk');}
+  if(room==='potion') place(11,[Math.floor(cauldronA/TILE_SIZE),Math.floor(cauldronB/TILE_SIZE)-2],'stand');
+}
+function updateSchoolPopulation(dt) {
+  if(preview)return;
+  const room=Object.keys(rooms).find(key=>rooms[key]===currentRoom);
+  if(!['hall','hallEnd','classroom','potion'].includes(room))return;
+  initSchoolRoom(room);
+  if(chestInventory?.open || questDialogue?.open || !librarianDialogue.hidden || resetQuestDialogue?.open || teleportDialogue?.open)return;
+  for(const actor of schoolActors.filter(n=>n.room===room&&n.role==='walk')) {
+    if(actor.step) {
+      actor.elapsed+=dt;
+      if(actor.elapsed>=(actor.id===10?.9:.7)) {
+        actor.previous=[actor.a,actor.b];actor.a=actor.step.a;actor.b=actor.step.b;
+        actor.step=null;actor.elapsed=0;actor.wait=.12;
+      }
+      continue;
+    }
+    actor.wait-=dt;if(actor.wait>0)continue;actor.turn++;
+    let choices=[[1,0],[0,1],[-1,0],[0,-1]].map(([da,db])=>[actor.a+da,actor.b+db]).filter(([a,b])=>
+      schoolTileFree(room,a,b) && Math.abs(a-wizard.a)+Math.abs(b-wizard.b)>1 &&
+      !(wizard.step?.a===a && wizard.step?.b===b) &&
+      !schoolActors.some(other=>other!==actor&&other.room===room&&
+        ((other.a===a&&other.b===b)||(other.step?.a===a&&other.step?.b===b))));
+    if(choices.length>1 && actor.previous) choices=choices.filter(([a,b])=>a!==actor.previous[0]||b!==actor.previous[1]);
+    if(!choices.length || actor.turn%6===0) {actor.wait=1.5+hash(actor.id,actor.turn)*2;continue;}
+    const [a,b]=choices[Math.floor(hash(actor.id+19,actor.turn)*choices.length)];
+    actor.face=Math.sign(a-actor.a-b+actor.b)||actor.face;actor.step={a,b};actor.elapsed=0;
+  }
+}
+function schoolPopulationLayers(t) {
+  if(preview)return [];
+  return schoolActors.filter(n=>rooms[n.room]===currentRoom).map(actor=>{
+    const progress=actor.step ? Math.min(1,actor.elapsed/(actor.id===10?.9:.7)) : 0;
+    const a=(actor.a+.5+(actor.step?actor.step.a-actor.a:0)*progress)*TILE_SIZE;
+    const b=(actor.b+.5+(actor.step?actor.step.b-actor.b:0)*progress)*TILE_SIZE;
+    const [x,y]=P(a,b,0);
+    return {depth:a+b,animate:()=>{
+      if(!schoolSprite.naturalWidth)return;
+      ctx.save();ctx.imageSmoothingEnabled=false;
+      ell(ctx,x,y-1,6,2,'rgba(18,20,33,.3)');
+      ctx.translate(Math.round(x),Math.round(y));ctx.scale(actor.face,1);
+      const frame=actor.step ? Math.floor(progress*4)%4 : actor.role==='talk' && Math.floor(t*.45+actor.id)%4===0 ? 3 : 1;
+      ctx.drawImage(schoolSprite,frame*32,actor.id*48,32,48,-16,-47,32,48);
+      ctx.restore();
+    }};
+  });
+}
+
 function drawRoomOccupants(t, dt) {
   const step = wizard.step;
   const progress = step ? step.elapsed / STEP_TIME : 0;
@@ -5595,7 +5677,7 @@ function drawRoomOccupants(t, dt) {
     ? [...libraryFurnishings, libraryCatLayer(t), librarianLayer(), libraryDitto, ...libraryStudentLayers(t)].sort((left, right) => left.depth - right.depth)
     : currentRoom === rooms.tower ? furnishings
       : currentRoom === rooms.potion ? potionFurnishings : currentRoom === rooms.stockroom ? stockFurnishings : [];
-  const occupants = [...roomFurnishings, ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
+  const occupants = [...roomFurnishings, ...schoolPopulationLayers(t), ...iceBallLayers()].sort((left, right) => left.depth - right.depth);
   let index = 0;
   for (; index < occupants.length && occupants[index].depth <= a + b; index++) {
     drawFurnishing(occupants[index], t, dt);
@@ -5670,6 +5752,7 @@ let last = 0;
 function frame(ms) {
   const t = ms / 1000, dt = Math.min(.1, last ? t - last : .016); last = t;
   updateWizard(dt);
+  updateSchoolPopulation(dt);
   if (!preview && zoom > 100) positionCamera();
   updateWandLight(dt);
   updateStockroomHint();
