@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Spellbound</title>
+<link rel="preload" href="assets/fonts/UnifrakturMaguntia-Book.ttf" as="font" type="font/ttf" crossorigin>
 <style>
+  @font-face{
+    font-family:"UnifrakturMaguntia";src:url("assets/fonts/UnifrakturMaguntia-Book.ttf") format("truetype");
+    font-style:normal;font-weight:400;font-display:swap
+  }
   :root{--bg:#12163a;--bg2:#1a1f4d;--line:#6f7fd0;--dim:#7f8ad8;--txt:#dfe4ff;--gold:#f0c75a;--pink:#ff7fbf}
   html,body{margin:0;height:100%;background:#0c0f24;color:var(--txt);font-family:ui-monospace,Menlo,Consolas,monospace}
   body{background:radial-gradient(ellipse at 50% 35%,#1d2150 0%,#0c0f24 70%)}
@@ -28,6 +33,33 @@
 
   #scene-view{position:relative;width:100%;flex:1 1 0;min-height:120px;overflow:hidden}
   #scene{position:absolute;top:0;left:0}
+  #room-title{
+    position:fixed;inset:0 0 16dvh;z-index:2;display:grid;place-items:center;
+    padding:12px;box-sizing:border-box;pointer-events:none;opacity:0
+  }
+  #room-title-plaque{
+    position:relative;margin:0;max-width:calc(100% - 28px);box-sizing:border-box;padding:16px clamp(24px,5vw,44px) 18px;
+    color:#ffe1a0;text-shadow:0 2px #593a2d,0 0 12px #d59a4544;text-align:center;
+    font:400 clamp(22px,3.6vw,40px)/1.18 "UnifrakturMaguntia",Georgia,serif;
+    border:1px solid #aa8559;
+    background:
+      linear-gradient(#dfbd80,#dfbd80) left top/12px 2px no-repeat,
+      linear-gradient(#dfbd80,#dfbd80) right bottom/12px 2px no-repeat,
+      linear-gradient(135deg,#303547f5,#191d2ff5 60%,#343240f5);
+    box-shadow:0 0 0 3px #171828dd,inset 0 0 0 3px #252739,inset 0 0 0 4px #655342,0 7px 18px #080b2266
+  }
+  #room-title-plaque::before,#room-title-plaque::after{
+    content:"";position:absolute;width:11px;height:11px;pointer-events:none;
+    background:linear-gradient(#fff1c4,#fff1c4) center/3px 11px no-repeat,
+      linear-gradient(#fff1c4,#fff1c4) center/11px 3px no-repeat;
+    filter:drop-shadow(0 0 4px #e4b265);animation:room-star 1.6s ease-in-out infinite
+  }
+  #room-title-plaque::before{left:7px;top:7px;filter:drop-shadow(0 0 4px #e4b265) drop-shadow(-17px 13px 0 #e8ce94) drop-shadow(17px -16px 0 #e8ce94)}
+  #room-title-plaque::after{right:7px;bottom:7px;animation-delay:-.8s;filter:drop-shadow(0 0 4px #e4b265) drop-shadow(17px -13px 0 #e8ce94) drop-shadow(-17px 16px 0 #e8ce94)}
+  @keyframes room-star{0%,100%{opacity:.2;transform:scale(.55)}50%{opacity:1;transform:scale(1)}}
+  @media(prefers-reduced-motion:reduce){
+    #room-title-plaque::before,#room-title-plaque::after{animation:none;opacity:.65}
+  }
   #zoom{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
@@ -213,6 +245,9 @@
   <div id="scene-view">
     <canvas id="scene" tabindex="0" aria-label="Wizard’s room" aria-describedby="movement-hint"></canvas>
   </div>
+  <div id="room-title">
+    <p id="room-title-plaque" role="status"></p>
+  </div>
   <aside id="librarian-dialogue" class="npc-dialogue" aria-labelledby="librarian-name" aria-live="polite" hidden>
     <div class="npc-dialogue-layout">
       <figure class="npc-speaker">
@@ -270,7 +305,7 @@
     <label for="teleport-room-choice">Choose a room</label>
     <select id="teleport-room-choice" required autofocus>
       <option value="tower">Main Room</option>
-      <option value="library">Library</option>
+      <option value="library">Grand Library</option>
       <option value="potion">Potion Room</option>
       <option value="stockroom">Potion Stockroom</option>
       <option value="hall">Hall · First Section</option>

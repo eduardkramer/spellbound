@@ -50,37 +50,37 @@ const ctx = cv.getContext('2d');
 const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
 const statC = mk(), secondC = mk(), potionC = mk(), stockC = mk(), hallC = mk(), hallEndC = mk(), classroomC = mk();
 const rooms = {
-  tower: { canvas: statC, exits: [
+  tower: { title: 'Main Room', canvas: statC, exits: [
     { tile: [TOWER_LIBRARY_DOOR_COLUMN, TOWER_TILES - 1], target: 'library',
       arrival: [LIBRARY_TOWER_DOOR_COLUMN, 1], direction: 'sw' }
   ] },
-  library: { canvas: secondC, exits: [
+  library: { title: 'Grand Library', canvas: secondC, exits: [
     { tile: [LIBRARY_TOWER_DOOR_COLUMN, 0], target: 'tower',
       arrival: [TOWER_LIBRARY_DOOR_COLUMN, TOWER_TILES - 2], direction: 'ne' },
     { tile: [LIBRARY_COLUMNS - 1, LIBRARY_POTION_DOOR_ROW], wallA: LIBRARY_WIDTH, target: 'potion', arrival: [1, POTION_DOOR_ROW], direction: 'se' },
     { tile: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 1], wallB: LIBRARY_DEPTH, archHalfWidth: 19,
       target: 'hall', arrival: [HALL_ENTRANCE_COLUMN, 1], direction: 'sw' }
   ] },
-  hall: { canvas: hallC, corridor: true, exits: [
+  hall: { title: 'Castle Hall', canvas: hallC, corridor: true, exits: [
     { tile: [HALL_ENTRANCE_COLUMN, 0], wallB: 0, target: 'library',
       arrival: [LIBRARY_HALL_DOOR_COLUMN, LIBRARY_ROWS - 2], direction: 'ne' },
     ...hallEdge(HALL_ROWS - 1, 1, 'hallEnd', 'sw')
   ] },
-  hallEnd: { canvas: hallEndC, corridor: true, exits: [
+  hallEnd: { title: 'Castle Hall', canvas: hallEndC, corridor: true, exits: [
     ...hallEdge(0, HALL_ROWS - 2, 'hall', 'ne'),
     { tile: [HALL_COLUMNS - 1, HALL_CLASSROOM_DOOR_ROW], wallA: HALL_WIDTH,
       target: 'classroom', arrival: [1, CLASSROOM_DOOR_ROW], direction: 'se' }
   ] },
-  classroom: { canvas: classroomC, exits: [
+  classroom: { title: 'Runes Classroom', canvas: classroomC, exits: [
     { tile: [0, CLASSROOM_DOOR_ROW], wallA: 0, target: 'hallEnd',
       arrival: [HALL_COLUMNS - 2, HALL_CLASSROOM_DOOR_ROW], direction: 'nw' }
   ] },
-  potion: { canvas: potionC, exits: [
+  potion: { title: 'Potion Room', canvas: potionC, exits: [
     { tile: [0, POTION_DOOR_ROW], wallA: 0, target: 'library', arrival: [LIBRARY_COLUMNS - 2, LIBRARY_POTION_DOOR_ROW], direction: 'nw' },
     { tile: [POTION_STOCK_DOOR_COLUMN, 0], wallB: 0,
       target: 'stockroom', arrival: [1, STOCK_DOOR_ROW], direction: 'se' }
   ] },
-  stockroom: { canvas: stockC, exits: [
+  stockroom: { title: 'Potion Stockroom', canvas: stockC, exits: [
     { tile: [0, STOCK_DOOR_ROW], wallA: 0, target: 'potion',
       arrival: [POTION_STOCK_DOOR_COLUMN, 1], direction: 'nw' }
   ] }
@@ -4126,6 +4126,21 @@ function drawTileBorder(tile, color) {
 const movementHint = document.getElementById('movement-hint');
 const defaultHint = movementHint ? movementHint.textContent : undefined;
 
+const roomTitleBanner = document.getElementById('room-title');
+const roomTitlePlaque = document.getElementById('room-title-plaque');
+let roomTitleAnimation;
+
+function showRoomTitle(title) {
+  if (!roomTitleBanner) return;
+  roomTitlePlaque.textContent = title;
+  roomTitleAnimation?.cancel();
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const keyframes = reduceMotion
+    ? [{ opacity: 1, offset: 0 }, { opacity: 1, offset: 1 }]
+    : [{ opacity: 0 }, { opacity: 1, offset: .13 }, { opacity: 1, offset: .78 }, { opacity: 0 }];
+  roomTitleAnimation = roomTitleBanner.animate(keyframes, { duration: 3500 });
+}
+
 function updateStockroomHint() {
   if (currentRoom !== rooms.stockroom) return;
   const hint = !WIZARD.staffEquipped ? 'Equip your wand, then press E to cast Wand Light.'
@@ -4156,6 +4171,7 @@ function enterRoom(exit) {
   };
   movementHint.textContent = hints[exit.target] ?? defaultHint;
   fit();
+  showRoomTitle(currentRoom.title);
 }
 
 const teleportChoice = document.getElementById('teleport-room-choice');
@@ -4974,6 +4990,7 @@ function frame(ms) {
     loadingProgress.value = loadingProgress.max;
     document.getElementById('wrap').removeAttribute('aria-busy');
     loadingScreen.hidden = true;
+    showRoomTitle(currentRoom.title);
   }
   if (preview && cv.hidden) {
     cv.hidden = false;
