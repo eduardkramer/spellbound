@@ -3572,15 +3572,25 @@ function warmCauldron(hit, dt) {
 
 function drawDialogueBubble(x, y, t) {
   x = Math.round(x); y = Math.round(y);
-  rect(ctx, x - 9, y - 7, 18, 12, '#231e30');
-  rect(ctx, x - 11, y - 5, 22, 8, '#231e30');
-  rect(ctx, x - 9, y - 5, 18, 8, '#ffffff');
-  rect(ctx, x - 7, y - 6, 14, 10, '#ffffff');
-  rect(ctx, x - 7, y + 2, 14, 2, '#d0d0d3');
-  rect(ctx, x - 2, y + 4, 4, 3, '#231e30');
-  rect(ctx, x - 1, y + 3, 2, 3, '#ffffff');
-  dot(ctx, x - 1, y + 7, '#231e30');
-  const count = matchMedia('(prefers-reduced-motion: reduce)').matches ? 3 : Math.floor(t / .35) % 3 + 1;
+  // Stepped corners and a slanted tail keep the outline on the pixel grid.
+  for (const [inset, top, width, height] of [[-9,-8,18,14],[-11,-6,22,10],[-12,-4,24,6]]) {
+    rect(ctx, x + inset, y + top, width, height, '#242426');
+  }
+  rect(ctx, x - 9, y - 6, 18, 10, '#ffffff');
+  rect(ctx, x - 10, y - 4, 20, 7, '#ffffff');
+  rect(ctx, x - 7, y - 7, 14, 12, '#ffffff');
+  rect(ctx, x - 8, y + 3, 16, 2, '#ceced0');
+  dot(ctx, x - 10, y + 2, '#ceced0');
+  dot(ctx, x + 9, y + 2, '#ceced0');
+  rect(ctx, x - 5, y + 5, 5, 2, '#242426');
+  rect(ctx, x - 5, y + 7, 3, 2, '#242426');
+  dot(ctx, x - 5, y + 9, '#242426');
+  rect(ctx, x - 4, y + 4, 3, 2, '#ffffff');
+  rect(ctx, x - 4, y + 6, 2, 1, '#ffffff');
+  dot(ctx, x - 4, y + 7, '#ffffff');
+  dot(ctx, x - 3, y + 6, '#ceced0');
+  dot(ctx, x + 6, y - 5, '#dedee0');
+  const count = matchMedia('(prefers-reduced-motion: reduce)').matches ? 3 : Math.min(3, Math.floor(t % 3.2 / .8) + 1);
   for (let index = 0; index < count; index++) {
     rect(ctx, x - 6 + index * 5, y - 1, 2, 2, '#302c36');
   }
