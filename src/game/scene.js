@@ -229,7 +229,7 @@ const copingFn = (a, b) => {
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
   [21.5, 4.5, 11.5, 3.4], [29, 45.5, 4.8, 4.8], [29, 53, 12.5, 4.7],
-  [55, 4, 8, 4], [4, 27, 4, 11], [78, 23, 8, 5], [76, 44, 5, 4],
+  [55, 4, 8, 4], [4, 27, 4, 11], [78, 23, 8, 5], [76, 44, 5, 4], [84, 68, 4, 4], [6, 61, 4, 4],
   [TABLE_A + 1, TABLE_B + 1.5, 5, 5], [towerChestA + 1, towerChestB + 1.5, 4.8, 3.7],
   [5, TOWER_DIAMOND_B + 1.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
   [8, 34.5, 3.4, 3.4]
@@ -1360,6 +1360,25 @@ function stockPortraitArt(subject, x, y, t, gaze = 0) {
 
 function stockPaintingArt(subject, x, y, t) {
   if (stockPortraits[subject]) return stockPortraitArt(subject, x, y, t);
+  if (subject === 'aubert' || subject === 'aubert-young') {
+    // The same silver-haired witch at two ages, in plum robes and a brass brooch.
+    const young = subject === 'aubert-young';
+    const face = Math.abs(x + .06);
+    if (y > .52 && y < .65 && Math.abs(x) < .72) return '#382b4a';
+    if (y >= .65 && Math.abs(x + .13) < (1 - y) * 1.35) return x < 0 ? '#765079' : '#503c62';
+    if (y > .37 && y < .55 && face < .43) return young ? '#654337' : '#bab6ac';
+    if (y > -.2 && y < .48 && face < .34) {
+      if (Math.abs(y - .23) < .045 && Math.abs(face - .17) < .065) return '#302b37';
+      if (Math.abs(y + .08) < .04 && face < .12) return '#9f6570';
+      return x < -.18 ? '#ad8473' : '#dfb99a';
+    }
+    if (y > -.38 && y < .43 && face < .46) return young ? '#654337' : '#b6b8b2';
+    if (y < -.27 && y > -.88 && Math.abs(x) < .52 - y * .26) {
+      if ((x + .1) ** 2 + (y + .51) ** 2 < .015) return '#e4c77f';
+      return x < 0 ? '#775274' : '#523b58';
+    }
+    return y > .25 ? '#59675d' : '#303945';
+  }
   switch (subject) {
     case 'castle': {
       if (y < -.46 + .19 * Math.sin(x * 8)) return '#394752';
@@ -2260,8 +2279,8 @@ function buildStatic(sg, room, doorStyle) {
     const gildedWood = ['#b6956a', '#856348', '#574337'];
     drawWallIvy(sg, [[0, 32.5, 21], [0, 66, 24]]);
     drawFramedPaintings(sg, [
-      [wallL, [[80, 72, 20, 24, 'moon', gildedWood]]],
-      [wallR, [[112, 67, 26, 24, 'castle', gildedWood]]]
+      [wallL, [[105, 59, 22, 31, 'aubert-young', gildedWood], [139, 64, 20, 28, 'aubert', gildedWood]]],
+      [wallR, [[101, 60, 23, 33, 'aubert', gildedWood], [143, 66, 20, 27, 'aubert-young', gildedWood]]]
     ]);
   }
   if (library) {
@@ -2318,6 +2337,29 @@ function flask(g, x, y, liq, type, collection = flasks) {
 const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
 let chestOpening = 0;
+
+function drawAubertPlant(g, a, b, variety, height = 0) {
+  const [x, y] = P(a, b, height);
+  if (!height) ell(g, x, y, 7, 3, '#34333c');
+  box(g, a - 1.8, b - 1.8, height, 3.6, 3.6, 4,
+    flat('#ba8b63', '#78503e', '#94654a'));
+  ell(g, x, y - 4, 7, 3, '#c3946c');
+  ell(g, x, y - 5, 5, 2, '#403c32');
+  for (let stem = 0; stem < 5; stem++) {
+    const dx = (stem - 2) * 3, top = y - 13 - (stem % 3) * 3;
+    line(g, x, y - 5, x + dx, top, '#55745a');
+    for (let leaf = 0; leaf < 3; leaf++) {
+      const lx = x + dx * (1 - leaf * .2), ly = top + leaf * 3;
+      ell(g, lx + (leaf % 2 ? -2 : 2), ly, variety === 0 ? 4 : 3, 2,
+        leaf % 2 ? '#638568' : '#8ba077');
+    }
+    if (variety === 1) {
+      ell(g, x + dx, top - 2, 2, 2, '#b59abd');
+      dot(g, x + dx, top - 2, '#ead2a2');
+    }
+  }
+  line(g, x - 4, y - 1, x + 3, y + 2, '#d0a67c');
+}
 
 function buildFront() {
   let canvas = mk(), g = canvas.getContext('2d');
@@ -2531,6 +2573,10 @@ function buildFront() {
     box(g, a, 2, 22.5, 1.7, 1.7, .6, gilding);
     box(g, a, 3.7, 20.2, 1.4, .1, 1, pages);
   }
+  // A scalloped runner and tiny botanical labels on each drawer.
+  box(g, 50, 1, 19.6, 11, 4.5, .2, flat('#586d61', '#3f5149', '#47584c'));
+  for (const a of [50, 53, 56, 59]) line(g, ...P(a, 5.7, 19.7), ...P(a, 6.1, 18.5), '#c0a77c');
+  for (const z of [5, 10, 15]) box(g, 54, 6.3, z, 3, .15, 1, pages);
   store(68);
 
   // Velvet chaise beneath the window, with cushions and an abandoned shawl.
@@ -2540,6 +2586,10 @@ function buildFront() {
   box(g, 1, 17, 9, 1.3, 19, 8, flat('#87657f', '#49344d', '#67495f'));
   for (const b of [18, 31]) box(g, 2, b, 9, 4, 3, 2, flat('#b39a71', '#806045', '#927456'));
   box(g, 3, 26, 9, 4, 4, .5, flat('#557e75', '#36524d', '#47645b'));
+  // Upholstery seams, brass tacks and woven threads in the shawl.
+  for (const b of [22, 27, 32]) line(g, ...P(2.4, b, 9.1), ...P(6.5, b, 9.1), '#b18a9b');
+  for (let b = 18; b < 36; b += 2) dot(g, ...P(7, b, 5), '#bb9b65');
+  for (let b = 26; b < 30; b += .8) line(g, ...P(3, b, 9.6), ...P(7, b, 9.6), '#99ac90');
   store(43);
 
   // Narrow correspondence table, loose parchment and a broken wax seal.
@@ -2549,14 +2599,33 @@ function buildFront() {
   line(g, ...P(74, 22, 14.4), ...P(77, 22, 14.4), '#866e53');
   box(g, 78, 23, 14.3, 1, 1, .3, flat('#ad515b', '#73313d', '#984650'));
   box(g, 81, 20, 14, 1.5, 1.5, 2, iron);
+  // Loose quill, cup on a saucer and a second folded note.
+  const [qx, qy] = P(81.5, 21, 16);
+  line(g, qx, qy, qx + 5, qy - 9, '#e3dbc4');
+  for (let i = 2; i < 8; i++) line(g, qx + i * .5, qy - i, qx + i * .5 + 2, qy - i - 1, '#b4bfbb');
+  box(g, 71, 23, 14, 2, 2, .3, pages);
+  const [cupX, cupY] = P(74, 20, 14.3);
+  ell(g, cupX, cupY, 3, 1, '#c3b68e');
+  rect(g, cupX - 1, cupY - 3, 3, 3, '#ded1ad');
+  rect(g, cupX - 1, cupY - 3, 3, 1, '#674c3c');
+  dot(g, cupX + 2, cupY - 2, '#baa376');
   store(112);
 
   // Travel trunk and folded blankets; the owner never packed them.
   drawStockContainer(g, 76, 44, 'chest');
   box(g, 73.5, 42, 8, 5, 3.5, 1.2, flat('#738b7d', '#3c5953', '#526d62'));
   store(124);
-  drawStockContainer(g, 6, 51, 'plant');
+  drawAubertPlant(g, 6, 51, 0);
   store(63);
+
+  // Distinct fern, flowering plant and climbing vine along the room edges.
+  drawAubertPlant(g, 84, 68, 1);
+  store(159);
+  drawAubertPlant(g, 6, 61, 2);
+  store(74);
+  // A small herb pot on the window sill.
+  drawAubertPlant(g, 2, 15, 2, 60);
+  store(20);
 
   // Brass coat stand and Madame Aubert's plum-coloured cloak.
   box(g, 3, 75, 0, 6, 4, 1, woodD);
@@ -3201,7 +3270,7 @@ towerFloor[CHEST_TILE[1]][CHEST_TILE[0]] = 'X';
 towerFloor[armchairSeat.tile[1]][armchairSeat.tile[0]] = 'X';
 towerFloor[6].fill('X', 2, 5);
 // Furniture footprints leave the central hearth approach and both doorway lanes open.
-for (const [column, row] of [[6,0],[7,0],[0,2],[0,3],[0,4],[0,6],[0,9],[9,2],[10,2],[9,3],[10,3],[9,5]]) towerFloor[row][column] = 'X';
+for (const [column, row] of [[6,0],[7,0],[0,2],[0,3],[0,4],[0,6],[0,9],[9,2],[10,2],[9,3],[10,3],[9,5],[10,8],[0,7]]) towerFloor[row][column] = 'X';
 towerFloor[4][0] = 'X';
 towerFloor[Math.floor(TABLE_B / TILE_SIZE)].fill('X', TABLE_A / TILE_SIZE - 1, TABLE_A / TILE_SIZE + 1);
 towerFloor[Math.floor(TOWER_DIAMOND_B / TILE_SIZE)][0] = 'X';
