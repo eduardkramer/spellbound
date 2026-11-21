@@ -4206,6 +4206,11 @@ function drawDialogueIndicators(t) {
   if (currentRoom === rooms.library && librarianDialogue.hidden && librarianHit && librarianSprite.naturalWidth) {
     drawDialogueBubble(librarianHit[0] + 8, librarianHit[1] - librarianSprite.naturalHeight - 7, t);
   }
+  if(currentRoom===rooms.library && librarianDialogue.hidden && libraryStudents[0]) {
+    const student=libraryStudents[0];
+    const [sx,sy]=P((student.a+.5)*TILE_SIZE,(student.b+.5)*TILE_SIZE,48);
+    drawDialogueBubble(sx,sy-5,t);
+  }
   if (currentRoom === rooms.potion && !questDialogue?.open && skeletonMage.naturalWidth) {
     const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
     drawDialogueBubble(x + 19, y - 5, t);
@@ -4534,6 +4539,10 @@ if (!preview) {
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
         event.target.closest?.('input, textarea, select, [contenteditable]')) return;
     if (questDialogue?.open || resetQuestDialogue?.open || loreScroll?.open || teleportDialogue?.open) return;
+    if(key==='e' && !event.repeat && currentRoom===rooms.library && libraryStudents[0] &&
+       Math.abs(wizard.a-libraryStudents[0].a)+Math.abs(wizard.b-libraryStudents[0].b)<=1) {
+      event.preventDefault();talkToLibraryStudent();return;
+    }
     if (key === 'e' && !event.repeat && canSearchBookStack()) {
       event.preventDefault();
       findMissingPage();
@@ -4643,10 +4652,19 @@ if (!preview) {
         return;
       }
     }
+    if(currentRoom===rooms.library && libraryStudents[0]) {
+      const student=libraryStudents[0];
+      const [sx,sy]=P((student.a+.5)*TILE_SIZE,(student.b+.5)*TILE_SIZE,0);
+      if(Math.abs(px+CX-sx)<=14 && py+CY>=sy-52 && py+CY<=sy) {
+        talkToLibraryStudent();return;
+      }
+    }
     if (currentRoom === rooms.library && librarianHit) {
       const [x, y] = librarianHit;
       if (Math.abs(px + CX - x) <= 13 && py + CY >= y - 43 && py + CY <= y) {
-        librarianDialogue.hidden = !librarianDialogue.hidden;
+        libraryDialogueSpeaker='librarian';
+        if(librarianDialogue.hidden) librarianDialogue.hidden=false;
+        else showLibrarianConversation('greeting');
         clearRoute();
         requestedSeat = null;
         heldKeys.clear();
@@ -5125,8 +5143,26 @@ const librarianConversations = {
     choices: [['Ask something else.', 'greeting']] }
 };
 
+let libraryDialogueSpeaker = 'librarian';
+const studentConversations = {
+  greeting:{text:"Oh! Sorry, I thought you were another moving bookshelf. I’m Mira. I’m looking for an atlas that refuses to stay on the same shelf.",choices:[["What are you looking for?",'atlas'],["Can I help?",'help'],["How is studying here?",'school']]},
+  atlas:{text:"The Atlas of Wandering Places. Its maps change whenever a hidden passage opens. Yesterday, a staircase appeared in the margin. Today, the whole book has disappeared.",choices:[["Any clues?",'help'],["Ask something else.",'greeting']]},
+  help:{text:"Look for a blue spine with a little silver compass. And listen carefully. The atlas rustles its pages when someone mentions a place it has never visited.",choices:[["Does the librarian know?",'keeper'],["Ask something else.",'greeting']]},
+  keeper:{text:"He told me to search patiently. Then he winked. I suspect finding the book is part of the lesson.",choices:[["Ask something else.",'greeting']]},
+  school:{text:"The lessons are wonderful. The homework less so. My last essay turned into a moth and escaped through a window. I’m still hoping that counts as practical magic.",choices:[["Ask something else.",'greeting']]}
+};
+function talkToLibraryStudent() {
+  libraryDialogueSpeaker='student';
+  clearRoute();heldKeys.clear();requestedSeat=null;fireHeld=false;waterHeld=false;
+  if(librarianDialogue.hidden) librarianDialogue.hidden=false;
+  else showLibrarianConversation('greeting');
+}
+
 function showLibrarianConversation(key) {
-  const conversation = librarianConversations[key];
+  const student=libraryDialogueSpeaker==='student';
+  const conversation = (student ? studentConversations : librarianConversations)[key];
+  document.getElementById('librarian-name').textContent=student ? 'Mira · Apprentice' : 'Librarian';
+  document.getElementById('librarian-portrait').style.backgroundImage=student ? 'url("assets/sprites/student-mira-portrait.png")' : '';
   const message = librarianDialogue.querySelector('.npc-dialogue-copy p');
   const topics = document.getElementById('librarian-topics');
   document.getElementById('close-librarian-dialogue').hidden = false;
@@ -5137,7 +5173,7 @@ function showLibrarianConversation(key) {
     button.textContent = label;
     button.addEventListener('click', () => {
       showLibrarianConversation(destination);
-      topics.querySelector('button').focus();
+      topics.querySelector('button')?.focus();
     });
     topics.append(button);
   }
@@ -5156,7 +5192,7 @@ if (!preview) {
   document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
     document.getElementById('librarian-topics').replaceChildren();
     document.getElementById('close-librarian-dialogue').hidden = true;
-    typeDialogue(librarianMessage, 'Walk carefully, apprentice. And if a book whispers your name... let it finish before you answer.',
+    typeDialogue(librarianMessage, libraryDialogueSpeaker==='student' ? 'Good luck exploring! If you spot that atlas, tell it I’m still waiting.' : 'Walk carefully, apprentice. And if a book whispers your name... let it finish before you answer.',
       librarianDialogue, () => { librarianDialogue.hidden = true; });
   });
   addEventListener('keydown', event => {
@@ -5468,19 +5504,20 @@ function studentTileOpen(a,b) {
 }
 function initLibraryStudents() {
   if(libraryStudents.length) return;
-  for(const [id,anchor] of [[2,2],[7,5],[5,10],[11,8]].entries()) {
+  for(const [id,anchor] of [[1,3],[6,6],[7,5],[9,5]].entries()) {
     const free=[];
     for(let b=1;b<LIBRARY_ROWS-1;b++) for(let a=1;a<LIBRARY_COLUMNS-1;a++) {
       if(studentTileOpen(a,b) && !libraryStudents.some(s=>s.a===a && s.b===b)) free.push([a,b]);
     }
     free.sort((l,r)=>Math.abs(l[0]-anchor[0])+Math.abs(l[1]-anchor[1])-Math.abs(r[0]-anchor[0])-Math.abs(r[1]-anchor[1]));
-    if(free.length) { const [a,b]=free[0];libraryStudents.push({id,a,b,home:[a,b],step:null,wait:1+id*.8,elapsed:0,turn:0,face:1}); }
+    if(free.length) { const [a,b]=free[0];libraryStudents.push({id,a,b,home:[a,b],step:null,wait:1+id*.8,elapsed:0,turn:0,face:id===2 || id===1 ? 1 : -1}); }
   }
 }
 function updateLibraryStudents(dt) {
   initLibraryStudents();
   if(!librarianDialogue.hidden || chestInventory?.open || questDialogue?.open) return;
   for(const student of libraryStudents) {
+    if(student.id !== 1) {student.face=student.id === 2 ? 1 : -1;continue;}
     if(student.step) {
       student.elapsed+=dt;
       if(student.elapsed>=.65) {
@@ -5493,7 +5530,6 @@ function updateLibraryStudents(dt) {
     if(student.wait>0) continue;
     const choices=[[1,0],[0,1],[-1,0],[0,-1]].map(([da,db])=>[student.a+da,student.b+db]);
     const free=choices.filter(([a,b])=>studentTileOpen(a,b) &&
-      Math.abs(a-student.home[0])+Math.abs(b-student.home[1])<=3 &&
       Math.abs(a-wizard.a)+Math.abs(b-wizard.b)>1 &&
       !(wizard.step && wizard.step.a===a && wizard.step.b===b) &&
       Math.abs(a-librarian.a)+Math.abs(b-librarian.b)>1 &&
@@ -5521,6 +5557,13 @@ function libraryStudentLayers() {
       const frame=student.step ? Math.floor(progress*4)%4 : 1;
       ctx.drawImage(studentSprite,frame*32,student.id*48,32,48,-16,-46,32,48);
       ctx.restore();
+      if(student.id===0) {
+        // An open book and a small reaching movement suggest browsing the shelves.
+        const reach=Math.floor(t%6)>3 ? 1 : 0;
+        rect(ctx,x-11,y-16-reach,7,5,'#826b49');
+        rect(ctx,x-10,y-15-reach,5,3,'#d6c49b');
+        line(ctx,x-8,y-15-reach,x-8,y-12-reach,'#8e7857');
+      }
     }};
   });
 }
