@@ -15,7 +15,7 @@ const [towerChestA, towerChestB] = CHEST_TILE.map(tile => (tile + .5) * TILE_SIZ
 const TABLE_A = 64, TABLE_B = 60;
 const TOWER_DIAMOND_B = 68, TOWER_OWL_A = 72;
 const POTION_COLUMNS = 11;
-const POTION_ROWS = 10;
+const POTION_ROWS = 13;
 const POTION_DOOR_ROW = 3;
 const LIBRARY_COLUMNS = 14, LIBRARY_ROWS = 12;
 const LIBRARY_WIDTH = LIBRARY_COLUMNS * TILE_SIZE, LIBRARY_DEPTH = LIBRARY_ROWS * TILE_SIZE;
@@ -1058,7 +1058,7 @@ function drawPotionDryingRack(g, timber) {
 
 // Low furniture at the edges leaves the central carpet and both entrances clear.
 const potionRoomProps = [
-  [2, 8, 'station'], [7, 8, 'station'],
+  [2, 10, 'station'], [7, 8, 'station'],
   [10, 5, 'barrel'], [10, 6, 'basket'], [9, 1, 'crates'],
   [1, 7, 'plant'], [10, 8, 'plant'], [0, 8, 'cabinet'], [10, 3, 'wash']
 ];
@@ -1212,9 +1212,9 @@ function drawPotionWorkshop(g) {
     return '#dfbb80';
   });
   drawFramedPaintings(g, [[wallL, [[118, 63, 11, 22, 'herb', ['#b99a6c','#78583e','#453832']]]]]);
-  // Recipe board below the second window, clear of the rack and stockroom door.
-  wallR(g,0,107,147,12,42,(u,z) => {
-    const x=u-107,y=z-12;
+  // Recipe board on the extended left wall, above the teaching workbench.
+  wallL(g,0,164,204,35,65,(u,z) => {
+    const x=u-164,y=z-35;
     if(x<2 || x>37 || y<2 || y>27) return x===0 || y===29 ? '#b08a59' : '#674c37';
     if(y>21 && y<24 && x>5 && x<31) return x%5<3 ? '#c1c8ad' : '#293e39';
     if(y>5 && y<19) {
@@ -1225,8 +1225,8 @@ function drawPotionWorkshop(g) {
     }
     return '#293e39';
   });
-  box(g,53.5,.4,11,20,1.8,1,woodC('#805f42'));
-  box(g,57,1,12,2.5,.6,.5,flat('#d2d1b7','#9eaa96','#b7c0a8'));
+  box(g,.4,82,34,1.8,20,1,woodC('#805f42'));
+  box(g,1,86,35,.6,2.5,.5,flat('#d2d1b7','#9eaa96','#b7c0a8'));
   drawPotionDryingRack(g, timber);
   drawPotionRack(g);
 
@@ -1406,7 +1406,7 @@ function potionFloor(a, b) {
   const column = Math.floor((a + stagger) / 10);
   const variation = hash(column, row);
   const grain = hash(Math.floor(a * 2), Math.floor(b * 2));
-  const edge = Math.min(a - 13, 49 - a, b - 15, 68 - b);
+  const edge = Math.min(a - 13, 49 - a, b - 15, 84 - b);
   const contact = Math.min(
     contactShade(a, b, cauldronA, cauldronB, 9, 7),
     contactShade(a, b, workbenchA, workbenchB, 5, 5),
