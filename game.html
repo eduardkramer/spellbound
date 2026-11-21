@@ -32,40 +32,61 @@
   #zoom #zoom-reset{width:60px;font-size:12px}
   #zoom button:disabled{opacity:.45;cursor:default}
   .npc-dialogue{
-    --dialogue-bottom:calc(var(--hotbar-bottom, 20dvh) + clamp(12px, 3dvh, 36px));
+    --dialogue-bottom:calc(var(--hotbar-bottom, 20dvh) + clamp(12px,3dvh,36px));
+    --portrait-width:clamp(82px,17vw,148px);
     position:fixed;inset:auto 0 var(--dialogue-bottom);margin:0 auto;z-index:3;
-    width:min(720px,calc(100% - 32px));max-height:calc(100dvh - var(--dialogue-bottom) - 12px);
-    box-sizing:border-box;overflow:auto;border:2px solid #b48d57;padding:14px;
-    color:#f5e6ce;background:
-      linear-gradient(#d5ad6c,#d5ad6c) left top / 14px 3px no-repeat,
-      linear-gradient(#d5ad6c,#d5ad6c) right top / 14px 3px no-repeat,
-      linear-gradient(#d5ad6c,#d5ad6c) left bottom / 14px 3px no-repeat,
-      linear-gradient(#d5ad6c,#d5ad6c) right bottom / 14px 3px no-repeat,
-      linear-gradient(145deg,#2d2b45,#191b32);
-    box-shadow:0 0 0 2px #171322,inset 0 0 0 3px #24203a,inset 0 0 0 4px #6d5262,4px 5px #100e1e;
+    width:min(820px,calc(100% - 24px));max-height:calc(100dvh - var(--dialogue-bottom) - 12px);
+    box-sizing:border-box;overflow:auto;border:0;padding:30px 4px 5px;
+    color:#f5e6ce;background:transparent;
   }
   .npc-dialogue::backdrop{background:#12102555}
-  .npc-dialogue-layout{display:grid;grid-template-columns:clamp(80px,17vw,148px) minmax(0,1fr);gap:12px}
-  #quest-dialogue .npc-speaker{align-self:center}
-  #quest-dismiss[hidden]{display:none}
-  .npc-speaker{margin:0;align-self:end;text-align:center}
-  .npc-portrait{height:clamp(90px,18vh,150px);background:center bottom / contain no-repeat;image-rendering:pixelated}
+  .npc-dialogue-layout{
+    position:relative;display:grid;grid-template-columns:var(--portrait-width) minmax(0,1fr);
+    align-items:end;gap:0
+  }
+  .npc-speaker{
+    position:relative;margin:0;align-self:stretch;display:flex;align-items:center;justify-content:center;
+    min-height:148px;background:#15121d;border:2px solid #d4ad69;
+    box-shadow:inset 0 0 0 2px #44302a,0 2px #211827
+  }
+  #quest-dialogue .npc-speaker{align-self:stretch}
+  .npc-portrait{
+    width:100%;height:clamp(110px,19vh,172px);
+    background:center / contain no-repeat;image-rendering:pixelated
+  }
   .npc-speaker figcaption{
-    padding:6px 4px;color:#f6d489;background:#29243b;border:1px solid #a07b55;
-    box-shadow:inset 0 -2px #191529;font-size:13px;font-weight:bold;
+    position:absolute;left:calc(100% + 2px);top:-28px;z-index:1;
+    width:max-content;max-width:calc(100vw - var(--portrait-width) - 40px);
+    box-sizing:border-box;min-height:28px;padding:4px 12px;color:#ffe0a0;
+    background:#30221f;border:2px solid #d4ad69;border-bottom:0;
+    box-shadow:inset 2px 2px #715037;font-size:14px;font-weight:bold;text-align:left
   }
   .npc-dialogue-copy{
-    align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
-    min-width:0;padding:12px clamp(10px,2vw,20px);border:1px solid #51465e;
-    background:#171a30;box-shadow:inset 0 0 0 2px #23253e;overflow-wrap:anywhere;
+    position:relative;align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+    min-width:0;min-height:112px;padding:16px clamp(10px,2vw,20px);
+    border:2px solid #d4ad69;border-left:0;background:linear-gradient(135deg,#30221ff5,#1c1723fa);
+    box-shadow:inset 0 0 0 2px #674731,0 2px #211827;overflow-wrap:anywhere
   }
-  .npc-dialogue h2{font: bold 18px/1.25 Georgia,serif;color:#f6d489;margin:0 0 6px}
+  .npc-dialogue-copy::before,.npc-dialogue-copy::after{
+    content:"";position:absolute;width:5px;height:5px;border:1px solid #ffe0a0;
+    box-shadow:2px 2px #765433;pointer-events:none
+  }
+  .npc-dialogue-copy::before{right:4px;top:4px}
+  .npc-dialogue-copy::after{right:4px;bottom:4px}
+  .npc-dialogue h2{font: bold 15px/1.25 Georgia,serif;color:#d8b880;margin:0 0 7px}
   .npc-dialogue p{font-size:clamp(13px,1.25vw,16px);line-height:1.55;margin:0 0 12px}
-  .npc-dialogue form{display:flex;flex-wrap:wrap;gap:6px}
+  .npc-dialogue form{display:flex;flex-wrap:wrap;gap:6px;width:100%}
   .npc-dialogue button{
-    width:auto;padding:0 10px;border-color:#936f4e;background:#3d3049;color:#ffe4a8;
+    width:auto;height:auto;min-height:28px;padding:3px 10px;background:#49322d;color:#ffe4a8;
+    box-shadow:inset 0 0 0 1px #b28a55,inset 0 -3px #281d26
   }
-  .npc-dialogue button:hover,.npc-dialogue button:focus-visible{background:#54405a}
+  .npc-dialogue button:hover,.npc-dialogue button:focus-visible{background:#60443b}
+  #quest-dismiss[hidden]{display:none}
+  @media(max-width:440px){
+    .npc-speaker figcaption{font-size:12px;padding-inline:7px}
+    .npc-dialogue-copy{padding:12px 10px}
+    .npc-dialogue-layout{align-items:stretch}
+  }
   #reset-quest,#teleport-room{width:auto;padding:0 10px;font-size:12px}
   #quest-log{max-width:95%;color:var(--txt);font-size:12px}
   #quest-log summary{cursor:pointer;color:var(--gold)}
