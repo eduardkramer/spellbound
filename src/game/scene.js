@@ -1358,36 +1358,51 @@ function stockPortraitArt(subject, x, y, t, gaze = 0) {
   return background;
 }
 
+// Match the original mantel portrait: violet pointed hat, pale hair and warm skin.
+// Work in the same small pixel grid so the new paintings share its level of detail.
+function aubertPaintingArt(subject, x, y) {
+  const study = subject === 'aubert-study';
+  const moonlit = subject === 'aubert-moon';
+  const side = subject === 'aubert-young' ? -1 : 1;
+  const column = Math.round((x * side + 1) * 7.5);
+  const level = Math.round((y + 1) * 13.5);
+  const center = study ? 8.5 : 7.5;
+  const d = Math.abs(column - center);
+  // Distinct backgrounds and props, keeping the same face and costume in every frame.
+  if (moonlit && (x + .57) ** 2 + (y - .64) ** 2 < .09 &&
+      (x + .43) ** 2 + (y - .72) ** 2 > .065) return '#caaa72';
+  if (level >= 18 && level < 28) {
+    const width = (27.5 - level) * .55 + .5;
+    if (d <= width) {
+      if (Math.abs(column - center) < .8 && level === 22) return '#ffd45a';
+      return column > center ? '#5a4cb0' : '#4c3f9a';
+    }
+  }
+  if (level >= 16 && level < 18 && d <= 7) return '#3a2e7a';
+  // Pale locks frame the face below the broad hat brim.
+  if (level >= 6 && level < 16 && d > 3 && d < 5) {
+    return column < center ? '#e2d7b1' : '#b6afaa';
+  }
+  if (level >= 8 && level < 16 && d <= 3.6) {
+    if (level === 13 && (column === Math.round(center - 2) || column === Math.round(center + 2))) return '#59434b';
+    if (level === 10 && d < 1) return '#b88660';
+    return column < center - 2 ? '#c39575' : '#d6ab84';
+  }
+  if (level < 10) {
+    const width = level >= 8 ? 3.6 : 5.4 - Math.abs(level - 5) * .6;
+    if (d <= width) {
+      if (study && level < 5) return Math.abs(column - center) < 1 ? '#8d6744' : '#dbc79d';
+      if (level === 6 && d < 1) return '#caaa72';
+      return d > width - 1.2 ? '#a9acc6' : '#d9d9ea';
+    }
+  }
+  if (study && level < 5 && column > 10) return '#856348';
+  return level > 14 ? (moonlit ? '#252940' : '#241a44') : '#1a1330';
+}
+
 function stockPaintingArt(subject, x, y, t) {
   if (stockPortraits[subject]) return stockPortraitArt(subject, x, y, t);
-  if (subject.startsWith('aubert')) {
-    // The same silver-haired witch at two ages, in plum robes and a brass brooch.
-    const young = subject === 'aubert-young';
-    const study = subject === 'aubert-study';
-    const moonlit = subject === 'aubert-moon';
-    const face = Math.abs(x + (study ? -.12 : .06));
-    if (study && y < -.45 && x > .12 && x < .82) {
-      if (Math.abs(x - .46) < .025) return '#957757';
-      return y < -.7 ? '#b6a77e' : '#d0bc93';
-    }
-    if (moonlit && (x + .58) ** 2 + (y - .6) ** 2 < .07 &&
-        (x + .47) ** 2 + (y - .67) ** 2 > .055) return '#dbd2ab';
-    if (y < -.18 && y > -.88 && Math.abs(x) < .52 - y * .26) {
-      if (Math.abs(x - .13) < .045 && y < -.53) return '#bca175';
-      if ((x + .1) ** 2 + (y + .51) ** 2 < .015) return '#e4c77f';
-      return x < 0 ? '#775274' : '#523b58';
-    }
-    if (y > .52 && y < .65 && Math.abs(x) < .72) return '#382b4a';
-    if (y >= .65 && Math.abs(x + .13) < (1 - y) * 1.35) return x < 0 ? '#765079' : '#503c62';
-    if (y > .37 && y < .55 && face < .43) return young ? '#654337' : '#bab6ac';
-    if (y > -.2 && y < .48 && face < .34) {
-      if (Math.abs(y - .23) < .045 && Math.abs(face - .17) < .065) return '#302b37';
-      if (Math.abs(y + .08) < .04 && face < .12) return '#9f6570';
-      return x < -.18 ? '#ad8473' : '#dfb99a';
-    }
-    if (y > -.38 && y < .43 && face < .46) return young ? '#654337' : '#b6b8b2';
-    return y > .25 ? (moonlit ? '#465464' : '#59675d') : '#303945';
-  }
+  if (subject.startsWith('aubert')) return aubertPaintingArt(subject, x, y);
   switch (subject) {
     case 'castle': {
       if (y < -.46 + .19 * Math.sin(x * 8)) return '#394752';
