@@ -4473,17 +4473,66 @@ function updateLibrarian(dt) {
 }
 
 const librarianDialogue = document.getElementById('librarian-dialogue');
+const librarianConversations = {
+  greeting: { text: 'Keep your voice down, apprentice. Someone has been returning books that were never borrowed... and one of them bears Madame Aubert’s handwriting.',
+    choices: [['What happened to Madame Aubert?', 'aubert'], ['Which book was returned?', 'book'], ['Tell me about yourself.', 'keeper'], ['Where should I look?', 'explore']] },
+  aubert: { text: 'She came here before she vanished. She asked whether a portrait could remember something its painter had forgotten. When I turned around, her chair was empty. Her tea was still warm.',
+    choices: [['What did she leave behind?', 'note'], ['Could the portrait know?', 'portrait'], ['Ask something else.', 'greeting']] },
+  note: { text: 'A note between two blank pages: "If it answers in my voice, ask what I was afraid of." I have read it a hundred times. I still cannot decide whether it is a warning or a test.',
+    choices: [['What was she afraid of?', 'fear'], ['Ask about the portrait.', 'portrait'], ['Ask something else.', 'greeting']] },
+  fear: { text: 'Forgetting a student’s name. Such a small fear for someone so powerful. Whatever happened to her, remember that she cared about the people in this castle.',
+    choices: [['Ask something else.', 'greeting']] },
+  portrait: { text: 'People say her painted eyes open after midnight. I have only seen them move once. They were watching the doorway behind me. There was nobody there when I looked.',
+    choices: [['Which book was returned?', 'book'], ['Ask something else.', 'greeting']] },
+  book: { text: 'A register of Oakhaven’s students. The binding was wet, though it had not rained. Its last entry was written in fresh ink. The name had been carefully scratched away.',
+    choices: [['Did you touch the ink?', 'ink'], ['Who brought it back?', 'visitor'], ['Ask something else.', 'greeting']] },
+  ink: { text: 'With a paper knife. The ink crawled toward the blade. I closed the book before it reached the handle. Since then, I have kept a clean sheet between every page.',
+    choices: [['Who brought it back?', 'visitor'], ['Ask something else.', 'greeting']] },
+  visitor: { text: 'I heard three knocks and found it on the desk. No footsteps. No voice. Only the smell of cold candle wax. Whoever returned it knew exactly when I would be alone.',
+    choices: [['Ask something else.', 'greeting']] },
+  keeper: { text: 'I used to teach protective charms. Now I look after the books. Books are easier to keep safe than students... usually. Madame Aubert used to tease me about that.',
+    choices: [['Were you friends?', 'friend'], ['Ask something else.', 'greeting']] },
+  friend: { text: 'She always returned her books late and brought me tea as an apology. I kept a list of her overdue loans. I have not had the heart to erase it.',
+    choices: [['Ask about her disappearance.', 'aubert'], ['Ask something else.', 'greeting']] },
+  explore: { text: 'Take your time in the castle. The hall leads to the runes classroom. In the potion room, our skeletal colleague may need a steady hand. Bring your wand. Curiosity is safer with a little light.',
+    choices: [['What about the stockroom?', 'stockroom'], ['Ask something else.', 'greeting']] },
+  stockroom: { text: 'Speak to the Skeleton Mage before trying that door. The stockroom is his responsibility. If he sends you inside, keep your wand close: the shelves cast very long shadows.',
+    choices: [['Ask something else.', 'greeting']] }
+};
+
+function showLibrarianConversation(key) {
+  const conversation = librarianConversations[key];
+  const message = librarianDialogue.querySelector('.npc-dialogue-copy p');
+  const topics = document.getElementById('librarian-topics');
+  document.getElementById('close-librarian-dialogue').hidden = false;
+  topics.replaceChildren();
+  for (const [label, destination] of conversation.choices) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      showLibrarianConversation(destination);
+      topics.querySelector('button').focus();
+    });
+    topics.append(button);
+  }
+  typeDialogue(message, conversation.text, librarianDialogue);
+}
+
 let librarianHit = null;
 if (!preview) {
   librarianDialogue.hidden = true;
   const librarianMessage = librarianDialogue.querySelector('.npc-dialogue-copy p');
-  const librarianText = librarianMessage.textContent;
+
   new MutationObserver(() => {
     if (librarianDialogue.hidden) dialogueTyping.get(librarianMessage)?.();
-    else typeDialogue(librarianMessage, librarianText, librarianDialogue);
+    else showLibrarianConversation('greeting');
   }).observe(librarianDialogue, { attributes: true, attributeFilter: ['hidden'] });
   document.getElementById('close-librarian-dialogue').addEventListener('click', () => {
-    librarianDialogue.hidden = true;
+    document.getElementById('librarian-topics').replaceChildren();
+    document.getElementById('close-librarian-dialogue').hidden = true;
+    typeDialogue(librarianMessage, 'Walk carefully, apprentice. And if a book whispers your name... let it finish before you answer.',
+      librarianDialogue, () => { librarianDialogue.hidden = true; });
   });
   addEventListener('keydown', event => {
     if (event.key === 'Escape') librarianDialogue.hidden = true;
