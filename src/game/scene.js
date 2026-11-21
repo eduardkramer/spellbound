@@ -228,10 +228,11 @@ const copingFn = (a, b) => {
 /* ---------- vloer ---------- */
 // Middelpunt en beide stralen in vloercoördinaten.
 const towerShadows = [
-  [21.5, 4.5, 11.5, 3.4], [29, 21.5, 4.8, 4.8], [29, 29, 12.5, 4.7],
+  [21.5, 4.5, 11.5, 3.4], [29, 45.5, 4.8, 4.8], [29, 53, 12.5, 4.7],
+  [55, 4, 8, 4], [4, 27, 4, 11], [78, 23, 8, 5], [76, 44, 5, 4], [84, 68, 4, 4], [6, 61, 4, 4],
   [TABLE_A + 1, TABLE_B + 1.5, 5, 5], [towerChestA + 1, towerChestB + 1.5, 4.8, 3.7],
   [5, TOWER_DIAMOND_B + 1.5, 4.1, 4.1], [5, 5.5, 3.4, 3.4],
-  [8, 34.5, 3.4, 3.4]
+  [59, 37.5, 3.4, 3.4]
 ];
 
 function contactShade(a, b, centerA, centerB, radiusA, radiusB) {
@@ -251,9 +252,9 @@ function shadedTowerFloor(a, b) {
 }
 
 function floorFn(a, b) {
-  if (a >= 10 && a < 42 && b >= 7 && b < 47) {
-    const edge = Math.min(a - 10, 42 - a, b - 7, 47 - b);
-    if (b < 8.2 || b >= 45.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
+  if (a >= 10 && a < 42 && b >= 7 && b < 71) {
+    const edge = Math.min(a - 10, 42 - a, b - 7, 71 - b);
+    if (b < 8.2 || b >= 69.8) return Math.floor(a * 2) % 2 ? '#baa47c' : '#8b795d';
     if (edge < 1.4) return '#3c4441';
     if (edge < 2.15) return '#ad9160';
     if (edge < 3.25) return (Math.floor(a * 2) + Math.floor(b * 2)) % 5 === 0 ? '#a0845d' : '#596455';
@@ -352,7 +353,7 @@ function towerWindowCross(u, z) {
 }
 
 function towerWindowGlass(u, z) {
-  return z >= 60 && towerWindowArch(u, z) < 18 && !towerWindowCross(u, z);
+  return z >= 30 && towerWindowArch(u, z) < 18 && !towerWindowCross(u, z);
 }
 
 function towerPanel(u, z) {
@@ -363,7 +364,7 @@ function towerPanel(u, z) {
 }
 
 function leftFn(u, z) {
-  if (z >= 60) {
+  if (z >= 30) {
     const arch = towerWindowArch(u, z);
     if (arch < 18) return towerWindowCross(u, z) ? (u === 43 || z === 73 ? '#967852' : '#614832') : null;
     if (arch < 22) {
@@ -371,12 +372,6 @@ function leftFn(u, z) {
       if (arch < 19) return '#8e928a';
       return arch >= 20 ? '#606d76' : '#717f86';
     }
-  }
-  if (u >= 22 && u < 66 && z >= 6 && z < 60) {
-    if (u < 24 || u >= 64 || z < 8) return woodEdge(u, z);
-    if (z >= 56 && z < 60) return woodMid(u, z);
-    if (u >= 43 && u < 45) return woodMid(u, z);
-    return bookFn(u, z);
   }
   const h = hatFn(u, z); if (h) return h;
   return towerPanel(u, z) ?? towerWallStone(brL, u, z);
@@ -545,7 +540,7 @@ function drawSidePassage(g, { wallA, tile }, foreground, style) {
 
 /* ---------- bibliotheek ---------- */
 // Een bank kan meerdere zitplekken in hetzelfde meubel registreren.
-const armchairSeat = { tile: [3, 2], approach: [4, 2], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
+const armchairSeat = { tile: [3, 5], approach: [4, 5], direction: 'sw', offsetB: 1, height: 7, hit: [13, 25] };
 const readingSeat = { tile: [1, 5], approach: [2, 5], direction: 'ne', offsetB: 0, height: 7, hit: [14, 24] };
 const studyTables = [[3, 3], [8, 3], [3, 8], [8, 8]];
 const studySeats = studyTables.flatMap(([column, row]) =>
@@ -1365,6 +1360,34 @@ function stockPortraitArt(subject, x, y, t, gaze = 0) {
 
 function stockPaintingArt(subject, x, y, t) {
   if (stockPortraits[subject]) return stockPortraitArt(subject, x, y, t);
+  if (subject.startsWith('aubert')) {
+    // The same silver-haired witch at two ages, in plum robes and a brass brooch.
+    const young = subject === 'aubert-young';
+    const study = subject === 'aubert-study';
+    const moonlit = subject === 'aubert-moon';
+    const face = Math.abs(x + (study ? -.12 : .06));
+    if (study && y < -.45 && x > .12 && x < .82) {
+      if (Math.abs(x - .46) < .025) return '#957757';
+      return y < -.7 ? '#b6a77e' : '#d0bc93';
+    }
+    if (moonlit && (x + .58) ** 2 + (y - .6) ** 2 < .07 &&
+        (x + .47) ** 2 + (y - .67) ** 2 > .055) return '#dbd2ab';
+    if (y < -.18 && y > -.88 && Math.abs(x) < .52 - y * .26) {
+      if (Math.abs(x - .13) < .045 && y < -.53) return '#bca175';
+      if ((x + .1) ** 2 + (y + .51) ** 2 < .015) return '#e4c77f';
+      return x < 0 ? '#775274' : '#523b58';
+    }
+    if (y > .52 && y < .65 && Math.abs(x) < .72) return '#382b4a';
+    if (y >= .65 && Math.abs(x + .13) < (1 - y) * 1.35) return x < 0 ? '#765079' : '#503c62';
+    if (y > .37 && y < .55 && face < .43) return young ? '#654337' : '#bab6ac';
+    if (y > -.2 && y < .48 && face < .34) {
+      if (Math.abs(y - .23) < .045 && Math.abs(face - .17) < .065) return '#302b37';
+      if (Math.abs(y + .08) < .04 && face < .12) return '#9f6570';
+      return x < -.18 ? '#ad8473' : '#dfb99a';
+    }
+    if (y > -.38 && y < .43 && face < .46) return young ? '#654337' : '#b6b8b2';
+    return y > .25 ? (moonlit ? '#465464' : '#59675d') : '#303945';
+  }
   switch (subject) {
     case 'castle': {
       if (y < -.46 + .19 * Math.sin(x * 8)) return '#394752';
@@ -1462,11 +1485,20 @@ function drawStockPaintings(g, t = 0, animateOnly = false) {
 
 function drawFramedPaintings(g, groups, t = 0, animateOnly = false) {
   for (const [paintWall, frames] of groups) {
-    for (const [u, z, width, height, subject, frame] of frames) {
+    for (const [u, z, width, height, subject, frame, style] of frames) {
       if (animateOnly && !stockPortraits[subject]) continue;
       paintWall(g, 0, animateOnly ? u + 2 : u, animateOnly ? u + width - 2 : u + width + 2,
         animateOnly ? z + 2 : z - 2, animateOnly ? z + height - 2 : z + height, (column, level) => {
         const x = column - u, y = level - z;
+        if (style === 'oval') {
+          const radius = ((x - width / 2) / (width / 2)) ** 2 + ((y - height / 2) / (height / 2)) ** 2;
+          if (radius > 1) return null;
+          if (radius > .76) return radius > .9 ? frame[2] : x < width / 2 ? frame[0] : frame[1];
+        }
+        if (style === 'carved' && x >= 2 && x < width - 2 && y >= 2 && y < height - 2 &&
+            (x < 4 || x >= width - 4 || y < 4 || y >= height - 4)) {
+          return (x + y) % 4 === 0 ? frame[0] : frame[2];
+        }
         if (x >= width || y < 0) return '#32313c';
         if (y === height - 1 || x === 0) return frame[0];
         if (y === 0 || x === width - 1) return frame[2];
@@ -2265,8 +2297,8 @@ function buildStatic(sg, room, doorStyle) {
     const gildedWood = ['#b6956a', '#856348', '#574337'];
     drawWallIvy(sg, [[0, 32.5, 21], [0, 66, 24]]);
     drawFramedPaintings(sg, [
-      [wallL, [[80, 72, 20, 24, 'moon', gildedWood]]],
-      [wallR, [[112, 67, 26, 24, 'castle', gildedWood]]]
+      [wallL, [[105, 59, 22, 31, 'aubert-young', gildedWood], [139, 64, 20, 28, 'aubert-moon', ['#c6c2ac','#808779','#4f5b58'], 'oval']]],
+      [wallR, [[101, 60, 23, 33, 'aubert', gildedWood, 'carved'], [143, 64, 24, 29, 'aubert-study', ['#bd9469','#80543c','#49352f'], 'carved']]]
     ]);
   }
   if (library) {
@@ -2324,6 +2356,41 @@ const cand = []; // kaarsposities
 let KN = null;  // ridderpositie
 let chestOpening = 0;
 
+function drawAubertPlant(g, a, b, variety, height = 0) {
+  const [x, y] = P(a, b, height);
+  if (!height) ell(g, x, y, 7, 3, '#34333c');
+  box(g, a - 1.8, b - 1.8, height, 3.6, 3.6, 4,
+    flat(variety === 1 ? '#839a91' : '#ba8b63', variety === 1 ? '#415c5b' : '#78503e', variety === 1 ? '#587c76' : '#94654a'));
+  ell(g, x, y - 4, 7, 3, variety === 1 ? '#a7b9a6' : '#c3946c');
+  ell(g, x, y - 5, 5, 2, '#403c32');
+  if (variety === 2) {
+    // Arching fronds, rather than the upright flowering stems.
+    for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
+      const tx = x + side * (3 + k * 2), ty = y - 18 + k * 3;
+      line(g, x, y - 5, tx, ty, '#50735d');
+      for (let n = 1; n < 4; n++) {
+        const lx = x + (tx - x) * n / 4, ly = y - 5 + (ty - y + 5) * n / 4;
+        line(g, lx - 2, ly - 2, lx + 2, ly, n % 2 ? '#77956d' : '#a0ad7d');
+      }
+    }
+    return;
+  }
+  for (let stem = 0; stem < 5; stem++) {
+    const dx = (stem - 2) * 3, top = y - 13 - (stem % 3) * 3;
+    line(g, x, y - 5, x + dx, top, '#55745a');
+    for (let leaf = 0; leaf < 3; leaf++) {
+      const lx = x + dx * (1 - leaf * .2), ly = top + leaf * 3;
+      ell(g, lx + (leaf % 2 ? -2 : 2), ly, variety === 0 ? 4 : 3, 2,
+        leaf % 2 ? '#638568' : '#8ba077');
+    }
+    if (variety === 1) {
+      ell(g, x + dx, top - 2, 2, 2, '#b59abd');
+      dot(g, x + dx, top - 2, '#ead2a2');
+    }
+  }
+  line(g, x - 4, y - 1, x + 3, y + 2, '#d0a67c');
+}
+
 function buildFront() {
   let canvas = mk(), g = canvas.getContext('2d');
   // De diepte is a + b op de vloer, zodat meubels de tovenaar kunnen bedekken.
@@ -2360,7 +2427,7 @@ function buildFront() {
   store(26);
 
   // Fauteuil met de rug naar de haard en de zitting naar het bureau.
-  const seatA = 24.5, seatB = 16.5;
+  const seatA = 24.5, seatB = 40.5;
   const upholstery = flat('#75917f', '#3a5349', '#4b695b');
   const cushion = flat('#8fa995', '#526e60', '#638272');
   const chairPart = (a, b, z, da, db, dz, material) =>
@@ -2398,6 +2465,8 @@ function buildFront() {
   chairPart(5.62, 1.35, 13, 1.34, 3, .3, throwWool);
   store(seatA + seatB + 7);
 
+  // Move the complete desk, including its animated props, away from the hearth.
+  g.save(); g.translate(-48, 24);
   // Donker schrijfbureau met uitgesneden panelen.
   const deskWood = woodC('#64412d');
   const gilding = flat('#aa7f4c', '#7c5233', '#8e633d');
@@ -2435,10 +2504,13 @@ function buildFront() {
   box(g, candleA - .45, candleB - .45, 16.2, .9, .9, 2.7,
     flat('#f1d29f', '#c48a59', '#ad704d'));
   const [candleX, candleY] = P(candleA, candleB, 19);
-  store(56, t => {
+  g.restore();
+  store(80, t => {
+    ctx.save(); ctx.translate(-48, 24);
     drawDeskOrb(t);
     flame(candleX, candleY - 1, t, 3);
     glow(candleX, candleY + 3, 16, 11, '255,188,105', .025);
+    ctx.restore();
   });
 
   // Hoge zitstok voor de sneeuwuil.
@@ -2466,8 +2538,8 @@ function buildFront() {
     drawCat(t);
   });
 
-  // kandelaar
-  { const [bx, by] = P(7, 33, 0);
+  // Vrijstaande kandelaar naast het schrijfhoekje, ruim buiten de zitbank.
+  { const [bx, by] = P(58, 36, 0);
     ell(g, bx, by - 1, 6, 3, '#16161f'); ell(g, bx, by - 2, 5, 2, '#2c2c3a');
     rect(g, bx - 1, by - 24, 2, 22, '#23232f'); dot(g, bx + 1, by - 20, '#3c3c4e'); ell(g, bx, by - 8, 2, 1, '#3c3c4e');
     line(g, bx, by - 22, bx - 8, by - 28, '#23232f'); line(g, bx, by - 22, bx + 8, by - 28, '#23232f');
@@ -2478,7 +2550,7 @@ function buildFront() {
       if (lit) cand.push([bx + dx, ty - height - 2]);
     } }
 
-  store(40, t => {
+  store(94, t => {
     for (const [x, y] of cand) flame(x, y, t, x);
   });
 
@@ -2518,6 +2590,103 @@ function buildFront() {
     return '#bd9257';
   }));
   store(4 + TOWER_DIAMOND_B, drawDiamond);
+
+  // Aubert's herb cabinet: drawers, labelled jars and a sealed letter.
+  box(g, 49, 1, 0, 13, 5, 18, woodD);
+  for (const z of [3, 8, 13]) {
+    box(g, 49.6, 5.8, z, 11.8, .4, 4, wood);
+    for (const a of [52, 59]) box(g, a, 6.2, z + 1.8, 1, .4, .6, gilding);
+  }
+  box(g, 48.5, .5, 18, 14, 6, 1.5, wood);
+  for (const [a, color] of [[51, '#6c956c'], [55, '#a384aa'], [59, '#c5a066']]) {
+    box(g, a, 2, 19.5, 1.7, 1.7, 3, flat(color, '#51424f', '#6e6470'));
+    box(g, a, 2, 22.5, 1.7, 1.7, .6, gilding);
+    box(g, a, 3.7, 20.2, 1.4, .1, 1, pages);
+  }
+  // Raised corner caps, recessed drawer panels and little worn handles.
+  for (const a of [49, 61]) box(g, a, 5.9, 1, .6, .5, 17, gilding);
+  for (const z of [3, 8, 13]) {
+    line(g, ...P(50.5, 6.3, z + .5), ...P(60.5, 6.3, z + .5), '#49312b');
+    line(g, ...P(50.5, 6.3, z + 3.4), ...P(60.5, 6.3, z + 3.4), '#a47650');
+  }
+  // A scalloped runner and tiny botanical labels on each drawer.
+  box(g, 50, 1, 19.6, 11, 4.5, .2, flat('#586d61', '#3f5149', '#47584c'));
+  for (const a of [50, 53, 56, 59]) line(g, ...P(a, 5.7, 19.7), ...P(a, 6.1, 18.5), '#c0a77c');
+  for (const z of [5, 10, 15]) box(g, 54, 6.3, z, 3, .15, 1, pages);
+  store(68);
+
+  // Velvet chaise beneath the window, with cushions and an abandoned shawl.
+  for (const b of [18, 34]) box(g, 1, b, 0, 5, 1, 3, woodD);
+  box(g, 1, 17, 3, 6, 19, 3, wood);
+  box(g, 1, 17, 6, 6, 19, 3, flat('#795571', '#4d344e', '#60435f'));
+  box(g, 1, 17, 9, 1.3, 19, 8, flat('#87657f', '#49344d', '#67495f'));
+  for (const b of [18, 31]) box(g, 2, b, 9, 4, 3, 2, flat('#b39a71', '#806045', '#927456'));
+  box(g, 3, 26, 9, 4, 4, .5, flat('#557e75', '#36524d', '#47645b'));
+  // Upholstery seams, brass tacks and woven threads in the shawl.
+  for (const b of [22, 27, 32]) line(g, ...P(2.4, b, 9.1), ...P(6.5, b, 9.1), '#b18a9b');
+  for (let b = 18; b < 36; b += 2) dot(g, ...P(7, b, 5), '#bb9b65');
+  for (let b = 26; b < 30; b += .8) line(g, ...P(3, b, 9.6), ...P(7, b, 9.6), '#99ac90');
+  // Rolled arms and carved feet make this a chaise, distinct from the desk chair.
+  for (const b of [17, 34]) {
+    box(g, 2, b, 9, 5, 1.5, 4, flat('#906c82','#573d56','#725168'));
+    line(g, ...P(2, b + 1.5, 12.5), ...P(7, b + 1.5, 12.5), '#b3969c');
+  }
+  store(43);
+
+  // Narrow correspondence table, loose parchment and a broken wax seal.
+  for (const a of [71, 83]) for (const b of [20, 25]) box(g, a, b, 0, 1, 1, 12, woodD);
+  box(g, 70, 19, 12, 15, 8, 2, wood);
+  box(g, 73, 21, 14, 6, 3, .3, pages);
+  line(g, ...P(74, 22, 14.4), ...P(77, 22, 14.4), '#866e53');
+  box(g, 78, 23, 14.3, 1, 1, .3, flat('#ad515b', '#73313d', '#984650'));
+  box(g, 81, 20, 14, 1.5, 1.5, 2, iron);
+  // Loose quill, cup on a saucer and a second folded note.
+  const [qx, qy] = P(81.5, 21, 16);
+  line(g, qx, qy, qx + 5, qy - 9, '#e3dbc4');
+  for (let i = 2; i < 8; i++) line(g, qx + i * .5, qy - i, qx + i * .5 + 2, qy - i - 1, '#b4bfbb');
+  box(g, 71, 23, 14, 2, 2, .3, pages);
+  const [cupX, cupY] = P(74, 20, 14.3);
+  ell(g, cupX, cupY, 3, 1, '#c3b68e');
+  rect(g, cupX - 1, cupY - 3, 3, 3, '#ded1ad');
+  rect(g, cupX - 1, cupY - 3, 3, 1, '#674c3c');
+  dot(g, cupX + 2, cupY - 2, '#baa376');
+  // Cross stretcher, apron moulding and an inlaid edge on the writing table.
+  box(g, 71, 24.9, 9, 13, .5, 2, woodD);
+  box(g, 71, 22.3, 3, 13, .8, .8, woodD);
+  line(g, ...P(70.5, 26.6, 14), ...P(84.5, 26.6, 14), '#c19b68');
+  for (const a of [72, 82]) box(g, a, 25.5, 9, .7, .5, 3, gilding);
+  store(112);
+
+  // Travel trunk and folded blankets; the owner never packed them.
+  drawStockContainer(g, 76, 44, 'chest');
+  box(g, 73.5, 42, 8, 5, 3.5, 1.2, flat('#738b7d', '#3c5953', '#526d62'));
+  // Leather straps, rivets and a tarnished lock on the travel trunk.
+  for (const a of [74, 78]) {
+    box(g, a, 42, 9.3, .6, 4, .3, flat('#b19762','#66503d','#927951'));
+    for (const z of [2, 5]) dot(g, ...P(a, 46.1, z), '#cfb47d');
+  }
+  box(g, 75.4, 46.1, 3, 1.3, .3, 2, gilding);
+  dot(g, ...P(76, 46.5, 4), '#302c33');
+  store(124);
+  drawAubertPlant(g, 6, 51, 0);
+  store(63);
+
+  // Distinct fern, flowering plant and climbing vine along the room edges.
+  drawAubertPlant(g, 84, 68, 1);
+  store(159);
+  drawAubertPlant(g, 6, 61, 2);
+  store(74);
+  // A small herb pot on the window sill.
+  drawAubertPlant(g, 2, 15, 2, 60);
+  store(20);
+
+  // Brass coat stand and Madame Aubert's plum-coloured cloak.
+  box(g, 3, 75, 0, 6, 4, 1, woodD);
+  box(g, 5.5, 76.5, 1, 1, 1, 27, gilding);
+  for (const b of [75, 79]) box(g, 3, b, 24, 6, .6, .7, gilding);
+  box(g, 3, 77, 6, 3.5, 1.2, 17, flat('#74506b', '#3f2a46', '#593c58'));
+  line(g, ...P(4, 78.3, 7), ...P(4, 78.3, 21), '#a6856a');
+  store(86);
 
   // tafel
   { const [tx, ty] = P(TABLE_A, TABLE_B, 0);
@@ -2726,7 +2895,7 @@ function drawLibraryLights(t, lanterns = libraryLanterns) {
 /* ---------- animaties ---------- */
 // Zelfde herfstlucht als in het leesraam en de potionkamer.
 function drawSky() {
-  wallL(ctx, 0, 26, 62, 60, 94, (u, z) => towerWindowGlass(u, z) ? autumnSunset(u + 1, (z - 60) / 34) : null);
+  wallL(ctx, 0, 26, 62, 30, 94, (u, z) => towerWindowGlass(u, z) ? autumnSunset(u + 1, (z - 30) / 64) : null);
 }
 
 function windowPixels(paint, start, bottom, inGlass) {
@@ -3152,8 +3321,11 @@ const towerFloor = Array.from({ length: TOWER_TILES }, () => Array(TOWER_TILES).
 towerFloor[0].fill('X', 0, 4);
 towerFloor[CHEST_TILE[1]][CHEST_TILE[0]] = 'X';
 towerFloor[armchairSeat.tile[1]][armchairSeat.tile[0]] = 'X';
-towerFloor[3].fill('X', 2, 5);
+towerFloor[6].fill('X', 2, 5);
+// Furniture footprints leave the central hearth approach and both doorway lanes open.
+for (const [column, row] of [[6,0],[7,0],[0,2],[0,3],[0,4],[0,6],[0,9],[9,2],[10,2],[9,3],[10,3],[9,5],[10,8],[0,7]]) towerFloor[row][column] = 'X';
 towerFloor[4][0] = 'X';
+towerFloor[4][7] = 'X'; // Vrijstaande kandelaar.
 towerFloor[Math.floor(TABLE_B / TILE_SIZE)].fill('X', TABLE_A / TILE_SIZE - 1, TABLE_A / TILE_SIZE + 1);
 towerFloor[Math.floor(TOWER_DIAMOND_B / TILE_SIZE)][0] = 'X';
 const libraryFloorMap = Array.from({ length: LIBRARY_ROWS }, () => Array(LIBRARY_COLUMNS).fill('.'));
