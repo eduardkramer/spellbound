@@ -3000,10 +3000,40 @@ function banner(t, u0, w, phase) {
 
 // vuur
 const sparks = [];
+let hearthLit = true;
+let hearthSteam = 0;
+
+// Use the actual stream segment, so facing away or casting elsewhere cannot toggle the hearth.
+function streamHitsHearth(a, b, da, db, reach) {
+  if (currentRoom !== rooms.tower || db >= 0 || b < 0) return false;
+  const distance = Math.max(0, (b - 4) / -db);
+  if (distance > reach) return false;
+  const hitA = a + da * distance;
+  return hitA >= 15 && hitA <= 27;
+}
+function setHearthLit(lit) {
+  if (hearthLit === lit) return;
+  hearthLit = lit;
+  sparks.length = 0;
+  hearthSteam = lit ? 0 : .9;
+}
 function drawFire(t, dt) {
   // houtblokken
   for (let u = 33; u < 52; u++) for (let z = 2; z < 5; z++) pxR(ctx, u, z, (z === 4 ? '#6b3b1f' : '#4b2a18'));
   for (let u = 36; u < 49; u++) pxR(ctx, u, 5, '#3b2012');
+  if (!hearthLit) {
+    if (hearthSteam > 0) {
+      hearthSteam = Math.max(0, hearthSteam - dt);
+      ctx.save();
+      ctx.globalAlpha = hearthSteam * .45;
+      for (let i = 0; i < 5; i++) {
+        const [x, y] = P(17 + i * 2, 1, 8 + (1 - hearthSteam) * 17);
+        rect(ctx, x - 2, y - i % 2 * 3, 5, 2, '#b7c6cc');
+      }
+      ctx.restore();
+    }
+    return;
+  }
   for (let u = 32; u <= 52; u++) {
     const d = (u - 42) / 11, env = Math.max(0, 1 - d * d);
     const n = (Math.sin(u * .9 + t * 9) + Math.sin(u * .37 - t * 7.3) + Math.sin(u * 1.7 + t * 13.1)) / 3;
@@ -3945,6 +3975,7 @@ function drawFireBreath(t, a, b, dt) {
       Math.abs(row + .5 - cauldronB / TILE_SIZE) < 1;
   }
   warmCauldron(hitsCauldron, dt);
+  if (streamHitsHearth(originA, originB, da, db, visibleReach)) setHearthLit(true);
   if (!visibleReach) return;
   const [x, y] = P(originA, originB, z);
   const dx = 2 * (da - db), dy = da + db;
@@ -3992,6 +4023,7 @@ function drawWaterBreath(t, a, b) {
     if (!floor[row]?.[column] || (currentRoom === rooms.potion && !isStockroomUnlocked() &&
         column === POTION_STOCK_DOOR_COLUMN && row === 0)) { reach = Math.max(0, d - .5); break; }
   }
+  if (streamHitsHearth(originA, originB, da, db, reach)) setHearthLit(false);
   if (!reach) return;
   const [x, y] = P(originA, originB, z);
   const dx = 2 * (da - db), dy = da + db, projected = Math.hypot(dx, dy);
@@ -4002,15 +4034,46 @@ function drawWaterBreath(t, a, b) {
   ctx.imageSmoothingEnabled = false;
   ctx.translate(x, y);
   ctx.transform(ux, uy, -uy * side, ux * side, 0, 0);
+  // Fit the full splash to the reachable segment; the old fixed 66px width cut its tip off.
   ctx.beginPath(); ctx.rect(0, -24, length, 48); ctx.clip();
+  const thickness = Math.min(32, 12 + length * .3);
   ctx.drawImage(waterSprite, frame % 2 * 88, Math.floor(frame / 2) * 38, 88, 38,
-    -3, -16, 66, 32);
+    0, -thickness / 2, length, thickness);
+  // A few bright flecks follow the curved foam crest at the tip.
+  for (let i = 0; i < 4; i++) {
+    const phase = (t * 2.5 + i * .27) % 1;
+    const fx = length - 2 - phase * 7;
+    const fy = -3 - Math.sin(phase * Math.PI) * thickness * .3;
+    ctx.globalAlpha = (1 - phase) * .8;
+    rect(ctx, fx, fy, 2, 1, '#d8fcf5');
+  }
   // Small falling droplets follow the stream, instead of smoke.
   for (let i = 0; i < 7; i++) {
     const age = (t * 1.9 + i / 7) % 1;
     const px = length * (.4 + age * .57), py = 4 + age * age * 12;
     ctx.globalAlpha = (1 - age) * .8;
     rect(ctx, px, py, 1, 2, i % 2 ? '#9de9ef' : '#5da6d5');
+  }
+  ctx.restore();
+  // Screen-aligned pixel bubbles rise above the jet in every casting direction.
+  ctx.save();
+  for (let i = 0; i < 8; i++) {
+    const age = (t * .85 + i / 8) % 1;
+    const distance = length * (.18 + (i * .137 % .74));
+    const bx = Math.round(x + ux * distance + Math.sin(age * 5 + i) * 2);
+    const by = Math.round(y + uy * distance - 3 - age * 18);
+    const radius = i % 3 === 0 ? 3 : 2;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * .72 * waterCharge;
+    const edge = '#75bed3';
+    line(ctx, bx - radius + 1, by - radius, bx + radius - 1, by - radius, edge);
+    line(ctx, bx - radius, by - radius + 1, bx - radius, by + radius - 1, edge);
+    line(ctx, bx + radius, by - radius + 1, bx + radius, by + radius - 1, edge);
+    line(ctx, bx - radius + 1, by + radius, bx + radius - 1, by + radius, '#438cae');
+    dot(ctx, bx - 1, by - radius, '#e1fff6');
+    if (age > .87) {
+      dot(ctx, bx - radius - 2, by - 1, '#b6efef');
+      dot(ctx, bx + radius + 2, by + 1, '#b6efef');
+    }
   }
   ctx.restore();
 }
@@ -5213,7 +5276,7 @@ function frame(ms) {
   drawRoomOccupants(t, dt);
   const n = (Math.sin(t * 9) + Math.sin(t * 13.7) + Math.sin(t * 5.3)) / 3;
   const [gx, gy] = P(21, 6, 14);
-  glow(gx, gy, 80, 56, '255,166,75', .052 + .015 * n);
+  if (hearthLit) glow(gx, gy, 80, 56, '255,166,75', .052 + .015 * n);
   for (const [x, y] of cand) glow(x, y + 4, 22, 16, '255,200,120', .03);
   if (loadingScreen && !loadingScreen.hidden) {
     loadingProgress.value = loadingProgress.max;
