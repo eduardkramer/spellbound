@@ -3570,6 +3570,30 @@ function warmCauldron(hit, dt) {
   if (cauldronHeat >= 1 && questManager.record('cauldron-heated')) renderQuestObjective();
 }
 
+function drawDialogueBubble(x, y) {
+  x = Math.round(x); y = Math.round(y);
+  rect(ctx, x - 9, y - 7, 18, 12, '#231e30');
+  rect(ctx, x - 11, y - 5, 22, 8, '#231e30');
+  rect(ctx, x - 9, y - 5, 18, 8, '#fff1d5');
+  rect(ctx, x - 7, y - 6, 14, 10, '#fff1d5');
+  rect(ctx, x - 7, y + 2, 14, 2, '#d2bfa5');
+  rect(ctx, x - 2, y + 4, 4, 3, '#231e30');
+  rect(ctx, x - 1, y + 3, 2, 3, '#fff1d5');
+  dot(ctx, x - 1, y + 7, '#231e30');
+  for (const offset of [-5, 0, 5]) rect(ctx, x + offset - 1, y - 1, 2, 2, '#493744');
+}
+
+function drawDialogueIndicators() {
+  if (preview) return;
+  if (currentRoom === rooms.library && librarianDialogue.hidden && librarianHit && librarianSprite.naturalWidth) {
+    drawDialogueBubble(librarianHit[0], librarianHit[1] - librarianSprite.naturalHeight - 11);
+  }
+  if (currentRoom === rooms.potion && !questDialogue?.open && skeletonMage.naturalWidth) {
+    const [x, y] = P(skeletonMageA, skeletonMageB, skeletonMage.naturalHeight);
+    drawDialogueBubble(x + 19, y - 9);
+  }
+}
+
 function drawQuestMarker(t) {
   if (preview || !skeletonMage.naturalWidth) return;
   const quest = questManager.forGiver('skeleton-mage');
@@ -4783,6 +4807,7 @@ function frame(ms) {
     // De voorste muur staat vóór de meubels en personages op de vloer.
     if (currentRoom.foreground) ctx.drawImage(currentRoom.foreground, 0, 0);
     if (currentRoom === rooms.potion) drawQuestMarker(t);
+    drawDialogueIndicators();
     if (currentRoom.corridor) drawHallAtmosphere(t);
     requestAnimationFrame(frame);
     return;
