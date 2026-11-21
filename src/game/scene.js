@@ -3577,7 +3577,56 @@ function renderQuestObjective() {
 
 const dialogueTyping = new WeakMap();
 
+const dialoguePages = new WeakMap();
 function typeDialogue(element, text, panel, onComplete) {
+  dialoguePages.get(element)?.();
+  dialogueTyping.get(element)?.();
+  const copy = element.closest('.npc-dialogue-copy');
+  const controls = [...copy.children].filter(child => child !== element && child.tagName !== 'H2');
+  const saved = controls.map(child => [child, child.hidden]);
+  const next = document.createElement('button');
+  next.type = 'button'; next.className = 'dialogue-page-next'; next.textContent = 'Next';
+  copy.append(next);
+  let remaining = text, currentStop;
+  const restore = () => { for (const [child, hidden] of saved) child.hidden = hidden; };
+  const cleanup = () => { currentStop?.(); next.remove(); restore(); dialoguePages.delete(element); };
+  dialoguePages.set(element, cleanup);
+  function showPage() {
+    for (const [child] of saved) child.hidden = true;
+    next.hidden = false;
+    // Measure complete words against two lines; prefer a sentence boundary when possible.
+    const style = getComputedStyle(element);
+    const measure = document.createElement('canvas').getContext('2d');
+    measure.font = style.font || `${style.fontSize} ${style.fontFamily}`;
+    const width = Math.max(40, element.clientWidth || copy.clientWidth - 32);
+    const words = remaining.match(/\S+\s*/g) || [''];
+    let line = '', lines = 1, used = 0, sentenceEnd = 0;
+    for (const word of words) {
+      if (measure.measureText(line + word.trimEnd()).width > width && line) {
+        lines++; line = '';
+      }
+      if (lines > 2 && used) break;
+      line += word; used += word.length;
+      if (/[.!?]["’']?\s*$/.test(word)) sentenceEnd = used;
+    }
+    if (used < remaining.length && sentenceEnd > 0) used = sentenceEnd;
+    const page = remaining.slice(0, Math.max(1, used)).trim();
+    remaining = remaining.slice(Math.max(1, used)).trimStart();
+    const last = !remaining;
+    next.hidden = last;
+    next.onclick = () => {
+      dialogueTyping.get(element)?.();
+      showPage();
+    };
+    typeDialoguePage(element, page, panel, last ? onComplete : undefined, () => {
+      if (last) { next.remove(); restore(); }
+    });
+    currentStop = dialogueTyping.get(element);
+  }
+  showPage();
+}
+
+function typeDialoguePage(element, text, panel, onComplete, onFinish) {
   dialogueTyping.get(element)?.();
   const characters = Array.from(text);
   let timer, position = 0;
@@ -3595,6 +3644,7 @@ function typeDialogue(element, text, panel, onComplete) {
         matchMedia('(prefers-reduced-motion: reduce)').matches || position >= characters.length) {
       const finished = !panel.hidden && (panel.tagName !== 'DIALOG' || panel.open);
       stop();
+      if (finished && onFinish) onFinish();
       if (finished && onComplete) {
         timer = setTimeout(() => { dialogueTyping.delete(element); onComplete(); }, 1200);
         dialogueTyping.set(element, () => { clearTimeout(timer); dialogueTyping.delete(element); });
