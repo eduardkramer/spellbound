@@ -85,7 +85,7 @@
     box-shadow:inset 0 0 0 1px #b28a55,inset 0 -3px #281d26
   }
   .npc-dialogue button:hover,.npc-dialogue button:focus-visible{background:#60443b}
-  #quest-dismiss[hidden],#quest-title[hidden]{display:none}
+  #close-librarian-dialogue[hidden],#quest-dismiss[hidden],#quest-title[hidden]{display:none}
   @media(max-width:440px){
     .npc-speaker figcaption{font-size:12px;min-width:130px;padding-inline:4px}
     .npc-dialogue-copy{padding:24px 4px 12px}
@@ -96,6 +96,8 @@
   #quest-log ul{margin:6px 0;padding-left:20px}
   #search-book-stack{width:auto;padding:0 10px;font-size:12px}
   #search-book-stack[hidden],#quest-action[hidden]{display:none}
+  #librarian-topics{display:grid;gap:6px;width:100%;margin:8px 0}
+  #librarian-topics button{height:auto;min-height:32px;text-align:left;justify-items:start;padding:7px 10px;box-sizing:border-box;width:100%}
   #skeleton-topics{display:grid;gap:6px;width:100%;margin:8px 0}
   #skeleton-topics[hidden],#skeleton-next[hidden]{display:none}
   #skeleton-topics button{width:100%;height:auto;min-height:32px;padding:7px 10px;box-sizing:border-box;text-align:left;justify-items:start}
@@ -219,7 +221,8 @@
       </figure>
       <div class="npc-dialogue-copy">
         <p>They say Madame Aubert opens her eyes when someone returns a book after midnight.</p>
-        <button type="button" id="close-librarian-dialogue">Close</button>
+        <div id="librarian-topics"></div>
+        <button type="button" id="close-librarian-dialogue">Goodbye</button>
       </div>
     </div>
   </aside>
