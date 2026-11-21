@@ -1361,6 +1361,55 @@ function stockPortraitArt(subject, x, y, t, gaze = 0) {
 // Match the original mantel portrait: violet pointed hat, pale hair and warm skin.
 // Work in the same small pixel grid so the new paintings share its level of detail.
 function aubertPaintingArt(subject, x, y) {
+  // Three narrative compositions use smaller figures and prominent surroundings.
+  if (subject !== 'aubert') {
+    const studyScene = subject === 'aubert-study';
+    const moonScene = subject === 'aubert-moon';
+    const cx = studyScene ? -.4 : moonScene ? .35 : -.3;
+    const headY = studyScene ? .28 : .35;
+    // Foreground desk/book or potion bottle, deliberately in front of the figure.
+    if (studyScene) {
+      if (y < -.35 && y > -.49) return '#986b46';
+      if (y < -.49 && (Math.abs(x + .72) < .07 || Math.abs(x - .68) < .07)) return '#5a3c30';
+      if (y > -.35 && y < -.1 && x > -.12 && x < .68) {
+        return Math.abs(x - .28) < .045 ? '#826344' : y > -.15 ? '#f0dba9' : '#c7ae80';
+      }
+      if (x > .65 && x < .75 && y > -.33 && y < .18) return '#d9bf82';
+      if ((x - .7) ** 2 + (y - .23) ** 2 < .012) return '#ffda80';
+    } else if (!moonScene) {
+      if (((x - .38) / .26) ** 2 + ((y + .25) / .24) ** 2 < 1) {
+        return x < .3 ? '#b9dfc5' : y < -.25 ? '#4f9b81' : '#83bca4';
+      }
+      if (x > .3 && x < .46 && y > -.05 && y < .22) return y > .15 ? '#b08c60' : '#a8c8b8';
+      if (Math.abs(x - .25) < .25 && y > -.19 && y < -.08) return '#d6ab84';
+      if ((x - .4) ** 2 + (y - .38) ** 2 < .014) return '#b8c89c';
+    }
+    // A small head and hat with the reference's proportions, above a full violet robe.
+    if (Math.abs(x - cx) < .31 && y > headY - .16 && y < headY + .55) {
+      return aubertPaintingArt('aubert', (x - cx) / .31, (y - headY - .195) / .355);
+    }
+    if (y < headY - .1 && y > -.72 && Math.abs(x - cx) < .18 + (headY - y) * .18) {
+      if (Math.abs(x - cx + .04) < .035) return '#b39c78';
+      return x < cx ? '#5a4cb0' : '#3a2e7a';
+    }
+    if (moonScene) {
+      if ((x + .48) ** 2 + (y - .58) ** 2 < .15 &&
+          (x + .33) ** 2 + (y - .7) ** 2 > .12) return '#e2cca0';
+      if (y < -.68 + Math.sin(x * 8) * .08) return '#414f57';
+      if (Math.abs(x + .77) < .07 && y < .53) return '#645044';
+      if (y > .15 && Math.abs(x + .72) + Math.abs(y - .35) < .37) return '#4a6158';
+      return '#272641';
+    }
+    if (studyScene) {
+      if (x > .15 && y > .28 && y < .87) {
+        if (Math.abs(y - .35) < .06 || Math.abs(y - .77) < .05) return '#896344';
+        return Math.floor(x * 13) % 3 === 0 ? '#a48c63' : '#4d5c58';
+      }
+      return '#39424b';
+    }
+    if (y < -.72) return '#756046';
+    return y > .6 ? '#54495a' : '#303e43';
+  }
   const study = subject === 'aubert-study';
   const moonlit = subject === 'aubert-moon';
   const side = subject === 'aubert-young' ? -1 : 1;
